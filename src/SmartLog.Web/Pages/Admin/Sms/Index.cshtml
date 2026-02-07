@@ -1,0 +1,281 @@
+@page
+@model SmartLog.Web.Pages.Admin.Sms.IndexModel
+@{
+    ViewData["Title"] = "SMS Dashboard";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-chat-dots me-2"></i>SMS Dashboard</h1>
+        <div>
+            <a asp-page="/Admin/Sms/Emergency" class="btn btn-danger">
+                <i class="bi bi-exclamation-triangle me-1"></i>Emergency Broadcast
+            </a>
+            <a asp-page="/Admin/Sms/Settings" class="btn btn-outline-secondary">
+                <i class="bi bi-gear me-1"></i>Settings
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Gateway Health Status -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-phone me-2"></i>GSM Modem Status
+                </div>
+                <div class="card-body">
+                    @if (Model.GsmHealth.IsHealthy)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success fs-6 me-2">Online</span>
+                            <span class="text-muted">@Model.GsmHealth.Status</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-danger fs-6 me-2">Offline</span>
+                            <span class="text-muted">@Model.GsmHealth.Status</span>
+                        </div>
+                    }
+                    <div class="mt-3">
+                        @foreach (var detail in Model.GsmHealth.Details)
+                        {
+                            <div class="d-flex justify-content-between py-1">
+                                <span class="text-muted">@detail.Key:</span>
+                                <strong>@detail.Value</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-cloud me-2"></i>Semaphore Status
+                </div>
+                <div class="card-body">
+                    @if (Model.SemaphoreHealth.IsHealthy)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success fs-6 me-2">Online</span>
+                            <span class="text-muted">@Model.SemaphoreHealth.Status</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-danger fs-6 me-2">Offline</span>
+                            <span class="text-muted">@Model.SemaphoreHealth.Status</span>
+                        </div>
+                    }
+                    <div class="mt-3">
+                        @foreach (var detail in Model.SemaphoreHealth.Details)
+                        {
+                            <div class="d-flex justify-content-between py-1">
+                                <span class="text-muted">@detail.Key:</span>
+                                <strong>@detail.Value</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h3 class="text-primary">@Model.Stats.TotalQueued</h3>
+                    <p class="text-muted mb-0">Total Queued</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h3 class="text-success">@Model.Stats.TotalSent</h3>
+                    <p class="text-muted mb-0">Sent</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h3 class="text-warning">@Model.Stats.TotalPending</h3>
+                    <p class="text-muted mb-0">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h3 class="text-danger">@Model.Stats.TotalFailed</h3>
+                    <p class="text-muted mb-0">Failed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Types Chart -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-pie-chart me-2"></i>Messages by Type
+                </div>
+                <div class="card-body">
+                    @if (Model.Stats.ByMessageType.Any())
+                    {
+                        <table class="table table-sm">
+                            <tbody>
+                                @foreach (var type in Model.Stats.ByMessageType.OrderByDescending(x => x.Value))
+                                {
+                                    <tr>
+                                        <td>@type.Key</td>
+                                        <td class="text-end"><strong>@type.Value</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">No messages yet</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-bar-chart me-2"></i>Messages by Provider
+                </div>
+                <div class="card-body">
+                    @if (Model.Stats.ByProvider.Any())
+                    {
+                        <table class="table table-sm">
+                            <tbody>
+                                @foreach (var provider in Model.Stats.ByProvider.OrderByDescending(x => x.Value))
+                                {
+                                    <tr>
+                                        <td>@provider.Key</td>
+                                        <td class="text-end"><strong>@provider.Value</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center">No messages sent yet</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Messages -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clock-history me-2"></i>Recent Messages</span>
+            <a asp-page="/Admin/Sms/Logs" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Phone</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Provider</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentLogs.Any())
+                        {
+                            @foreach (var log in Model.RecentLogs)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@log.CreatedAt.ToLocalTime().ToString("MMM dd HH:mm")</td>
+                                    <td>@log.PhoneNumber</td>
+                                    <td class="text-truncate" style="max-width: 300px;">@log.Message</td>
+                                    <td>
+                                        @if (log.Status == "SENT")
+                                        {
+                                            <span class="badge bg-success">Sent</span>
+                                        }
+                                        else if (log.Status == "FAILED")
+                                        {
+                                            <span class="badge bg-danger">Failed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@log.Status</span>
+                                        }
+                                    </td>
+                                    <td>@log.Provider</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No messages yet</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-lightning me-2"></i>Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/Templates" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-file-text me-1"></i>Manage Templates
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/Queue" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-list-ul me-1"></i>View Queue
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/Logs" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-journal-text me-1"></i>View Logs
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/Settings" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-gear me-1"></i>Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

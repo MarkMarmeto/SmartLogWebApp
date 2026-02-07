@@ -1,0 +1,58 @@
+using SmartLog.Web.Data.Entities;
+
+namespace SmartLog.Web.Services.Sms;
+
+/// <summary>
+/// Core SMS service for queuing and managing notifications
+/// </summary>
+public interface ISmsService
+{
+    /// <summary>
+    /// Queue attendance notification (entry/exit)
+    /// </summary>
+    Task QueueAttendanceNotificationAsync(int studentId, string scanType, DateTime scanTime);
+
+    /// <summary>
+    /// Queue calendar event notifications (holiday/suspension)
+    /// </summary>
+    Task QueueCalendarEventNotificationsAsync(int calendarEventId);
+
+    /// <summary>
+    /// Queue emergency announcement to all or filtered by grade
+    /// </summary>
+    Task QueueEmergencyAnnouncementAsync(string message, string? language = null, List<string>? affectedGrades = null);
+
+    /// <summary>
+    /// Queue custom SMS message
+    /// </summary>
+    Task<long> QueueCustomSmsAsync(string phoneNumber, string message, SmsPriority priority = SmsPriority.Normal, string messageType = "CUSTOM");
+
+    /// <summary>
+    /// Cancel a queued SMS
+    /// </summary>
+    Task<bool> CancelSmsAsync(long queueId);
+
+    /// <summary>
+    /// Get SMS statistics
+    /// </summary>
+    Task<SmsStatistics> GetStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null);
+
+    /// <summary>
+    /// Check if message is duplicate within time window
+    /// </summary>
+    Task<bool> IsDuplicateAsync(string phoneNumber, string message, int windowMinutes = 5);
+}
+
+/// <summary>
+/// SMS statistics model
+/// </summary>
+public class SmsStatistics
+{
+    public int TotalQueued { get; set; }
+    public int TotalSent { get; set; }
+    public int TotalFailed { get; set; }
+    public int TotalPending { get; set; }
+    public int TotalProcessing { get; set; }
+    public Dictionary<string, int> ByMessageType { get; set; } = new();
+    public Dictionary<string, int> ByProvider { get; set; } = new();
+}

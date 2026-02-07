@@ -1,0 +1,304 @@
+@page
+@model SmartLog.Web.Pages.Admin.Reports.MonthlyAttendanceReportModel
+@{
+    ViewData["Title"] = "Monthly Attendance Report";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1><i class="bi bi-calendar3 me-2"></i>Monthly Attendance Report</h1>
+            <p class="text-muted mb-0">@Model.MonthName</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+            <button class="btn btn-success" onclick="exportReport('csv')">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export CSV
+            </button>
+            <button class="btn btn-info" onclick="exportReport('html')">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export HTML
+            </button>
+        </div>
+    </div>
+
+    @* US0047: Filter Form *@
+    <div class="card mb-3 no-print">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label for="year" class="form-label">Year</label>
+                    <input type="number" class="form-control" id="year" name="year"
+                           value="@Model.ReportYear" min="2020" max="2099" />
+                </div>
+                <div class="col-md-2">
+                    <label for="month" class="form-label">Month</label>
+                    <select class="form-select" id="month" name="month">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m" selected="@(Model.ReportMonth == m)">
+                                @(new DateTime(2000, m, 1).ToString("MMMM"))
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="gradeFilter" class="form-label">Grade (Optional)</label>
+                    <input type="text" class="form-control" id="gradeFilter" name="gradeFilter"
+                           value="@Model.GradeFilter" placeholder="e.g., 7" />
+                </div>
+                <div class="col-md-3">
+                    <label for="sectionFilter" class="form-label">Section (Optional)</label>
+                    <input type="text" class="form-control" id="sectionFilter" name="sectionFilter"
+                           value="@Model.SectionFilter" placeholder="e.g., A" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Generate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* US0047-AC1: Report Header (Print View) *@
+    <div class="card mb-4 print-only" style="display: none;">
+        <div class="card-body text-center">
+            <h2>SmartLog - Monthly Attendance Report</h2>
+            <h4>@Model.MonthName</h4>
+            @if (!string.IsNullOrEmpty(Model.GradeFilter) || !string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <p class="mb-0">
+                    @if (!string.IsNullOrEmpty(Model.GradeFilter))
+                    {
+                        <span>Grade @Model.GradeFilter</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.SectionFilter))
+                    {
+                        <span>- Section @Model.SectionFilter</span>
+                    }
+                </p>
+            }
+            <p class="text-muted mb-0">Generated: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</p>
+        </div>
+    </div>
+
+    @* US0047-AC2: Monthly Summary Statistics *@
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Monthly Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-2">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-2">Total Enrolled</h6>
+                        <h2 class="mb-0">@Model.Totals.TotalEnrolled</h2>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-2">School Days</h6>
+                        <h2 class="mb-0">@Model.Totals.SchoolDays</h2>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-3 border rounded bg-success bg-opacity-10">
+                        <h6 class="text-muted mb-2">Avg Attendance</h6>
+                        <h2 class="mb-0 text-success">@Model.Totals.AverageAttendanceRate%</h2>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-3 border rounded bg-info bg-opacity-10">
+                        <h6 class="text-muted mb-2">Highest</h6>
+                        <h2 class="mb-0 text-info">@Model.Totals.HighestAttendance</h2>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-3 border rounded bg-warning bg-opacity-10">
+                        <h6 class="text-muted mb-2">Lowest</h6>
+                        <h2 class="mb-0 text-warning">@Model.Totals.LowestAttendance</h2>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-3 border rounded bg-danger bg-opacity-10">
+                        <h6 class="text-muted mb-2">Total Absent</h6>
+                        <h2 class="mb-0 text-danger">@Model.Totals.TotalAbsentDays</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* US0047-AC1: Daily Attendance Calendar View *@
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Daily Attendance</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Mon</th>
+                            <th>Tue</th>
+                            <th>Wed</th>
+                            <th>Thu</th>
+                            <th>Fri</th>
+                            <th class="bg-light">Sat</th>
+                            <th class="bg-light">Sun</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var firstDayOfMonth = new DateTime(Model.ReportYear, Model.ReportMonth, 1);
+                            var startDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+                            if (startDayOfWeek == 0) startDayOfWeek = 7; // Sunday = 7
+                            var daysInMonth = DateTime.DaysInMonth(Model.ReportYear, Model.ReportMonth);
+                            var currentDay = 1;
+                            var weeksNeeded = (int)Math.Ceiling((startDayOfWeek + daysInMonth - 1) / 7.0);
+
+                            for (int week = 0; week < weeksNeeded; week++)
+                            {
+                                <tr>
+                                    @for (int dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++)
+                                    {
+                                        if ((week == 0 && dayOfWeek < startDayOfWeek) || currentDay > daysInMonth)
+                                        {
+                                            <td class="bg-light"></td>
+                                        }
+                                        else
+                                        {
+                                            var summary = Model.DailySummaries.FirstOrDefault(d => d.Date.Day == currentDay);
+                                            var isWeekend = dayOfWeek >= 6;
+                                            var bgClass = isWeekend ? "bg-light" :
+                                                summary != null && summary.AttendanceRate >= 90 ? "bg-success bg-opacity-25" :
+                                                summary != null && summary.AttendanceRate >= 75 ? "bg-warning bg-opacity-25" :
+                                                "bg-danger bg-opacity-25";
+
+                                            <td class="@bgClass">
+                                                <div><strong>@currentDay</strong></div>
+                                                @if (summary != null && !isWeekend)
+                                                {
+                                                    <small>@summary.AttendanceRate%</small>
+                                                }
+                                            </td>
+                                            currentDay++;
+                                        }
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+                <div class="mt-2">
+                    <small>
+                        <span class="badge bg-success bg-opacity-25 text-dark">≥90%</span>
+                        <span class="badge bg-warning bg-opacity-25 text-dark">75-89%</span>
+                        <span class="badge bg-danger bg-opacity-25 text-dark">&lt;75%</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* US0047-AC3: Per-Student Monthly Attendance *@
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Student Attendance Summary</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.StudentAttendance.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th class="text-end">Days Present</th>
+                                <th class="text-end">Days Absent</th>
+                                <th class="text-end">Attendance Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.StudentAttendance)
+                            {
+                                <tr>
+                                    <td><code>@student.StudentId</code></td>
+                                    <td>@student.FullName</td>
+                                    <td>@student.GradeLevel</td>
+                                    <td>@student.Section</td>
+                                    <td class="text-end">@student.DaysPresent</td>
+                                    <td class="text-end">@student.DaysAbsent</td>
+                                    <td class="text-end">
+                                        <span class="badge @(student.AttendanceRate >= 90 ? "bg-success" : student.AttendanceRate >= 75 ? "bg-warning" : "bg-danger")">
+                                            @student.AttendanceRate%
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No student attendance data available.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles
+{
+    <style>
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            body {
+                font-size: 11pt;
+            }
+            h5 {
+                font-size: 13pt;
+            }
+        }
+    </style>
+}
+
+@section Scripts
+{
+    <script>
+        function exportReport(format) {
+            const params = new URLSearchParams({
+                year: '@Model.ReportYear',
+                month: '@Model.ReportMonth',
+                format: format
+            });
+
+            @if (!string.IsNullOrEmpty(Model.GradeFilter))
+            {
+                <text>params.append('grade', '@Model.GradeFilter');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <text>params.append('section', '@Model.SectionFilter');</text>
+            }
+
+            window.location.href = `/api/v1/reports/monthly/export?${params.toString()}`;
+        }
+    </script>
+}

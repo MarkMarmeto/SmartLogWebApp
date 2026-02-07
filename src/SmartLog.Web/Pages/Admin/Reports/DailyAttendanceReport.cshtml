@@ -1,0 +1,282 @@
+@page
+@model SmartLog.Web.Pages.Admin.Reports.DailyAttendanceReportModel
+@{
+    ViewData["Title"] = "Daily Attendance Report";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1><i class="bi bi-file-earmark-text me-2"></i>Daily Attendance Report</h1>
+            <p class="text-muted mb-0">Detailed attendance report for @Model.ReportDate.ToString("MMMM dd, yyyy")</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+            <button class="btn btn-success" onclick="exportReport('csv')">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export CSV
+            </button>
+            <button class="btn btn-info" onclick="exportReport('html')">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export HTML
+            </button>
+        </div>
+    </div>
+
+    @* US0045: Filter Form *@
+    <div class="card mb-3 no-print">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="selectedDate" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="selectedDate" name="selectedDate"
+                           value="@Model.ReportDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-3">
+                    <label for="gradeFilter" class="form-label">Grade (Optional)</label>
+                    <input type="text" class="form-control" id="gradeFilter" name="gradeFilter"
+                           value="@Model.GradeFilter" placeholder="e.g., 7" />
+                </div>
+                <div class="col-md-3">
+                    <label for="sectionFilter" class="form-label">Section (Optional)</label>
+                    <input type="text" class="form-control" id="sectionFilter" name="sectionFilter"
+                           value="@Model.SectionFilter" placeholder="e.g., A" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* US0045-AC1: Report Header (Print View) *@
+    <div class="card mb-4 print-only" style="display: none;">
+        <div class="card-body text-center">
+            <h2>SmartLog - Daily Attendance Report</h2>
+            <h4>@Model.ReportDate.ToString("MMMM dd, yyyy (dddd)")</h4>
+            @if (!string.IsNullOrEmpty(Model.GradeFilter) || !string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <p class="mb-0">
+                    @if (!string.IsNullOrEmpty(Model.GradeFilter))
+                    {
+                        <span>Grade @Model.GradeFilter</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.SectionFilter))
+                    {
+                        <span>- Section @Model.SectionFilter</span>
+                    }
+                </p>
+            }
+            <p class="text-muted mb-0">Generated: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</p>
+        </div>
+    </div>
+
+    @* US0045-AC1: Summary Statistics *@
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Summary Statistics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-2">Total Enrolled</h6>
+                        <h2 class="mb-0">@Model.Summary.TotalEnrolled</h2>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-success bg-opacity-10">
+                        <h6 class="text-muted mb-2">Present</h6>
+                        <h2 class="mb-0 text-success">@Model.Summary.Present</h2>
+                        <small class="text-muted">@Model.Summary.AttendanceRate%</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-danger bg-opacity-10">
+                        <h6 class="text-muted mb-2">Absent</h6>
+                        <h2 class="mb-0 text-danger">@Model.Summary.Absent</h2>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-secondary bg-opacity-10">
+                        <h6 class="text-muted mb-2">Departed</h6>
+                        <h2 class="mb-0 text-secondary">@Model.Summary.Departed</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* US0045-AC2: Present Students *@
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Present Students (@Model.PresentStudents.Count)</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.PresentStudents.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th>Entry Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.PresentStudents)
+                            {
+                                <tr>
+                                    <td><code>@student.StudentIdNumber</code></td>
+                                    <td>@student.FullName</td>
+                                    <td>@student.GradeLevel</td>
+                                    <td>@student.Section</td>
+                                    <td>@student.EntryTime?.ToString("h:mm tt")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No present students.</p>
+            }
+        </div>
+    </div>
+
+    @* US0045-AC2: Departed Students *@
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-box-arrow-right me-2"></i>Departed Students (@Model.DepartedStudents.Count)</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.DepartedStudents.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th>Entry Time</th>
+                                <th>Exit Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.DepartedStudents)
+                            {
+                                <tr>
+                                    <td><code>@student.StudentIdNumber</code></td>
+                                    <td>@student.FullName</td>
+                                    <td>@student.GradeLevel</td>
+                                    <td>@student.Section</td>
+                                    <td>@student.EntryTime?.ToString("h:mm tt")</td>
+                                    <td>@student.ExitTime?.ToString("h:mm tt")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No departed students.</p>
+            }
+        </div>
+    </div>
+
+    @* US0045-AC2: Absent Students *@
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-x-circle me-2"></i>Absent Students (@Model.AbsentStudents.Count)</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.AbsentStudents.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Grade</th>
+                                <th>Section</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.AbsentStudents)
+                            {
+                                <tr>
+                                    <td><code>@student.StudentIdNumber</code></td>
+                                    <td>@student.FullName</td>
+                                    <td>@student.GradeLevel</td>
+                                    <td>@student.Section</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No absent students.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles
+{
+    <style>
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            body {
+                font-size: 12pt;
+            }
+            h5 {
+                font-size: 14pt;
+            }
+        }
+    </style>
+}
+
+@section Scripts
+{
+    <script>
+        function exportReport(format) {
+            const params = new URLSearchParams({
+                date: '@Model.ReportDate.ToString("yyyy-MM-dd")',
+                format: format
+            });
+
+            @if (!string.IsNullOrEmpty(Model.GradeFilter))
+            {
+                <text>params.append('grade', '@Model.GradeFilter');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <text>params.append('section', '@Model.SectionFilter');</text>
+            }
+
+            window.location.href = `/api/v1/reports/daily/export?${params.toString()}`;
+        }
+    </script>
+}

@@ -1,0 +1,207 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.Calendar.EditEventModel
+@{
+    ViewData["Title"] = "Edit Calendar Event";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0"><i class="bi bi-calendar-edit me-2"></i>Edit Calendar Event</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" asp-for="Input.Id" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <!-- Event Type -->
+                        <div class="mb-3">
+                            <label asp-for="Input.EventType" class="form-label"></label>
+                            <select asp-for="Input.EventType" asp-items="Model.EventTypes" class="form-select" id="eventTypeSelect">
+                            </select>
+                            <span asp-validation-for="Input.EventType" class="text-danger"></span>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label asp-for="Input.Title" class="form-label"></label>
+                            <input asp-for="Input.Title" class="form-control" />
+                            <span asp-validation-for="Input.Title" class="text-danger"></span>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="mb-3">
+                            <label asp-for="Input.Category" class="form-label"></label>
+                            <select asp-for="Input.Category" class="form-select" id="categorySelect">
+                                @foreach (var cat in Model.HolidayCategories)
+                                {
+                                    <option value="@cat.Value" data-type="Holiday">@cat.Text</option>
+                                }
+                                @foreach (var cat in Model.EventCategories)
+                                {
+                                    <option value="@cat.Value" data-type="Event">@cat.Text</option>
+                                }
+                                @foreach (var cat in Model.SuspensionCategories)
+                                {
+                                    <option value="@cat.Value" data-type="Suspension">@cat.Text</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.Category" class="text-danger"></span>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.StartDate" class="form-label"></label>
+                                <input asp-for="Input.StartDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.StartDate" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.EndDate" class="form-label"></label>
+                                <input asp-for="Input.EndDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.EndDate" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label asp-for="Input.Description" class="form-label"></label>
+                            <textarea asp-for="Input.Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Input.Description" class="text-danger"></span>
+                        </div>
+
+                        <!-- Location -->
+                        <div class="mb-3" id="locationDiv">
+                            <label asp-for="Input.Location" class="form-label"></label>
+                            <input asp-for="Input.Location" class="form-control" />
+                            <span asp-validation-for="Input.Location" class="text-danger"></span>
+                        </div>
+
+                        <!-- Impact Settings -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <strong>Impact Settings</strong>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input asp-for="Input.IsAllDay" type="checkbox" class="form-check-input" />
+                                    <label asp-for="Input.IsAllDay" class="form-check-label"></label>
+                                </div>
+
+                                <div class="form-check mb-2">
+                                    <input asp-for="Input.AffectsAttendance" type="checkbox" class="form-check-input" />
+                                    <label asp-for="Input.AffectsAttendance" class="form-check-label"></label>
+                                    <div class="form-text">
+                                        When checked, attendance scanning will be prevented on this date
+                                    </div>
+                                </div>
+
+                                <div class="form-check mb-2">
+                                    <input asp-for="Input.AffectsClasses" type="checkbox" class="form-check-input" />
+                                    <label asp-for="Input.AffectsClasses" class="form-check-label"></label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input asp-for="Input.IsActive" type="checkbox" class="form-check-input" />
+                                    <label asp-for="Input.IsActive" class="form-check-label"></label>
+                                    <div class="form-text">
+                                        Inactive events are hidden from the calendar
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Academic Year -->
+                        <div class="mb-3">
+                            <label asp-for="Input.AcademicYearId" class="form-label"></label>
+                            <select asp-for="Input.AcademicYearId" asp-items="Model.AcademicYears" class="form-select">
+                            </select>
+                            <span asp-validation-for="Input.AcademicYearId" class="text-danger"></span>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Save Changes
+                            </button>
+                            <a asp-page="./Index" asp-route-academicYearId="@Model.Input.AcademicYearId" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <button type="button" class="btn btn-danger ms-auto" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="bi bi-trash me-1"></i>Delete Event
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this event?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Input.Id" style="display:inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Dynamic category filtering based on event type
+        function updateCategoryOptions() {
+            const eventType = $('#eventTypeSelect option:selected').text();
+            const categorySelect = $('#categorySelect');
+            const currentValue = categorySelect.val();
+
+            // Hide all options
+            categorySelect.find('option').hide();
+
+            // Show only options matching the selected event type
+            categorySelect.find(`option[data-type="${eventType}"]`).show();
+
+            // If current value is still valid for this type, keep it
+            const currentOption = categorySelect.find(`option[value="${currentValue}"][data-type="${eventType}"]`);
+            if (currentOption.length === 0) {
+                // Select first visible option
+                const firstVisible = categorySelect.find(`option[data-type="${eventType}"]`).first();
+                if (firstVisible.length > 0) {
+                    categorySelect.val(firstVisible.val());
+                }
+            }
+
+            // Show/hide location field (only for Events)
+            if (eventType === 'Event') {
+                $('#locationDiv').show();
+            } else {
+                $('#locationDiv').hide();
+            }
+        }
+
+        $(document).ready(function () {
+            updateCategoryOptions();
+            $('#eventTypeSelect').change(updateCategoryOptions);
+        });
+    </script>
+}

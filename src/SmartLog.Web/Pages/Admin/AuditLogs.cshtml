@@ -1,0 +1,289 @@
+@page
+@model SmartLog.Web.Pages.Admin.AuditLogsModel
+@{
+    ViewData["Title"] = "Audit Logs";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-journal-text me-2"></i>Audit Logs</h1>
+            <p class="text-muted mb-0">System audit trail and activity log</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-secondary">@Model.TotalRecords entries</span>
+            <button class="btn btn-success btn-sm" onclick="exportAuditLogs()">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export CSV
+            </button>
+        </div>
+    </div>
+
+    @* US0050-AC1, US0051: Filter and Search Form *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="datetime-local" class="form-control" id="startDate" name="startDate"
+                           value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+                <div class="col-md-2">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="datetime-local" class="form-control" id="endDate" name="endDate"
+                           value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+                <div class="col-md-2">
+                    <label for="actionFilter" class="form-label">Action</label>
+                    <select class="form-select" id="actionFilter" name="actionFilter">
+                        <option value="">All Actions</option>
+                        @foreach (var action in Model.Actions)
+                        {
+                            <option value="@action" selected="@(Model.ActionFilter == action)">@action</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="userFilter" class="form-label">User</label>
+                    <select class="form-select" id="userFilter" name="userFilter">
+                        <option value="">All Users</option>
+                        @foreach (var user in Model.Users)
+                        {
+                            var parts = user.Split('|');
+                            var userName = parts[0];
+                            var userId = parts[1];
+                            <option value="@userId" selected="@(Model.UserFilter == userId)">@userName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="searchTerm" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="searchTerm" name="searchTerm"
+                           value="@Model.SearchTerm" placeholder="Details..." />
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* US0050-AC2: Audit Log Table *@
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-list me-2"></i>Audit Log Entries
+        </div>
+        <div class="card-body">
+            @if (Model.AuditEntries.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Performed By</th>
+                                <th>Details</th>
+                                <th>IP Address</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model.AuditEntries)
+                            {
+                                <tr>
+                                    <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>
+                                        <span class="badge @GetBadgeClass(log.Action)">
+                                            @log.Action
+                                        </span>
+                                    </td>
+                                    <td>@(log.UserName ?? "-")</td>
+                                    <td>@log.PerformedByUserName</td>
+                                    <td>@log.TruncatedDetails</td>
+                                    <td><code>@(log.IpAddress ?? "-")</code></td>
+                                    <td>
+                                        @* US0050-AC3: View Details Button *@
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                data-bs-toggle="modal" data-bs-target="#detailsModal"
+                                                data-timestamp="@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")"
+                                                data-action="@log.Action"
+                                                data-user="@(log.UserName ?? "-")"
+                                                data-performedby="@log.PerformedByUserName"
+                                                data-details="@(log.Details ?? "-")"
+                                                data-ip="@(log.IpAddress ?? "-")"
+                                                onclick="showDetails(this)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* Pagination *@
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="mt-3">
+                        <ul class="pagination justify-content-center mb-0">
+                            <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                                <a class="page-link" href="?pageNumber=@(Model.PageNumber - 1)&startDate=@Model.StartDate&endDate=@Model.EndDate&actionFilter=@Model.ActionFilter&userFilter=@Model.UserFilter&searchTerm=@Model.SearchTerm">
+                                    Previous
+                                </a>
+                            </li>
+                            @for (int i = Math.Max(1, Model.PageNumber - 2); i <= Math.Min(Model.TotalPages, Model.PageNumber + 2); i++)
+                            {
+                                <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                    <a class="page-link" href="?pageNumber=@i&startDate=@Model.StartDate&endDate=@Model.EndDate&actionFilter=@Model.ActionFilter&userFilter=@Model.UserFilter&searchTerm=@Model.SearchTerm">
+                                        @i
+                                    </a>
+                                </li>
+                            }
+                            <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                                <a class="page-link" href="?pageNumber=@(Model.PageNumber + 1)&startDate=@Model.StartDate&endDate=@Model.EndDate&actionFilter=@Model.ActionFilter&userFilter=@Model.UserFilter&searchTerm=@Model.SearchTerm">
+                                    Next
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">No audit log entries found for the selected filters.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* US0050-AC3: Details Modal *@
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>Audit Log Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Timestamp:</strong></div>
+                    <div class="col-md-9" id="modal-timestamp"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Action:</strong></div>
+                    <div class="col-md-9" id="modal-action"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>User:</strong></div>
+                    <div class="col-md-9" id="modal-user"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>Performed By:</strong></div>
+                    <div class="col-md-9" id="modal-performedby"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3"><strong>IP Address:</strong></div>
+                    <div class="col-md-9"><code id="modal-ip"></code></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3"><strong>Details:</strong></div>
+                    <div class="col-md-9">
+                        <pre class="bg-light p-3 rounded" id="modal-details" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        function exportAuditLogs() {
+            const params = new URLSearchParams();
+
+            @if (Model.StartDate.HasValue)
+            {
+                <text>params.append('startDate', '@Model.StartDate.Value.ToString("yyyy-MM-ddTHH:mm")');</text>
+            }
+
+            @if (Model.EndDate.HasValue)
+            {
+                <text>params.append('endDate', '@Model.EndDate.Value.ToString("yyyy-MM-ddTHH:mm")');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.ActionFilter))
+            {
+                <text>params.append('action', '@Model.ActionFilter');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.UserFilter))
+            {
+                <text>params.append('userId', '@Model.UserFilter');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <text>params.append('searchTerm', '@Model.SearchTerm');</text>
+            }
+
+            window.location.href = `/api/v1/reports/audit-logs/export?${params.toString()}`;
+        }
+
+        function showDetails(button) {
+            const timestamp = button.getAttribute('data-timestamp');
+            const action = button.getAttribute('data-action');
+            const user = button.getAttribute('data-user');
+            const performedBy = button.getAttribute('data-performedby');
+            const details = button.getAttribute('data-details');
+            const ip = button.getAttribute('data-ip');
+
+            document.getElementById('modal-timestamp').textContent = timestamp;
+            document.getElementById('modal-action').innerHTML = '<span class="badge ' + getBadgeClass(action) + '">' + action + '</span>';
+            document.getElementById('modal-user').textContent = user;
+            document.getElementById('modal-performedby').textContent = performedBy;
+            document.getElementById('modal-ip').textContent = ip;
+            document.getElementById('modal-details').textContent = details;
+        }
+
+        function getBadgeClass(action) {
+            const successActions = ['UserCreated', 'UserActivated', 'DeviceRegistered', 'StudentCreated', 'FacultyCreated'];
+            const dangerActions = ['UserDeactivated', 'UserDeleted', 'DeviceRevoked', 'StudentDeactivated', 'FacultyDeactivated'];
+            const warningActions = ['UserUpdated', 'UserPasswordReset', 'DeviceReactivated', 'StudentUpdated', 'FacultyUpdated'];
+            const infoActions = ['Login', 'Logout', 'ScanAccepted'];
+
+            if (successActions.includes(action)) return 'bg-success';
+            if (dangerActions.includes(action)) return 'bg-danger';
+            if (warningActions.includes(action)) return 'bg-warning';
+            if (infoActions.includes(action)) return 'bg-info';
+            return 'bg-secondary';
+        }
+    </script>
+}
+
+@functions {
+    private string GetBadgeClass(string action)
+    {
+        var successActions = new[] { "UserCreated", "UserActivated", "DeviceRegistered", "StudentCreated", "FacultyCreated" };
+        var dangerActions = new[] { "UserDeactivated", "UserDeleted", "DeviceRevoked", "StudentDeactivated", "FacultyDeactivated" };
+        var warningActions = new[] { "UserUpdated", "UserPasswordReset", "DeviceReactivated", "StudentUpdated", "FacultyUpdated" };
+        var infoActions = new[] { "Login", "Logout", "ScanAccepted" };
+
+        if (successActions.Contains(action)) return "bg-success";
+        if (dangerActions.Contains(action)) return "bg-danger";
+        if (warningActions.Contains(action)) return "bg-warning";
+        if (infoActions.Contains(action)) return "bg-info";
+        return "bg-secondary";
+    }
+}

@@ -1,0 +1,190 @@
+@page
+@model SmartLog.Web.Pages.Admin.StudentsModel
+@{
+    ViewData["Title"] = "Students";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-mortarboard me-2"></i>Students</h1>
+        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+        {
+            <a asp-page="/Admin/CreateStudent" class="btn btn-primary">
+                <i class="bi bi-person-plus me-1"></i>Create New Student
+            </a>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @* Search and Filter *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="searchTerm" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="searchTerm" name="searchTerm"
+                           value="@Model.SearchTerm" placeholder="Name or Student ID...">
+                </div>
+                <div class="col-md-2">
+                    <label for="gradeFilter" class="form-label">Grade</label>
+                    <select class="form-select" id="gradeFilter" name="gradeFilter">
+                        <option value="">All Grades</option>
+                        <option value="K" selected="@(Model.GradeFilter == "K")">Kindergarten</option>
+                        @for (int i = 1; i <= 12; i++)
+                        {
+                            <option value="@i" selected="@(Model.GradeFilter == i.ToString())">Grade @i</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sectionFilter" class="form-label">Section</label>
+                    <input type="text" class="form-control" id="sectionFilter" name="sectionFilter"
+                           value="@Model.SectionFilter" placeholder="Any">
+                </div>
+                <div class="col-md-2">
+                    <label for="statusFilter" class="form-label">Status</label>
+                    <select class="form-select" id="statusFilter" name="statusFilter">
+                        <option value="">All</option>
+                        <option value="active" selected="@(Model.StatusFilter == "active")">Active</option>
+                        <option value="inactive" selected="@(Model.StatusFilter == "inactive")">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <a asp-page="/Admin/Students" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-list me-2"></i>Student List
+        </div>
+        <div class="card-body">
+            @if (Model.Students.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Photo</th>
+                                <th>Name</th>
+                                <th>Grade/Section</th>
+                                <th>Parent/Guardian</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.Students)
+                            {
+                                <tr>
+                                    <td><code>@student.StudentId</code></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(student.ProfilePicturePath))
+                                        {
+                                            <img src="@student.ProfilePicturePath"
+                                                 style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #0d6efd;
+                                                        color: white; display: flex; align-items: center; justify-content: center;
+                                                        font-weight: bold; font-size: 14px;">
+                                                @student.FirstName.Substring(0,1)@student.LastName.Substring(0,1)
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>@student.FullName</td>
+                                    <td>Grade @student.GradeLevel - @student.Section</td>
+                                    <td>@student.ParentGuardianName</td>
+                                    <td>@student.ParentPhone</td>
+                                    <td>
+                                        @if (student.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-page="/Admin/StudentDetails" asp-route-id="@student.Id"
+                                               class="btn btn-sm btn-outline-info" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                                            {
+                                                <a asp-page="/Admin/EditStudent" asp-route-id="@student.Id"
+                                                   class="btn btn-sm btn-outline-primary" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted text-center py-4">No students found matching your criteria.</p>
+            }
+        </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Students"
+                               asp-route-pageNumber="@(Model.PageNumber - 1)"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-gradeFilter="@Model.GradeFilter"
+                               asp-route-sectionFilter="@Model.SectionFilter"
+                               asp-route-statusFilter="@Model.StatusFilter">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                <a class="page-link" asp-page="/Admin/Students"
+                                   asp-route-pageNumber="@i"
+                                   asp-route-searchTerm="@Model.SearchTerm"
+                                   asp-route-gradeFilter="@Model.GradeFilter"
+                                   asp-route-sectionFilter="@Model.SectionFilter"
+                                   asp-route-statusFilter="@Model.StatusFilter">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Students"
+                               asp-route-pageNumber="@(Model.PageNumber + 1)"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-gradeFilter="@Model.GradeFilter"
+                               asp-route-sectionFilter="@Model.SectionFilter"
+                               asp-route-statusFilter="@Model.StatusFilter">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-center text-muted mt-2">
+                    Showing @Model.Students.Count of @Model.TotalStudents students
+                </p>
+            </div>
+        }
+    </div>
+</div>

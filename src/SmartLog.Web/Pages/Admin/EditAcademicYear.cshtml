@@ -1,0 +1,93 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.EditAcademicYearModel
+@{
+    ViewData["Title"] = "Edit Academic Year";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0"><i class="bi bi-calendar-edit me-2"></i>Edit Academic Year</h2>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @Model.StatusMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form method="post">
+                        <input type="hidden" asp-for="Input.Id" />
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Name" class="form-label">Academic Year Name</label>
+                            <input asp-for="Input.Name" class="form-control" placeholder="e.g., 2026-2027" />
+                            <span asp-validation-for="Input.Name" class="text-danger"></span>
+                            <div class="form-text">Format: YYYY-YYYY (e.g., 2026-2027)</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.StartDate" class="form-label">Start Date</label>
+                                <input asp-for="Input.StartDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.StartDate" class="text-danger"></span>
+                                <div class="form-text">First day of the school year</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.EndDate" class="form-label">End Date</label>
+                                <input asp-for="Input.EndDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.EndDate" class="text-danger"></span>
+                                <div class="form-text">Last day of the school year</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="Input.IsCurrent" type="checkbox" class="form-check-input" id="currentCheck" />
+                                <label asp-for="Input.IsCurrent" class="form-check-label" for="currentCheck">
+                                    Set as Current Academic Year
+                                </label>
+                                <div class="form-text">
+                                    Only one academic year can be current at a time. Setting this will unset any other current year.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="Input.IsActive" type="checkbox" class="form-check-input" id="activeCheck" />
+                                <label asp-for="Input.IsActive" class="form-check-label" for="activeCheck">
+                                    Active
+                                </label>
+                                <div class="form-text">
+                                    Inactive academic years are hidden from dropdowns but historical data is preserved.
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Save Changes
+                            </button>
+                            <a asp-page="/Admin/AcademicYears" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

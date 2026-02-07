@@ -1,0 +1,219 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using SmartLog.Web.Data;
+using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
+using SmartLog.Web.Services.Sms;
+
+// Configure Serilog for structured logging
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("Starting SmartLog Web Application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure Serilog from configuration
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console());
+
+    // Add DbContext with SQL Server
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(connectionString));
+
+    // Add ASP.NET Identity with custom ApplicationUser
+    builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        // Password requirements (per stakeholder decisions)
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = false; // Special chars allowed but not required
+        options.Password.RequiredLength = 8;
+
+        // Lockout settings (for US0002, configured here for consistency)
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+
+        // User settings
+        options.User.RequireUniqueEmail = true;
+
+        // Sign-in settings
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+    // Configure cookie authentication
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromHours(10); // 10-hour session per stakeholder decision
+        options.SlidingExpiration = true;
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+    });
+
+    // Add application services
+    builder.Services.AddScoped<IAuditService, AuditService>();
+    builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+    builder.Services.AddScoped<IDeviceService, DeviceService>();
+    builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+    builder.Services.AddScoped<IReportExportService, ReportExportService>();
+    builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+    builder.Services.AddScoped<ITimezoneService, TimezoneService>();
+    builder.Services.AddScoped<IAcademicYearService, AcademicYearService>();
+    builder.Services.AddScoped<IGradeSectionService, GradeSectionService>();
+    builder.Services.AddScoped<IIdGenerationService, IdGenerationService>();
+    builder.Services.AddScoped<ICalendarService, CalendarService>();
+
+    // Add SMS services
+    builder.Services.AddScoped<ISmsSettingsService, SmsSettingsService>();
+    builder.Services.AddScoped<ISmsTemplateService, SmsTemplateService>();
+    builder.Services.AddScoped<ISmsService, SmsService>();
+    builder.Services.AddSingleton<GsmModemGateway>();
+    builder.Services.AddSingleton<SemaphoreGateway>();
+    builder.Services.AddHostedService<SmsWorkerService>();
+    builder.Services.AddHttpClient(); // Required for SemaphoreGateway
+
+    // Add authorization policies (US0007)
+    builder.Services.AddAuthorization(options =>
+    {
+        // SuperAdmin-only policies
+        options.AddPolicy("RequireSuperAdmin", policy =>
+            policy.RequireRole("SuperAdmin"));
+
+        // Admin-level policies (SuperAdmin or Admin)
+        options.AddPolicy("RequireAdmin", policy =>
+            policy.RequireRole("SuperAdmin", "Admin"));
+
+        // User management (SuperAdmin or Admin)
+        options.AddPolicy("CanManageUsers", policy =>
+            policy.RequireRole("SuperAdmin", "Admin"));
+
+        // Student management
+        options.AddPolicy("CanViewStudents", policy =>
+            policy.RequireRole("SuperAdmin", "Admin", "Teacher", "Staff"));
+        options.AddPolicy("CanManageStudents", policy =>
+            policy.RequireRole("SuperAdmin", "Admin"));
+
+        // Faculty management
+        options.AddPolicy("CanViewFaculty", policy =>
+            policy.RequireRole("SuperAdmin", "Admin", "Teacher"));
+        options.AddPolicy("CanManageFaculty", policy =>
+            policy.RequireRole("SuperAdmin", "Admin"));
+
+        // Audit log access (SuperAdmin only)
+        options.AddPolicy("CanViewAuditLogs", policy =>
+            policy.RequireRole("SuperAdmin"));
+
+        // Settings access (SuperAdmin only)
+        options.AddPolicy("CanManageSettings", policy =>
+            policy.RequireRole("SuperAdmin"));
+
+        // Attendance (Phase 2)
+        options.AddPolicy("CanViewAttendance", policy =>
+            policy.RequireRole("SuperAdmin", "Admin", "Teacher", "Security"));
+    });
+
+    // Add Razor Pages
+    builder.Services.AddRazorPages();
+    builder.Services.AddControllers(); // For REST API endpoints
+
+    // Add health checks
+    builder.Services.AddHealthChecks()
+        .AddDbContextCheck<ApplicationDbContext>();
+
+    var app = builder.Build();
+
+    // Apply migrations and seed data
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        try
+        {
+            var context = services.GetRequiredService<ApplicationDbContext>();
+
+            // Apply EF Core migrations automatically
+            logger.LogInformation("Applying database migrations...");
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied successfully");
+
+            // Seed data
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+            await DbInitializer.SeedAsync(userManager, roleManager, context, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while migrating or seeding the database");
+            // In development, we might want to continue; in production, we should fail
+            if (!app.Environment.IsDevelopment())
+            {
+                throw;
+            }
+        }
+    }
+
+    // Configure the HTTP request pipeline
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/Error");
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+
+    // Add cache control headers to prevent back button showing cached pages
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+        context.Response.Headers["Pragma"] = "no-cache";
+        context.Response.Headers["Expires"] = "0";
+        await next();
+    });
+
+    app.UseRouting();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.UseSerilogRequestLogging();
+
+    app.MapRazorPages();
+    app.MapControllers(); // Map API controllers
+    app.MapHealthChecks("/health");
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
+// Make the implicit Program class public for testing
+public partial class Program { }

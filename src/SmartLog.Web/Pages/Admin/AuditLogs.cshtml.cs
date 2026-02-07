@@ -1,0 +1,151 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using SmartLog.Web.Data;
+using SmartLog.Web.Data.Entities;
+
+namespace SmartLog.Web.Pages.Admin;
+
+/// <summary>
+/// Audit log viewer page.
+/// Implements US0050 (Audit Log Viewer) and US0051 (Audit Log Search and Filter).
+/// </summary>
+[Authorize(Policy = "RequireSuperAdmin")]
+public class AuditLogsModel : PageModel
+{
+    private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public AuditLogsModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+    {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    public List<AuditLogEntry> AuditEntries { get; set; } = new();
+    public List<string> Actions { get; set; } = new();
+    public List<string> Users { get; set; } = new();
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? StartDate { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public DateTime? EndDate { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? ActionFilter { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? UserFilter { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? SearchTerm { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    public int TotalPages { get; set; }
+    public int TotalRecords { get; set; }
+
+    public async Task OnGetAsync()
+    {
+        // US0050-AC2: Default shows last 24 hours
+        var defaultStartDate = StartDate ?? DateTime.UtcNow.AddDays(-1);
+        var defaultEndDate = EndDate ?? DateTime.UtcNow;
+
+        // Build query
+        var query = _context.AuditLogs
+            .Include(a => a.User)
+            .Include(a => a.PerformedByUser)
+            .Where(a => a.Timestamp >= defaultStartDate && a.Timestamp <= defaultEndDate);
+
+        // US0051: Apply filters
+        if (!string.IsNullOrWhiteSpace(ActionFilter))
+        {
+            query = query.Where(a => a.Action == ActionFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(UserFilter))
+        {
+            query = query.Where(a => a.PerformedByUserId == UserFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            var search = SearchTerm.ToLower();
+            query = query.Where(a =>
+                a.Action.ToLower().Contains(search) ||
+                (a.Details != null && a.Details.ToLower().Contains(search)));
+        }
+
+        // Get total count
+        TotalRecords = await query.CountAsync();
+        TotalPages = (int)Math.Ceiling(TotalRecords / 50.0);
+
+        // US0050-AC2: Sort by timestamp (newest first), paginated (50 per page)
+        AuditEntries = await query
+            .OrderByDescending(a => a.Timestamp)
+            .Skip((PageNumber - 1) * 50)
+            .Take(50)
+            .Select(a => new AuditLogEntry
+            {
+                Id = a.Id,
+                Timestamp = a.Timestamp,
+                Action = a.Action,
+                UserId = a.UserId,
+                UserName = a.User != null ? a.User.UserName : null,
+                PerformedByUserId = a.PerformedByUserId,
+                PerformedByUserName = a.PerformedByUser != null ? a.PerformedByUser.UserName : "System",
+                Details = a.Details,
+                IpAddress = a.IpAddress
+            })
+            .ToListAsync();
+
+        // Load filter options
+        await LoadFiltersAsync();
+    }
+
+    private async Task LoadFiltersAsync()
+    {
+        // Get unique actions
+        Actions = await _context.AuditLogs
+            .Select(a => a.Action)
+            .Distinct()
+            .OrderBy(a => a)
+            .ToListAsync();
+
+        // Get users who have performed actions
+        var userIds = await _context.AuditLogs
+            .Where(a => a.PerformedByUserId != null)
+            .Select(a => a.PerformedByUserId)
+            .Distinct()
+            .ToListAsync();
+
+        var users = await _userManager.Users
+            .Where(u => userIds.Contains(u.Id))
+            .OrderBy(u => u.UserName)
+            .Select(u => new { u.Id, u.UserName })
+            .ToListAsync();
+
+        Users = users.Select(u => $"{u.UserName}|{u.Id}").ToList();
+    }
+
+    public class AuditLogEntry
+    {
+        public int Id { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Action { get; set; } = string.Empty;
+        public string? UserId { get; set; }
+        public string? UserName { get; set; }
+        public string? PerformedByUserId { get; set; }
+        public string? PerformedByUserName { get; set; }
+        public string? Details { get; set; }
+        public string? IpAddress { get; set; }
+
+        public string TruncatedDetails => Details != null && Details.Length > 100
+            ? Details.Substring(0, 100) + "..."
+            : Details ?? "-";
+    }
+}

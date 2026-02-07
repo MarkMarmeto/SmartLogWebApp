@@ -1,0 +1,21 @@
+@using Microsoft.AspNetCore.Identity
+@using SmartLog.Web.Data.Entities
+@inject UserManager<ApplicationUser> UserManager
+@inject SmartLog.Web.Services.IFileUploadService FileUploadService
+
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var profilePicUrl = FileUploadService.GetProfilePictureUrl(currentUser?.ProfilePicturePath);
+    var initials = !string.IsNullOrEmpty(currentUser?.FirstName) && !string.IsNullOrEmpty(currentUser?.LastName)
+        ? $"{currentUser.FirstName[0]}{currentUser.LastName[0]}"
+        : currentUser?.UserName?.Substring(0, Math.Min(2, currentUser.UserName.Length)).ToUpper() ?? "U";
+}
+
+@if (!string.IsNullOrEmpty(currentUser?.ProfilePicturePath))
+{
+    <img src="@profilePicUrl" alt="Profile" class="user-avatar-img" />
+}
+else
+{
+    <div class="user-avatar-placeholder">@initials</div>
+}

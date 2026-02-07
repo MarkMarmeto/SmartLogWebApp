@@ -1,0 +1,135 @@
+@page
+@model SmartLog.Web.Pages.Admin.RegisterDeviceModel
+@{
+    ViewData["Title"] = "Register Scanner Device";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            @if (!string.IsNullOrEmpty(Model.GeneratedApiKey))
+            {
+                <div class="card border-success mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="bi bi-check-circle me-2"></i>Device Registered Successfully</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>IMPORTANT:</strong> Copy this API key now. It will not be shown again.
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Device ID:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" value="@Model.RegisteredDeviceId" readonly id="deviceId" />
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('deviceId', this)">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">API Key:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" value="@Model.GeneratedApiKey" readonly id="apiKey" />
+                                <button class="btn btn-primary" type="button" onclick="copyToClipboard('apiKey', this)">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-page="/Admin/Devices" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>View All Devices
+                            </a>
+                            <a asp-page="/Admin/RegisterDevice" class="btn btn-success">
+                                <i class="bi bi-plus me-1"></i>Register Another Device
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Register New Scanner Device</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            <div class="mb-3">
+                                <label asp-for="Input.Name" class="form-label"></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="e.g., Main Gate Scanner 1" autofocus />
+                                <span asp-validation-for="Input.Name" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Input.Location" class="form-label"></label>
+                                <select asp-for="Input.Location" class="form-select">
+                                    <option value="">-- Select Location --</option>
+                                    <option value="Main Gate">Main Gate</option>
+                                    <option value="Side Gate">Side Gate</option>
+                                    <option value="Back Gate">Back Gate</option>
+                                    <option value="Gymnasium">Gymnasium</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <span asp-validation-for="Input.Location" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Input.Description" class="form-label"></label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="3"
+                                          placeholder="Optional notes about this device..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger"></span>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Note:</strong> An API key will be generated for this device.
+                                Make sure to copy it after registration - it will only be shown once.
+                            </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                <a asp-page="/Admin/Devices" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-1"></i>Register Device
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function copyToClipboard(elementId, button) {
+            const input = document.getElementById(elementId);
+            input.select();
+            input.setSelectionRange(0, 99999);
+
+            navigator.clipboard.writeText(input.value).then(function() {
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                button.classList.add('btn-success');
+                button.classList.remove('btn-primary', 'btn-outline-secondary');
+
+                setTimeout(function() {
+                    button.innerHTML = originalHtml;
+                    button.classList.remove('btn-success');
+                    if (elementId === 'apiKey') {
+                        button.classList.add('btn-primary');
+                    } else {
+                        button.classList.add('btn-outline-secondary');
+                    }
+                }, 2000);
+            });
+        }
+    </script>
+}

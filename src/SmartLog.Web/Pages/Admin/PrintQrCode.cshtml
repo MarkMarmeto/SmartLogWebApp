@@ -1,0 +1,123 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.PrintQrCodeModel
+@{
+    ViewData["Title"] = "Print QR Code";
+    Layout = null; // No layout for printing
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - @Model.Student.FullName</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .print-container {
+            max-width: 400px;
+            margin: 0 auto;
+            border: 2px solid #333;
+            padding: 20px;
+            page-break-inside: avoid;
+        }
+
+        .qr-code {
+            margin: 20px 0;
+        }
+
+        .qr-code img {
+            width: 300px;
+            height: 300px;
+        }
+
+        .student-info {
+            margin: 15px 0;
+        }
+
+        .student-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .student-id {
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .grade-section {
+            font-size: 16px;
+            color: #444;
+            margin: 5px 0;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        .no-print {
+            margin-top: 20px;
+        }
+
+        @@media print {
+            .no-print {
+                display: none;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .print-container {
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-container">
+        <h2>SmartLog Student ID Card</h2>
+
+        <div class="qr-code">
+            <img src="data:image/png;base64,@Model.QrCode.QrImageBase64"
+                 alt="QR Code for @Model.Student.FullName" />
+        </div>
+
+        <div class="student-info">
+            <div class="student-name">@Model.Student.FullName</div>
+            <div class="student-id">@Model.Student.StudentId</div>
+            <div class="grade-section">Grade @Model.Student.GradeLevel - @Model.Student.Section</div>
+        </div>
+
+        <div class="instructions">
+            <p><strong>Instructions:</strong></p>
+            <p>Scan this QR code at school entry/exit points for attendance tracking.</p>
+            <p>Keep this card safe and do not share with others.</p>
+            <p>Report lost or damaged cards immediately.</p>
+        </div>
+    </div>
+
+    <div class="no-print">
+        <button onclick="window.print()" class="print-button"
+                style="padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer;">
+            Print QR Code
+        </button>
+        <button onclick="window.close()"
+                style="padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer;">
+            Close
+        </button>
+    </div>
+</body>
+</html>

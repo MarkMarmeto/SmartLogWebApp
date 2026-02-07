@@ -1,0 +1,123 @@
+@page
+@model SmartLog.Web.Pages.Admin.AcademicYearsModel
+@{
+    ViewData["Title"] = "Academic Years";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Academic Years</h1>
+        <a asp-page="/Admin/CreateAcademicYear" class="btn btn-primary">
+            <i class="bi bi-calendar-plus me-1"></i>Create Academic Year
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-calendar3 me-2"></i>All Academic Years
+        </div>
+        <div class="card-body">
+            @if (!Model.AcademicYears.Any())
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>No academic years found. Create one to get started.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                                <th>Current</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var year in Model.AcademicYears)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@year.Name</strong>
+                                    </td>
+                                    <td>@year.StartDate.ToString("MMM dd, yyyy")</td>
+                                    <td>@year.EndDate.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        @if (year.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (year.IsCurrent)
+                                        {
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-check-circle me-1"></i>Current
+                                            </span>
+                                        }
+                                        else if (year.IsActive)
+                                        {
+                                            <form method="post" asp-page-handler="SetCurrent" asp-route-id="@year.Id" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                        onclick="return confirm('Set @year.Name as the current academic year?')">
+                                                    Set as Current
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-page="/Admin/EditAcademicYear" asp-route-id="@year.Id"
+                                           class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if (year.IsActive && !year.IsCurrent)
+                                        {
+                                            <form method="post" asp-page-handler="Deactivate" asp-route-id="@year.Id" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-warning"
+                                                        onclick="return confirm('Deactivate @year.Name? This cannot be undone.')">
+                                                    <i class="bi bi-x-circle me-1"></i>Deactivate
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (!year.IsActive)
+                                        {
+                                            <span class="text-muted">Deactivated</span>
+                                        }
+                                        else if (year.IsCurrent)
+                                        {
+                                            <span class="text-muted">Current year cannot be deactivated</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,55 @@
+@page
+@model SmartLog.Web.Pages.Admin.CreateGradeLevelModel
+@{
+    ViewData["Title"] = "Create Grade Level";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Create New Grade Level</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Code" class="form-label">Grade Code</label>
+                            <input asp-for="Input.Code" class="form-control" placeholder="e.g., K, 1, 2, 3..." />
+                            <span asp-validation-for="Input.Code" class="text-danger"></span>
+                            <div class="form-text">K for Kindergarten, or numbers 1-12</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Name" class="form-label">Display Name</label>
+                            <input asp-for="Input.Name" class="form-control" placeholder="e.g., Kindergarten, Grade 1..." />
+                            <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.SortOrder" class="form-label">Sort Order</label>
+                            <input asp-for="Input.SortOrder" type="number" class="form-control" />
+                            <span asp-validation-for="Input.SortOrder" class="text-danger"></span>
+                            <div class="form-text">0 for Kindergarten, 1 for Grade 1, etc.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Create
+                            </button>
+                            <a asp-page="/Admin/GradeLevels" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

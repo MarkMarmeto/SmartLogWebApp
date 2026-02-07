@@ -1,0 +1,208 @@
+@page
+@model SmartLog.Web.Pages.Admin.Sms.SettingsModel
+@{
+    ViewData["Title"] = "SMS Settings";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-gear me-2"></i>SMS Settings</h1>
+        <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form method="post">
+        <!-- General Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-sliders me-2"></i>General Settings
+            </div>
+            <div class="card-body">
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="smsEnabled"
+                           name="SmsEnabled" value="true" checked="@Model.SmsEnabled" />
+                    <label class="form-check-label" for="smsEnabled">
+                        <strong>Enable SMS Notifications</strong>
+                    </label>
+                    <div class="form-text">Turn SMS notifications on or off globally</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="defaultProvider" class="form-label">Default Provider</label>
+                    <select class="form-select" id="defaultProvider" name="DefaultProvider">
+                        <option value="GSM_MODEM" selected="@(Model.DefaultProvider == "GSM_MODEM")">GSM Modem (Offline)</option>
+                        <option value="SEMAPHORE" selected="@(Model.DefaultProvider == "SEMAPHORE")">Semaphore (Cloud)</option>
+                    </select>
+                    <div class="form-text">Primary SMS gateway to use</div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="fallbackEnabled"
+                           name="FallbackEnabled" value="true" checked="@Model.FallbackEnabled" />
+                    <label class="form-check-label" for="fallbackEnabled">
+                        Enable Fallback Provider
+                    </label>
+                    <div class="form-text">Automatically use alternate provider if primary fails</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GSM Modem Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-phone me-2"></i>GSM Modem Settings
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="gsmPortName" class="form-label">Serial Port</label>
+                        <input type="text" class="form-control" id="gsmPortName"
+                               name="GsmPortName" value="@Model.GsmPortName" />
+                        <div class="form-text">COM port (Windows: COM3, Linux: /dev/ttyUSB0)</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="gsmBaudRate" class="form-label">Baud Rate</label>
+                        <select class="form-select" id="gsmBaudRate" name="GsmBaudRate">
+                            <option value="9600" selected="@(Model.GsmBaudRate == 9600)">9600</option>
+                            <option value="19200" selected="@(Model.GsmBaudRate == 19200)">19200</option>
+                            <option value="38400" selected="@(Model.GsmBaudRate == 38400)">38400</option>
+                            <option value="57600" selected="@(Model.GsmBaudRate == 57600)">57600</option>
+                            <option value="115200" selected="@(Model.GsmBaudRate == 115200)">115200</option>
+                        </select>
+                        <div class="form-text">Serial communication speed</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="gsmSendDelay" class="form-label">Send Delay (ms)</label>
+                        <input type="number" class="form-control" id="gsmSendDelay"
+                               name="GsmSendDelay" value="@Model.GsmSendDelay" min="1000" max="10000" />
+                        <div class="form-text">Delay between messages (recommended: 3000ms)</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>GSM Modem Status:</strong>
+                    @if (Model.GsmHealth.IsHealthy)
+                    {
+                        <span class="badge bg-success">Online</span>
+                        <span class="ms-2">@Model.GsmHealth.Status</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Offline</span>
+                        <span class="ms-2">@Model.GsmHealth.Status</span>
+                    }
+                    @if (Model.GsmHealth.Details.Any())
+                    {
+                        <ul class="mt-2 mb-0">
+                            @foreach (var detail in Model.GsmHealth.Details)
+                            {
+                                <li>@detail.Key: <strong>@detail.Value</strong></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Semaphore Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-cloud me-2"></i>Semaphore Cloud Settings
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="semaphoreApiKey" class="form-label">API Key</label>
+                        <input type="password" class="form-control" id="semaphoreApiKey"
+                               name="SemaphoreApiKey" value="@Model.SemaphoreApiKey" />
+                        <div class="form-text">Get your API key from semaphore.co</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="semaphoreSenderName" class="form-label">Sender Name</label>
+                        <input type="text" class="form-control" id="semaphoreSenderName"
+                               name="SemaphoreSenderName" value="@Model.SemaphoreSenderName" maxlength="11" />
+                        <div class="form-text">Sender ID (max 11 characters)</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Semaphore Status:</strong>
+                    @if (Model.SemaphoreHealth.IsHealthy)
+                    {
+                        <span class="badge bg-success">Online</span>
+                        <span class="ms-2">@Model.SemaphoreHealth.Status</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Offline</span>
+                        <span class="ms-2">@Model.SemaphoreHealth.Status</span>
+                    }
+                    @if (Model.SemaphoreHealth.Details.Any())
+                    {
+                        <ul class="mt-2 mb-0">
+                            @foreach (var detail in Model.SemaphoreHealth.Details)
+                            {
+                                <li>@detail.Key: <strong>@detail.Value</strong></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-list-ul me-2"></i>Queue Settings
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="maxRetries" class="form-label">Max Retries</label>
+                        <input type="number" class="form-control" id="maxRetries"
+                               name="MaxRetries" value="@Model.MaxRetries" min="1" max="10" />
+                        <div class="form-text">Number of retry attempts for failed messages</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="pollingInterval" class="form-label">Polling Interval (seconds)</label>
+                        <input type="number" class="form-control" id="pollingInterval"
+                               name="PollingInterval" value="@Model.PollingInterval" min="1" max="60" />
+                        <div class="form-text">How often to check for pending messages</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Save Settings
+            </button>
+            <button type="submit" asp-page-handler="TestConnection" class="btn btn-outline-secondary">
+                <i class="bi bi-check-circle me-1"></i>Test Connection
+            </button>
+        </div>
+    </form>
+</div>

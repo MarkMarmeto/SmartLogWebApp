@@ -1,0 +1,161 @@
+@page
+@model SmartLog.Web.Pages.Admin.Sms.EmergencyModel
+@{
+    ViewData["Title"] = "Emergency Broadcast";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-exclamation-triangle text-danger me-2"></i>Emergency Broadcast</h1>
+        <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Warning:</strong> This will send an SMS to all active students with SMS enabled.
+        Use this feature only for urgent announcements.
+    </div>
+
+    <form method="post" onsubmit="return confirm('Are you sure you want to send this emergency broadcast to all students?');">
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-megaphone me-2"></i>Broadcast Message
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="message" name="Message" rows="4"
+                              required maxlength="200" placeholder="Enter emergency message..."></textarea>
+                    <div class="form-text">
+                        <span id="charCount">0</span> / 200 characters
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="language" class="form-label">Language</label>
+                    <select class="form-select" id="language" name="Language">
+                        <option value="">Use student's preferred language</option>
+                        <option value="EN">English only</option>
+                        <option value="FIL">Filipino only</option>
+                    </select>
+                    <div class="form-text">Choose a specific language or let students receive in their preferred language</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Affected Grade Levels (Optional)</label>
+                    <div class="row">
+                        @foreach (var grade in Model.AvailableGrades)
+                        {
+                            <div class="col-md-3 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input grade-checkbox" type="checkbox"
+                                           name="AffectedGrades" value="@grade" id="grade_@grade" />
+                                    <label class="form-check-label" for="grade_@grade">
+                                        @(grade == "K" ? "Kindergarten" : "Grade " + grade)
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-text">Leave unchecked to send to all grade levels</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-eye me-2"></i>Preview
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>English Template</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre class="mb-0">[SmartLog ALERT] <span id="previewEn"></span></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Filipino Template</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre class="mb-0">[SmartLog ALERTO] <span id="previewFil"></span></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <strong>Estimated Recipients:</strong>
+                    <span id="recipientCount">@Model.TotalActiveStudents</span> students
+                    <span id="gradeFilter" class="ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-danger btn-lg">
+                <i class="bi bi-send me-1"></i>Send Emergency Broadcast
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        const gradeCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StudentCountByGrade));
+        const totalStudents = @Model.TotalActiveStudents;
+
+        // Character counter
+        document.getElementById('message').addEventListener('input', function() {
+            const count = this.value.length;
+            document.getElementById('charCount').textContent = count;
+
+            // Update preview
+            document.getElementById('previewEn').textContent = this.value || '[Your message here]';
+            document.getElementById('previewFil').textContent = this.value || '[Your message here]';
+        });
+
+        // Update recipient count when grades are selected
+        document.querySelectorAll('.grade-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateRecipientCount);
+        });
+
+        function updateRecipientCount() {
+            const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
+                .map(cb => cb.value);
+
+            let count = 0;
+            let gradeText = '';
+
+            if (selectedGrades.length === 0) {
+                count = totalStudents;
+                gradeText = '(All grades)';
+            } else {
+                selectedGrades.forEach(grade => {
+                    count += gradeCounts[grade] || 0;
+                });
+                gradeText = `(${selectedGrades.join(', ')})`;
+            }
+
+            document.getElementById('recipientCount').textContent = count;
+            document.getElementById('gradeFilter').textContent = gradeText;
+        }
+    </script>
+}

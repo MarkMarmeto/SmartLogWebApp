@@ -1,0 +1,201 @@
+@page
+@model SmartLog.Web.Pages.Admin.FacultyModel
+@{
+    ViewData["Title"] = "Faculty";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-person-badge me-2"></i>Faculty</h1>
+        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+        {
+            <a asp-page="/Admin/CreateFaculty" class="btn btn-primary">
+                <i class="bi bi-person-plus me-1"></i>Add New Faculty
+            </a>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @* Search and Filter *@
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="searchTerm" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="searchTerm" name="searchTerm"
+                           value="@Model.SearchTerm" placeholder="Name or Employee ID...">
+                </div>
+                <div class="col-md-3">
+                    <label for="departmentFilter" class="form-label">Department</label>
+                    <select class="form-select" id="departmentFilter" name="departmentFilter">
+                        <option value="">All Departments</option>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <option value="@dept" selected="@(Model.DepartmentFilter == dept)">@dept</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="statusFilter" class="form-label">Status</label>
+                    <select class="form-select" id="statusFilter" name="statusFilter">
+                        <option value="">All</option>
+                        <option value="active" selected="@(Model.StatusFilter == "active")">Active</option>
+                        <option value="inactive" selected="@(Model.StatusFilter == "inactive")">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <a asp-page="/Admin/Faculty" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-list me-2"></i>Faculty Directory
+        </div>
+        <div class="card-body">
+            @if (Model.FacultyMembers.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Photo</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Contact</th>
+                                <th>User Account</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var faculty in Model.FacultyMembers)
+                            {
+                                <tr>
+                                    <td><code>@faculty.EmployeeId</code></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(faculty.ProfilePicturePath))
+                                        {
+                                            <img src="@faculty.ProfilePicturePath"
+                                                 style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #198754;
+                                                        color: white; display: flex; align-items: center; justify-content: center;
+                                                        font-weight: bold; font-size: 14px;">
+                                                @faculty.FirstName.Substring(0,1)@faculty.LastName.Substring(0,1)
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>@faculty.FullName</td>
+                                    <td>@faculty.Department</td>
+                                    <td>@faculty.Position</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(faculty.Email))
+                                        {
+                                            <a href="mailto:@faculty.Email">@faculty.Email</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (faculty.User != null)
+                                        {
+                                            <span class="badge bg-info">@faculty.User.UserName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No link</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (faculty.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-page="/Admin/FacultyDetails" asp-route-id="@faculty.Id"
+                                               class="btn btn-sm btn-outline-info" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                                            {
+                                                <a asp-page="/Admin/EditFaculty" asp-route-id="@faculty.Id"
+                                                   class="btn btn-sm btn-outline-primary" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted text-center py-4">No faculty members found matching your criteria.</p>
+            }
+        </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Faculty"
+                               asp-route-pageNumber="@(Model.PageNumber - 1)"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-departmentFilter="@Model.DepartmentFilter"
+                               asp-route-statusFilter="@Model.StatusFilter">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                <a class="page-link" asp-page="/Admin/Faculty"
+                                   asp-route-pageNumber="@i"
+                                   asp-route-searchTerm="@Model.SearchTerm"
+                                   asp-route-departmentFilter="@Model.DepartmentFilter"
+                                   asp-route-statusFilter="@Model.StatusFilter">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Faculty"
+                               asp-route-pageNumber="@(Model.PageNumber + 1)"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-departmentFilter="@Model.DepartmentFilter"
+                               asp-route-statusFilter="@Model.StatusFilter">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-center text-muted mt-2">
+                    Showing @Model.FacultyMembers.Count of @Model.TotalFaculty faculty members
+                </p>
+            </div>
+        }
+    </div>
+</div>

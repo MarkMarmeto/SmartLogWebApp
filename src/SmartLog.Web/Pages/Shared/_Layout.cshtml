@@ -1,0 +1,682 @@
+@inject SmartLog.Web.Services.IAcademicYearService AcademicYearService
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SmartLog</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 70px;
+            --topbar-height: 60px;
+            --primary-color: #0d6efd;
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+            --sidebar-text: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--sidebar-text);
+        }
+
+        .sidebar-header .logo-icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            min-width: 38px;
+        }
+
+        .sidebar-header .logo-text {
+            font-size: 1.25rem;
+            font-weight: bold;
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar.collapsed .logo-text {
+            opacity: 0;
+            display: none;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1rem 0;
+        }
+
+        .sidebar-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-menu::-webkit-scrollbar-thumb {
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item:hover {
+            background-color: var(--sidebar-hover);
+            color: white;
+        }
+
+        .menu-item.active {
+            background-color: var(--sidebar-hover);
+            border-left-color: var(--primary-color);
+            color: white;
+        }
+
+        .menu-item i {
+            min-width: 38px;
+            font-size: 1.25rem;
+            text-align: center;
+        }
+
+        .menu-item span {
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar.collapsed .menu-item span {
+            opacity: 0;
+            display: none;
+        }
+
+        .menu-section {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 0.5px;
+            margin-top: 1rem;
+        }
+
+        .sidebar.collapsed .menu-section {
+            opacity: 0;
+            display: none;
+        }
+
+        .submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: rgba(0,0,0,0.2);
+        }
+
+        .submenu.show {
+            max-height: 500px;
+        }
+
+        .submenu .menu-item {
+            padding-left: 3.5rem;
+            font-size: 0.9rem;
+        }
+
+        .sidebar.collapsed .submenu {
+            display: none;
+        }
+
+        .menu-item.has-submenu::after {
+            content: '\F282';
+            font-family: 'bootstrap-icons';
+            margin-left: auto;
+            transition: transform 0.3s;
+        }
+
+        .menu-item.has-submenu.active::after {
+            transform: rotate(180deg);
+        }
+
+        .sidebar.collapsed .menu-item.has-submenu::after {
+            display: none;
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--sidebar-text);
+        }
+
+        .user-avatar {
+            min-width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .user-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-avatar-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .user-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .sidebar.collapsed .user-details {
+            display: none;
+        }
+
+        /* Top Bar */
+        .topbar {
+            position: fixed;
+            left: var(--sidebar-width);
+            top: 0;
+            right: 0;
+            height: var(--topbar-height);
+            background-color: white;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            z-index: 999;
+            transition: left 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .sidebar.collapsed ~ .topbar {
+            left: var(--sidebar-collapsed-width);
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn:hover {
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+        }
+
+        .topbar-title {
+            margin-left: 1rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .topbar-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 2rem;
+            min-height: calc(100vh - var(--topbar-height));
+            transition: margin-left 0.3s ease;
+        }
+
+        .sidebar.collapsed ~ .main-wrapper .main-content {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .topbar {
+                left: 0 !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+        }
+
+        /* Print styles */
+        @@media print {
+            .sidebar,
+            .topbar {
+                display: none !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                margin-top: 0 !important;
+            }
+        }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="bi bi-qr-code logo-icon"></i>
+                <span class="logo-text">SmartLog</span>
+            </div>
+
+            <nav class="sidebar-menu">
+                <!-- Dashboard -->
+                <a href="/" class="menu-item">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- Users -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                {
+                    <a asp-page="/Admin/Users" class="menu-item">
+                        <i class="bi bi-people"></i>
+                        <span>Users</span>
+                    </a>
+                }
+
+                <!-- Attendance -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher") || User.IsInRole("Staff"))
+                {
+                    <div class="menu-section">Attendance</div>
+                    <a asp-page="/Admin/AttendanceDashboard" class="menu-item">
+                        <i class="bi bi-clipboard-check"></i>
+                        <span>Dashboard</span>
+                    </a>
+                }
+
+                <!-- Student Management -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher") || User.IsInRole("Staff"))
+                {
+                    <div class="menu-section">Student Management</div>
+                    <a asp-page="/Admin/Students" class="menu-item">
+                        <i class="bi bi-mortarboard"></i>
+                        <span>Students</span>
+                    </a>
+                }
+
+                <!-- Faculty -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher"))
+                {
+                    <a asp-page="/Admin/Faculty" class="menu-item">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Faculty</span>
+                    </a>
+                }
+
+                <!-- Academic Management -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                {
+                    <div class="menu-section">Academic</div>
+                    <a asp-page="/Admin/AcademicYears" class="menu-item">
+                        <i class="bi bi-calendar3-range"></i>
+                        <span>Academic Years</span>
+                    </a>
+                    <a asp-page="/Admin/GradeLevels" class="menu-item">
+                        <i class="bi bi-book"></i>
+                        <span>Grade Levels</span>
+                    </a>
+                    <a asp-page="/Admin/Sections" class="menu-item">
+                        <i class="bi bi-grid-3x3"></i>
+                        <span>Sections</span>
+                    </a>
+                    <a asp-page="/Admin/Calendar/Index" class="menu-item">
+                        <i class="bi bi-calendar-event"></i>
+                        <span>School Calendar</span>
+                    </a>
+                }
+
+                <!-- SMS Notifications -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                {
+                    <div class="menu-section">Notifications</div>
+                    <a href="#" class="menu-item has-submenu" onclick="toggleSubmenu(event, 'sms-submenu')">
+                        <i class="bi bi-chat-dots"></i>
+                        <span>SMS</span>
+                    </a>
+                    <div id="sms-submenu" class="submenu">
+                        <a asp-page="/Admin/Sms/Index" class="menu-item">
+                            <i class="bi bi-speedometer2"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a asp-page="/Admin/Sms/Templates" class="menu-item">
+                            <i class="bi bi-file-text"></i>
+                            <span>Templates</span>
+                        </a>
+                        <a asp-page="/Admin/Sms/Queue" class="menu-item">
+                            <i class="bi bi-list-ul"></i>
+                            <span>Queue</span>
+                        </a>
+                        <a asp-page="/Admin/Sms/Logs" class="menu-item">
+                            <i class="bi bi-journal-text"></i>
+                            <span>Logs</span>
+                        </a>
+                        <a asp-page="/Admin/Sms/Emergency" class="menu-item">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>Emergency</span>
+                        </a>
+                        <a asp-page="/Admin/Sms/Settings" class="menu-item">
+                            <i class="bi bi-gear"></i>
+                            <span>Settings</span>
+                        </a>
+                    </div>
+                }
+
+                <!-- Reports -->
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher") || User.IsInRole("Staff"))
+                {
+                    <div class="menu-section">Reports</div>
+                    <a href="#" class="menu-item has-submenu" onclick="toggleSubmenu(event, 'reports-submenu')">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                        <span>Reports</span>
+                    </a>
+                    <div id="reports-submenu" class="submenu">
+                        <a asp-page="/Admin/Reports/DailyAttendanceReport" class="menu-item">
+                            <i class="bi bi-calendar-day"></i>
+                            <span>Daily Attendance</span>
+                        </a>
+                        <a asp-page="/Admin/Reports/WeeklyAttendanceSummary" class="menu-item">
+                            <i class="bi bi-calendar-week"></i>
+                            <span>Weekly Summary</span>
+                        </a>
+                        <a asp-page="/Admin/Reports/MonthlyAttendanceReport" class="menu-item">
+                            <i class="bi bi-calendar3"></i>
+                            <span>Monthly Report</span>
+                        </a>
+                        <a asp-page="/Admin/Reports/StudentAttendanceHistory" class="menu-item">
+                            <i class="bi bi-person-lines-fill"></i>
+                            <span>Student History</span>
+                        </a>
+                    </div>
+                }
+
+                <!-- System -->
+                @if (User.IsInRole("SuperAdmin"))
+                {
+                    <div class="menu-section">System</div>
+                    <a asp-page="/Admin/Devices" class="menu-item">
+                        <i class="bi bi-phone"></i>
+                        <span>Devices</span>
+                    </a>
+                    <a asp-page="/Admin/AuditLogs" class="menu-item">
+                        <i class="bi bi-journal-text"></i>
+                        <span>Audit Logs</span>
+                    </a>
+                    <a asp-page="/Admin/Settings" class="menu-item">
+                        <i class="bi bi-gear"></i>
+                        <span>Settings</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="/Account/Profile" class="user-info" style="text-decoration: none; color: inherit;">
+                    <div class="user-avatar">
+                        <partial name="_ProfilePicture" />
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">@User.Identity?.Name</div>
+                        <div class="user-role">
+                            @if (User.IsInRole("SuperAdmin"))
+                            {
+                                <span>Super Admin</span>
+                            }
+                            else if (User.IsInRole("Admin"))
+                            {
+                                <span>Admin</span>
+                            }
+                            else if (User.IsInRole("Teacher"))
+                            {
+                                <span>Teacher</span>
+                            }
+                            else if (User.IsInRole("Security"))
+                            {
+                                <span>Security</span>
+                            }
+                            else if (User.IsInRole("Staff"))
+                            {
+                                <span>Staff</span>
+                            }
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <h1 class="topbar-title">@ViewData["Title"]</h1>
+            <div class="topbar-actions">
+                @{
+                    var currentAcademicYear = await AcademicYearService.GetCurrentAcademicYearAsync();
+                }
+                @if (currentAcademicYear != null)
+                {
+                    <div class="badge bg-primary" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        <span>@currentAcademicYear.Name</span>
+                    </div>
+                }
+                else if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                {
+                    <a asp-page="/Admin/AcademicYears" class="badge bg-warning text-dark" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; text-decoration: none;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <span>No Academic Year Set</span>
+                    </a>
+                }
+                <partial name="_LoginPartial" />
+            </div>
+        </header>
+
+        <!-- Main Content Wrapper -->
+        <div class="main-wrapper">
+            <main class="main-content">
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <!-- Login page layout (no sidebar) -->
+        <main class="container py-5">
+            @RenderBody()
+        </main>
+    }
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <script src="~/js/session-manager.js"></script>
+    }
+
+    <script>
+        // Sidebar toggle functionality
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            if (window.innerWidth <= 768) {
+                // Mobile: slide in/out
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+            } else {
+                // Desktop: collapse/expand
+                sidebar.classList.toggle('collapsed');
+                // Save state to localStorage
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            }
+        }
+
+        // Submenu toggle
+        function toggleSubmenu(event, submenuId) {
+            event.preventDefault();
+            const submenu = document.getElementById(submenuId);
+            const menuItem = event.currentTarget;
+
+            submenu.classList.toggle('show');
+            menuItem.classList.toggle('active');
+        }
+
+        // Restore sidebar state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+            if (sidebarCollapsed && window.innerWidth > 768) {
+                sidebar.classList.add('collapsed');
+            }
+
+            // Highlight active menu item
+            const currentPath = window.location.pathname;
+            const menuItems = document.querySelectorAll('.menu-item');
+
+            menuItems.forEach(item => {
+                const href = item.getAttribute('href');
+                if (href && (currentPath === href || currentPath.startsWith(href + '/'))) {
+                    item.classList.add('active');
+
+                    // If it's in a submenu, open the submenu
+                    const parentSubmenu = item.closest('.submenu');
+                    if (parentSubmenu) {
+                        parentSubmenu.classList.add('show');
+                        const parentMenuItem = parentSubmenu.previousElementSibling;
+                        if (parentMenuItem) {
+                            parentMenuItem.classList.add('active');
+                        }
+                    }
+                }
+            });
+        });
+
+        // Close sidebar on mobile when clicking outside
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                const toggleBtn = document.querySelector('.toggle-btn');
+
+                if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                    document.getElementById('sidebarOverlay').classList.remove('show');
+                }
+            }
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

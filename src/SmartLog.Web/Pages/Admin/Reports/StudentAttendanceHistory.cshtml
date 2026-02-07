@@ -1,0 +1,349 @@
+@page
+@model SmartLog.Web.Pages.Admin.Reports.StudentAttendanceHistoryModel
+@{
+    ViewData["Title"] = "Student Attendance History";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1><i class="bi bi-person-lines-fill me-2"></i>Student Attendance History</h1>
+            @if (Model.Student != null)
+            {
+                <p class="text-muted mb-0">@Model.Student.FirstName @Model.Student.LastName (@Model.Student.StudentId)</p>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Select a student to view attendance history</p>
+            }
+        </div>
+        @if (Model.Student != null)
+        {
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print
+                </button>
+                <button class="btn btn-success" onclick="exportReport('csv')">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Export CSV
+                </button>
+                <button class="btn btn-info" onclick="exportReport('html')">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Export HTML
+                </button>
+            </div>
+        }
+    </div>
+
+    @* US0048: Search Form *@
+    <div class="card mb-3 no-print">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="studentId" class="form-label">Student</label>
+                    <select class="form-select" id="studentId" name="studentId" required>
+                        <option value="">-- Select Student --</option>
+                        @foreach (var student in Model.RecentStudents)
+                        {
+                            <option value="@student.Id" selected="@(Model.StudentId == student.Id)">
+                                @student.LastName, @student.FirstName (@student.StudentId) - Grade @student.GradeLevel-@student.Section
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate"
+                           value="@((Model.StartDate ?? DateTime.Today.AddDays(-30)).ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate"
+                           value="@((Model.EndDate ?? DateTime.Today).ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>View History
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.Student != null)
+    {
+        @* US0048-AC1: Report Header (Print View) *@
+        <div class="card mb-4 print-only" style="display: none;">
+            <div class="card-body text-center">
+                <h2>SmartLog - Student Attendance History</h2>
+                <h4>@Model.Student.FirstName @Model.Student.LastName</h4>
+                <p class="mb-0">
+                    Student ID: @Model.Student.StudentId |
+                    Grade @Model.Student.GradeLevel - Section @Model.Student.Section
+                </p>
+                <p class="text-muted mb-0">
+                    Period: @((Model.StartDate ?? DateTime.Today.AddDays(-30)).ToString("MMMM dd, yyyy")) -
+                    @((Model.EndDate ?? DateTime.Today).ToString("MMMM dd, yyyy"))
+                </p>
+                <p class="text-muted mb-0">Generated: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</p>
+            </div>
+        </div>
+
+        @* US0048-AC1: Student Information Card *@
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Student Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>Student ID:</strong> <code>@Model.Student.StudentId</code></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Name:</strong> @Model.Student.FirstName @Model.Student.MiddleName @Model.Student.LastName</p>
+                    </div>
+                    <div class="col-md-2">
+                        <p><strong>Grade:</strong> @Model.Student.GradeLevel</p>
+                    </div>
+                    <div class="col-md-2">
+                        <p><strong>Section:</strong> @Model.Student.Section</p>
+                    </div>
+                    <div class="col-md-2">
+                        <p><strong>Status:</strong>
+                            <span class="badge @(Model.Student.IsActive ? "bg-success" : "bg-danger")">
+                                @(Model.Student.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* US0048-AC2: Attendance Summary *@
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Attendance Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded">
+                            <h6 class="text-muted mb-2">Total Days</h6>
+                            <h2 class="mb-0">@Model.Summary.TotalDays</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded">
+                            <h6 class="text-muted mb-2">School Days</h6>
+                            <h2 class="mb-0">@Model.Summary.SchoolDays</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded bg-success bg-opacity-10">
+                            <h6 class="text-muted mb-2">Days Present</h6>
+                            <h2 class="mb-0 text-success">@Model.Summary.DaysPresent</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded bg-danger bg-opacity-10">
+                            <h6 class="text-muted mb-2">Days Absent</h6>
+                            <h2 class="mb-0 text-danger">@Model.Summary.DaysAbsent</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded bg-primary bg-opacity-10">
+                            <h6 class="text-muted mb-2">Attendance Rate</h6>
+                            <h2 class="mb-0 text-primary">@Model.Summary.AttendanceRate%</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-3 border rounded bg-info bg-opacity-10">
+                            <h6 class="text-muted mb-2">Avg Entry Time</h6>
+                            <h3 class="mb-0 text-info">
+                                @if (Model.Summary.AverageEntryTime.HasValue)
+                                {
+                                    @Model.Summary.AverageEntryTime.Value.ToString(@"hh\:mm")
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <p class="mb-0">
+                            <strong>Earliest Entry:</strong>
+                            @if (Model.Summary.EarliestEntry.HasValue)
+                            {
+                                @Model.Summary.EarliestEntry.Value.ToString("MMM dd, yyyy h:mm tt")
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-0">
+                            <strong>Latest Entry:</strong>
+                            @if (Model.Summary.LatestEntry.HasValue)
+                            {
+                                @Model.Summary.LatestEntry.Value.ToString("MMM dd, yyyy h:mm tt")
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* US0048-AC3: Daily Attendance History *@
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Daily Attendance History</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.AttendanceHistory.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Day</th>
+                                    <th>Status</th>
+                                    <th>Entry Time</th>
+                                    <th>Entry Device</th>
+                                    <th>Exit Time</th>
+                                    <th>Exit Device</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var record in Model.AttendanceHistory.OrderByDescending(r => r.Date))
+                                {
+                                    var rowClass = record.IsWeekend ? "table-secondary" :
+                                                   record.Date.Date == DateTime.Today ? "table-primary" : "";
+
+                                    <tr class="@rowClass">
+                                        <td>@record.Date.ToString("MMM dd, yyyy")</td>
+                                        <td>@record.DayOfWeek</td>
+                                        <td>
+                                            @if (record.IsWeekend)
+                                            {
+                                                <span class="badge bg-light text-dark">Weekend</span>
+                                            }
+                                            else if (record.Status == "Present")
+                                            {
+                                                <span class="badge bg-success">Present</span>
+                                            }
+                                            else if (record.Status == "Departed")
+                                            {
+                                                <span class="badge bg-secondary">Departed</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Absent</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (record.EntryTime.HasValue)
+                                            {
+                                                @record.EntryTime.Value.ToString("h:mm tt")
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(record.EntryDevice))
+                                            {
+                                                <small class="text-muted">@record.EntryDevice</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (record.ExitTime.HasValue)
+                                            {
+                                                @record.ExitTime.Value.ToString("h:mm tt")
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(record.ExitDevice))
+                                            {
+                                                <small class="text-muted">@record.ExitDevice</small>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No attendance history available for the selected period.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles
+{
+    <style>
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            body {
+                font-size: 11pt;
+            }
+            h5 {
+                font-size: 13pt;
+            }
+        }
+    </style>
+}
+
+@section Scripts
+{
+    <script>
+        function exportReport(format) {
+            @if (Model.Student != null)
+            {
+                <text>
+                const params = new URLSearchParams({
+                    startDate: '@((Model.StartDate ?? DateTime.Today.AddDays(-30)).ToString("yyyy-MM-dd"))',
+                    endDate: '@((Model.EndDate ?? DateTime.Today).ToString("yyyy-MM-dd"))',
+                    format: format
+                });
+
+                window.location.href = `/api/v1/reports/student/@Model.Student.Id/export?${params.toString()}`;
+                </text>
+            }
+        }
+    </script>
+}

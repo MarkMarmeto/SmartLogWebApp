@@ -1,0 +1,82 @@
+# .NET
+bin/
+obj/
+out/
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.log
+*.tmp
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# ASP.NET Core
+wwwroot/lib/
+
+# User-specific files
+*.rsuser
+*.user
+*.userosscache
+*.suo
+*.cache
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Docker
+.docker/
+
+# Secrets
+*.pfx
+*.key
+appsettings.*.local.json
+secrets.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+logs/
+*.log
+
+# Database
+*.mdf
+*.ldf
+
+# Test results
+TestResults/
+coverage/
+
+# Claude Code
+.claude/
+sdlc-studio/
+
+# Temporary documentation
+*_SUMMARY.md
+*_PLAN.md
+*_REPORT.md
+*_READY.md
+USER-STORY-*.md
+IMPLEMENTATION_*.md
+DATABASE_*.md
+DOCKER-*.md
+SCHOOL_*.md

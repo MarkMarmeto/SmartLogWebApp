@@ -1,0 +1,281 @@
+@page
+@model SmartLog.Web.Pages.Admin.Reports.WeeklyAttendanceSummaryModel
+@{
+    ViewData["Title"] = "Weekly Attendance Summary";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1><i class="bi bi-calendar-week me-2"></i>Weekly Attendance Summary</h1>
+            <p class="text-muted mb-0">Week of @Model.WeekStart.ToString("MMM dd") - @Model.WeekEnd.ToString("MMM dd, yyyy")</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+            <button class="btn btn-success" onclick="exportReport('csv')">
+                <i class="bi bi-file-earmark-excel me-1"></i>Export CSV
+            </button>
+            <button class="btn btn-info" onclick="exportReport('html')">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export HTML
+            </button>
+        </div>
+    </div>
+
+    @* US0046: Filter Form *@
+    <div class="card mb-3 no-print">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="startDate" class="form-label">Week Starting</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate"
+                           value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                    <small class="text-muted">Select any date in the week</small>
+                </div>
+                <div class="col-md-3">
+                    <label for="gradeFilter" class="form-label">Grade (Optional)</label>
+                    <input type="text" class="form-control" id="gradeFilter" name="gradeFilter"
+                           value="@Model.GradeFilter" placeholder="e.g., 7" />
+                </div>
+                <div class="col-md-3">
+                    <label for="sectionFilter" class="form-label">Section (Optional)</label>
+                    <input type="text" class="form-control" id="sectionFilter" name="sectionFilter"
+                           value="@Model.SectionFilter" placeholder="e.g., A" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Generate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* US0046-AC1: Report Header (Print View) *@
+    <div class="card mb-4 print-only" style="display: none;">
+        <div class="card-body text-center">
+            <h2>SmartLog - Weekly Attendance Summary</h2>
+            <h4>@Model.WeekStart.ToString("MMMM dd") - @Model.WeekEnd.ToString("MMMM dd, yyyy")</h4>
+            @if (!string.IsNullOrEmpty(Model.GradeFilter) || !string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <p class="mb-0">
+                    @if (!string.IsNullOrEmpty(Model.GradeFilter))
+                    {
+                        <span>Grade @Model.GradeFilter</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.SectionFilter))
+                    {
+                        <span>- Section @Model.SectionFilter</span>
+                    }
+                </p>
+            }
+            <p class="text-muted mb-0">Generated: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</p>
+        </div>
+    </div>
+
+    @* US0046-AC3: Weekly Summary Statistics *@
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Weekly Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-2">Total Enrolled</h6>
+                        <h2 class="mb-0">@Model.Totals.TotalEnrolled</h2>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-success bg-opacity-10">
+                        <h6 class="text-muted mb-2">Avg Daily Attendance</h6>
+                        <h2 class="mb-0 text-success">@Model.Totals.AverageDailyAttendance</h2>
+                        <small class="text-muted">@Model.Totals.AverageAttendanceRate%</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-info bg-opacity-10">
+                        <h6 class="text-muted mb-2">Total Present Days</h6>
+                        <h2 class="mb-0 text-info">@Model.Totals.TotalPresentDays</h2>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 border rounded bg-danger bg-opacity-10">
+                        <h6 class="text-muted mb-2">Total Absent Days</h6>
+                        <h2 class="mb-0 text-danger">@Model.Totals.TotalAbsentDays</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* US0046-AC2: Daily Breakdown Table *@
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-table me-2"></i>Daily Breakdown</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th class="text-end">Total Enrolled</th>
+                            <th class="text-end">Present</th>
+                            <th class="text-end">Departed</th>
+                            <th class="text-end">Absent</th>
+                            <th class="text-end">Attendance Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var day in Model.DailySummaries)
+                        {
+                            <tr class="@(day.Date.Date == DateTime.Today ? "table-primary" : "")">
+                                <td>@day.Date.ToString("MMM dd, yyyy")</td>
+                                <td>@day.DayOfWeek</td>
+                                <td class="text-end">@day.TotalEnrolled</td>
+                                <td class="text-end"><span class="badge bg-success">@day.Present</span></td>
+                                <td class="text-end"><span class="badge bg-secondary">@day.Departed</span></td>
+                                <td class="text-end"><span class="badge bg-danger">@day.Absent</span></td>
+                                <td class="text-end">
+                                    <strong class="@(day.AttendanceRate >= 90 ? "text-success" : day.AttendanceRate >= 75 ? "text-warning" : "text-danger")">
+                                        @day.AttendanceRate%
+                                    </strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Weekly Averages:</strong></td>
+                            <td class="text-end"><strong>@Math.Round(Model.DailySummaries.Average(d => d.Present), 1)</strong></td>
+                            <td class="text-end"><strong>@Math.Round(Model.DailySummaries.Average(d => d.Departed), 1)</strong></td>
+                            <td class="text-end"><strong>@Math.Round(Model.DailySummaries.Average(d => d.Absent), 1)</strong></td>
+                            <td class="text-end"><strong>@Model.Totals.AverageAttendanceRate%</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @* US0046-AC4: Visual Chart *@
+    <div class="card mb-4 no-print">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Attendance Trend</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="attendanceChart" height="80"></canvas>
+        </div>
+    </div>
+</div>
+
+@section Styles
+{
+    <style>
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            body {
+                font-size: 12pt;
+            }
+            h5 {
+                font-size: 14pt;
+            }
+        }
+    </style>
+}
+
+@section Scripts
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        function exportReport(format) {
+            const params = new URLSearchParams({
+                startDate: '@Model.WeekStart.ToString("yyyy-MM-dd")',
+                format: format
+            });
+
+            @if (!string.IsNullOrEmpty(Model.GradeFilter))
+            {
+                <text>params.append('grade', '@Model.GradeFilter');</text>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.SectionFilter))
+            {
+                <text>params.append('section', '@Model.SectionFilter');</text>
+            }
+
+            window.location.href = `/api/v1/reports/weekly/export?${params.toString()}`;
+        }
+    </script>
+    <script>
+        // US0046-AC4: Render attendance trend chart
+        const ctx = document.getElementById('attendanceChart');
+        const data = {
+            labels: [@Html.Raw(string.Join(",", Model.DailySummaries.Select(d => $"'{d.Date:MMM dd}'")))],
+            datasets: [
+                {
+                    label: 'Present',
+                    data: [@string.Join(",", Model.DailySummaries.Select(d => d.Present))],
+                    backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                {
+                    label: 'Departed',
+                    data: [@string.Join(",", Model.DailySummaries.Select(d => d.Departed))],
+                    backgroundColor: 'rgba(108, 117, 125, 0.2)',
+                    borderColor: 'rgba(108, 117, 125, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                {
+                    label: 'Absent',
+                    data: [@string.Join(",", Model.DailySummaries.Select(d => d.Absent))],
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                }
+            ]
+        };
+
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Weekly Attendance Trend'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}

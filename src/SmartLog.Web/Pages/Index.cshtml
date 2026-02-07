@@ -1,0 +1,65 @@
+@page
+@model SmartLog.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-primary d-flex align-items-center" role="alert">
+            <i class="bi bi-person-check-fill me-2 fs-4"></i>
+            <div>
+                <strong>Welcome back, @Model.UserFullName!</strong>
+                <span class="ms-2 text-muted">You are signed in as @Model.UserRole</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-people display-4 text-primary"></i>
+                <h5 class="card-title mt-3">Students</h5>
+                <p class="card-text text-muted">Manage student records and QR codes</p>
+                <a href="#" class="btn btn-outline-primary disabled">Coming Soon</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-person-badge display-4 text-success"></i>
+                <h5 class="card-title mt-3">Faculty</h5>
+                <p class="card-text text-muted">Manage faculty and staff records</p>
+                <a href="#" class="btn btn-outline-success disabled">Coming Soon</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-qr-code-scan display-4 text-info"></i>
+                <h5 class="card-title mt-3">Attendance</h5>
+                <p class="card-text text-muted">View attendance dashboard</p>
+                <a href="#" class="btn btn-outline-info disabled">Coming Soon</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <i class="bi bi-info-circle me-2"></i>System Information
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Application:</strong> SmartLog v1.0.0</p>
+                <p class="mb-1"><strong>Server Time:</strong> @DateTime.Now.ToString("f")</p>
+                <p class="mb-0"><strong>Environment:</strong> @Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")</p>
+            </div>
+        </div>
+    </div>
+</div>

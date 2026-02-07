@@ -1,0 +1,317 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.FacultyDetailsModel
+@{
+    ViewData["Title"] = "Faculty Details";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-person-badge me-2"></i>Faculty Details</h1>
+        <a asp-page="/Admin/Faculty" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Faculty List
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+                    <span class="badge @(Model.Faculty.IsActive ? "bg-success" : "bg-danger")">
+                        @(Model.Faculty.IsActive ? "Active" : "Inactive")
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Employee ID:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            <code>@Model.Faculty.EmployeeId</code>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Full Name:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Faculty.FullName
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Department:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Faculty.Department
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Position:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Faculty.Position
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Faculty.Email))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong>Email:</strong>
+                            </div>
+                            <div class="col-md-8">
+                                <a href="mailto:@Model.Faculty.Email">@Model.Faculty.Email</a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Faculty.PhoneNumber))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong>Phone Number:</strong>
+                            </div>
+                            <div class="col-md-8">
+                                @Model.Faculty.PhoneNumber
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model.Faculty.HireDate.HasValue)
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong>Hire Date:</strong>
+                            </div>
+                            <div class="col-md-8">
+                                @Model.Faculty.HireDate.Value.ToString("MMMM dd, yyyy")
+                            </div>
+                        </div>
+                    }
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>Created:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Faculty.CreatedAt.ToString("MMMM dd, yyyy")
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Last Updated:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Faculty.UpdatedAt.ToString("MMMM dd, yyyy")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>User Account</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Faculty.User != null)
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-link-45deg me-2"></i>
+                            This faculty member is linked to user account:
+                            <strong>@Model.Faculty.User.UserName</strong>
+                            <br>
+                            <small class="text-muted">
+                                Name: @Model.Faculty.User.FirstName @Model.Faculty.User.LastName
+                            </small>
+                        </div>
+                        <form method="post" asp-page-handler="UnlinkUser" asp-route-id="@Model.Faculty.Id">
+                            <button type="submit" class="btn btn-warning btn-sm"
+                                    onclick="return confirm('Are you sure you want to unlink this user account from the faculty member?')">
+                                <i class="bi bi-x-circle me-1"></i>Unlink User Account
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                            This faculty member is not linked to any user account.
+                        </div>
+                        <a asp-page="/Admin/EditFaculty" asp-route-id="@Model.Faculty.Id" class="btn btn-primary btn-sm">
+                            <i class="bi bi-link-45deg me-1"></i>Link to User Account
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Profile Picture Card -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-person-circle me-2"></i>Profile Picture
+                </div>
+                <div class="card-body text-center">
+                    <img src="@Model.ProfilePictureUrl" alt="@Model.Faculty.FullName"
+                         class="profile-picture mb-3" id="facultyProfilePicture"
+                         style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 3px solid #dee2e6;" />
+
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                    {
+                        <div class="d-grid gap-2">
+                            <label for="profilePictureInput" class="btn btn-primary btn-sm">
+                                <i class="bi bi-upload me-1"></i>Upload Photo
+                            </label>
+                            <input type="file" id="profilePictureInput" accept="image/*"
+                                   style="display: none;" onchange="uploadFacultyProfilePicture(this)" />
+
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteFacultyProfilePicture()">
+                                <i class="bi bi-trash me-1"></i>Remove
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">JPG, PNG, or GIF. Max 5MB.</small>
+                    }
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                        {
+                            <a asp-page="/Admin/EditFaculty" asp-route-id="@Model.Faculty.Id"
+                               class="btn btn-primary">
+                                <i class="bi bi-pencil me-1"></i>Edit Details
+                            </a>
+
+                            @if (Model.Faculty.IsActive)
+                            {
+                                <form method="post" asp-page-handler="Deactivate" asp-route-id="@Model.Faculty.Id">
+                                    <button type="submit" class="btn btn-warning w-100"
+                                            onclick="return confirm('Are you sure you want to deactivate this faculty member?')">
+                                        <i class="bi bi-pause-circle me-1"></i>Deactivate
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-page-handler="Reactivate" asp-route-id="@Model.Faculty.Id">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-play-circle me-1"></i>Reactivate
+                                    </button>
+                                </form>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Notes</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li>Employee ID is unique and cannot be changed</li>
+                        <li>Deactivating a faculty member does not delete the record</li>
+                        <li>User account linkage is optional</li>
+                        <li>One faculty member can only link to one user account</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        async function uploadFacultyProfilePicture(input) {
+            if (!input.files || !input.files[0]) {
+                return;
+            }
+
+            const file = input.files[0];
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const preview = document.getElementById('facultyProfilePicture');
+            preview.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('/api/v1/profile-picture/faculty/@Model.Faculty.Id', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    preview.src = result.url + '?t=' + Date.now();
+                    preview.style.opacity = '1';
+                    alert('Profile picture uploaded successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to upload profile picture');
+                    preview.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('Error uploading profile picture:', error);
+                alert('An error occurred while uploading the profile picture');
+                preview.style.opacity = '1';
+            }
+
+            input.value = '';
+        }
+
+        async function deleteFacultyProfilePicture() {
+            if (!confirm('Are you sure you want to remove this faculty member\'s profile picture?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/profile-picture/faculty/@Model.Faculty.Id', {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to delete profile picture');
+                }
+            } catch (error) {
+                console.error('Error deleting profile picture:', error);
+                alert('An error occurred while deleting the profile picture');
+            }
+        }
+    </script>
+}

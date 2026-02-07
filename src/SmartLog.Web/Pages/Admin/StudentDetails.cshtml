@@ -1,0 +1,280 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.StudentDetailsModel
+@{
+    ViewData["Title"] = "Student Details";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-person me-2"></i>Student Details</h1>
+        <div>
+            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+            {
+                <a asp-page="/Admin/EditStudent" asp-route-id="@Model.Student.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>Edit
+                </a>
+            }
+            <a asp-page="/Admin/Students" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-card-text me-2"></i>Student Information
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Student ID:</dt>
+                        <dd class="col-sm-8"><code>@Model.Student.StudentId</code></dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Student.LRN))
+                        {
+                            <dt class="col-sm-4">LRN:</dt>
+                            <dd class="col-sm-8"><code>@Model.Student.LRN</code></dd>
+                        }
+
+                        <dt class="col-sm-4">Full Name:</dt>
+                        <dd class="col-sm-8">@Model.Student.FullName</dd>
+
+                        <dt class="col-sm-4">Grade & Section:</dt>
+                        <dd class="col-sm-8">Grade @Model.Student.GradeLevel - @Model.Student.Section</dd>
+
+                        <dt class="col-sm-4">Status:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.Student.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Inactive</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-person-lines-fill me-2"></i>Parent/Guardian Information
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Name:</dt>
+                        <dd class="col-sm-8">@Model.Student.ParentGuardianName</dd>
+
+                        <dt class="col-sm-4">Relationship:</dt>
+                        <dd class="col-sm-8">@Model.Student.GuardianRelationship</dd>
+
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">
+                            <a href="tel:@Model.Student.ParentPhone">@Model.Student.ParentPhone</a>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Profile Picture Card -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-person-circle me-2"></i>Profile Picture
+                </div>
+                <div class="card-body text-center">
+                    <img src="@Model.ProfilePictureUrl" alt="@Model.Student.FullName"
+                         class="profile-picture mb-3" id="studentProfilePicture"
+                         style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 3px solid #dee2e6;" />
+
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                    {
+                        <div class="d-grid gap-2">
+                            <label for="profilePictureInput" class="btn btn-primary btn-sm">
+                                <i class="bi bi-upload me-1"></i>Upload Photo
+                            </label>
+                            <input type="file" id="profilePictureInput" accept="image/*"
+                                   style="display: none;" onchange="uploadStudentProfilePicture(this)" />
+
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteStudentProfilePicture()">
+                                <i class="bi bi-trash me-1"></i>Remove
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">JPG, PNG, or GIF. Max 5MB.</small>
+                    }
+                </div>
+            </div>
+
+            @if (Model.QrCode != null)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-qr-code me-2"></i>QR Code
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="data:image/png;base64,@Model.QrCode.QrImageBase64"
+                             alt="QR Code for @Model.Student.FullName"
+                             class="img-fluid mb-3"
+                             style="max-width: 250px;" />
+                        <p class="small text-muted">
+                            Issued: @Model.QrCode.IssuedAt.ToLocalTime().ToString("g")
+                        </p>
+                        @if (Model.QrCode.IsValid)
+                        {
+                            <span class="badge bg-success mb-2">Valid</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger mb-2">Invalid (Regenerated)</span>
+                        }
+
+                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                        {
+                            <div class="d-grid gap-2 mt-3">
+                                <a asp-page="/Admin/PrintQrCode" asp-route-id="@Model.Student.Id"
+                                   class="btn btn-primary" target="_blank">
+                                    <i class="bi bi-printer me-1"></i>Print QR Code
+                                </a>
+                                <form method="post" asp-page-handler="RegenerateQr"
+                                      onsubmit="return confirm('This will invalidate the old QR code. Continue?');">
+                                    <input type="hidden" name="studentId" value="@Model.Student.Id" />
+                                    <button type="submit" class="btn btn-warning w-100">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate QR Code
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    No QR code generated for this student.
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+    {
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-gear me-2"></i>Actions
+            </div>
+            <div class="card-body">
+                @if (Model.Student.IsActive)
+                {
+                    <form method="post" asp-page-handler="Deactivate" class="d-inline"
+                          onsubmit="return confirm('Are you sure you want to deactivate this student?');">
+                        <input type="hidden" name="studentId" value="@Model.Student.Id" />
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Deactivate Student
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="Reactivate" class="d-inline">
+                        <input type="hidden" name="studentId" value="@Model.Student.Id" />
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Reactivate Student
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts
+{
+    <script>
+        async function uploadStudentProfilePicture(input) {
+            if (!input.files || !input.files[0]) {
+                return;
+            }
+
+            const file = input.files[0];
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const preview = document.getElementById('studentProfilePicture');
+            preview.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('/api/v1/profile-picture/student/@Model.Student.Id', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    preview.src = result.url + '?t=' + Date.now();
+                    preview.style.opacity = '1';
+
+                    // Show success message
+                    alert('Profile picture uploaded successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to upload profile picture');
+                    preview.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('Error uploading profile picture:', error);
+                alert('An error occurred while uploading the profile picture');
+                preview.style.opacity = '1';
+            }
+
+            input.value = '';
+        }
+
+        async function deleteStudentProfilePicture() {
+            if (!confirm('Are you sure you want to remove this student\'s profile picture?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/profile-picture/student/@Model.Student.Id', {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to delete profile picture');
+                }
+            } catch (error) {
+                console.error('Error deleting profile picture:', error);
+                alert('An error occurred while deleting the profile picture');
+            }
+        }
+    </script>
+}

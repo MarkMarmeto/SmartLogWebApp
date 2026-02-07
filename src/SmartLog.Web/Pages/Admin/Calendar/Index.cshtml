@@ -1,0 +1,215 @@
+@page
+@model SmartLog.Web.Pages.Admin.Calendar.IndexModel
+@{
+    ViewData["Title"] = "School Calendar";
+    var monthName = new DateTime(Model.CurrentYear, Model.CurrentMonth, 1).ToString("MMMM yyyy");
+    var firstDayOfMonth = new DateTime(Model.CurrentYear, Model.CurrentMonth, 1);
+    var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+    var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+    var daysInMonth = DateTime.DaysInMonth(Model.CurrentYear, Model.CurrentMonth);
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-calendar3 me-2"></i>School Calendar</h1>
+        <a asp-page="./CreateEvent" asp-route-academicYearId="@Model.AcademicYearId" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Add Event
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <form method="post" asp-page-handler="PreviousMonth" class="d-inline me-2">
+                            <input type="hidden" name="year" value="@Model.CurrentYear" />
+                            <input type="hidden" name="month" value="@Model.CurrentMonth" />
+                            <input type="hidden" name="academicYearId" value="@Model.AcademicYearId" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                        </form>
+                        <h4 class="mb-0 me-2">@monthName</h4>
+                        <form method="post" asp-page-handler="NextMonth" class="d-inline">
+                            <input type="hidden" name="year" value="@Model.CurrentYear" />
+                            <input type="hidden" name="month" value="@Model.CurrentMonth" />
+                            <input type="hidden" name="academicYearId" value="@Model.AcademicYearId" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    @if (Model.CurrentAcademicYear != null)
+                    {
+                        <span class="badge bg-primary">@Model.CurrentAcademicYear.Name</span>
+                    }
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <span class="badge bg-danger me-2"><i class="bi bi-square-fill"></i> Holiday</span>
+                        <span class="badge bg-info me-2"><i class="bi bi-square-fill"></i> Event</span>
+                        <span class="badge bg-warning"><i class="bi bi-square-fill"></i> Suspension</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0" style="table-layout: fixed;">
+                <thead>
+                    <tr class="text-center">
+                        <th>Sunday</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                        <th>Saturday</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        int dayCounter = 1;
+                        int weekCounter = 0;
+                        bool monthStarted = false;
+                    }
+                    @while (dayCounter <= daysInMonth || weekCounter == 0)
+                    {
+                        <tr>
+                            @for (int dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++)
+                            {
+                                @if ((weekCounter == 0 && dayOfWeek < firstDayOfWeek) || dayCounter > daysInMonth)
+                                {
+                                    <td style="height: 100px; background-color: #f8f9fa;"></td>
+                                }
+                                else
+                                {
+                                    var currentDate = new DateTime(Model.CurrentYear, Model.CurrentMonth, dayCounter);
+                                    var dayEvents = Model.Events.Where(e =>
+                                        e.StartDate.Date <= currentDate && e.EndDate.Date >= currentDate).ToList();
+
+                                    var hasHoliday = dayEvents.Any(e => e.EventType == SmartLog.Web.Data.Entities.EventType.Holiday);
+                                    var hasSuspension = dayEvents.Any(e => e.EventType == SmartLog.Web.Data.Entities.EventType.Suspension);
+                                    var hasEvent = dayEvents.Any(e => e.EventType == SmartLog.Web.Data.Entities.EventType.Event);
+
+                                    var bgColor = hasHoliday ? "#ffe6e6" : hasSuspension ? "#fff3cd" : "#fff";
+                                    var isWeekend = dayOfWeek == 0 || dayOfWeek == 6;
+                                    if (isWeekend && !hasHoliday && !hasSuspension)
+                                    {
+                                        bgColor = "#f8f9fa";
+                                    }
+
+                                    <td style="height: 100px; background-color: @bgColor; vertical-align: top; padding: 5px;">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>@dayCounter</strong>
+                                            @if (dayEvents.Any())
+                                            {
+                                                <span class="badge bg-secondary" style="font-size: 0.7rem;">@dayEvents.Count</span>
+                                            }
+                                        </div>
+                                        <div class="mt-1" style="font-size: 0.75rem;">
+                                            @foreach (var evt in dayEvents.Take(3))
+                                            {
+                                                var badgeClass = evt.EventType == SmartLog.Web.Data.Entities.EventType.Holiday
+                                                    ? "bg-danger"
+                                                    : evt.EventType == SmartLog.Web.Data.Entities.EventType.Suspension
+                                                    ? "bg-warning text-dark"
+                                                    : "bg-info";
+                                                <a asp-page="./EventDetails" asp-route-id="@evt.Id"
+                                                   class="badge @badgeClass d-block mb-1 text-decoration-none text-truncate"
+                                                   title="@evt.Title">
+                                                    @evt.Title
+                                                </a>
+                                            }
+                                            @if (dayEvents.Count > 3)
+                                            {
+                                                <small class="text-muted">+@(dayEvents.Count - 3) more</small>
+                                            }
+                                        </div>
+                                    </td>
+                                    dayCounter++;
+                                }
+                            }
+                        </tr>
+                        weekCounter++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.Events.Any())
+    {
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Events This Month</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Category</th>
+                                <th>Affects Attendance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in Model.Events.OrderBy(e => e.StartDate))
+                            {
+                                var badgeClass = evt.EventType == SmartLog.Web.Data.Entities.EventType.Holiday
+                                    ? "bg-danger"
+                                    : evt.EventType == SmartLog.Web.Data.Entities.EventType.Suspension
+                                    ? "bg-warning text-dark"
+                                    : "bg-info";
+                                <tr>
+                                    <td>
+                                        @evt.StartDate.ToString("MMM dd")
+                                        @if (evt.StartDate.Date != evt.EndDate.Date)
+                                        {
+                                            <span> - @evt.EndDate.ToString("MMM dd")</span>
+                                        }
+                                    </td>
+                                    <td><strong>@evt.Title</strong></td>
+                                    <td><span class="badge @badgeClass">@evt.EventType</span></td>
+                                    <td>@evt.Category</td>
+                                    <td>
+                                        @if (evt.AffectsAttendance)
+                                        {
+                                            <i class="bi bi-check-circle text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle text-muted"></i>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-page="./EventDetails" asp-route-id="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-page="./EditEvent" asp-route-id="@evt.Id" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,269 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.EditStudentModel
+@{
+    ViewData["Title"] = "Edit Student";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-pencil me-2"></i>Edit Student</h1>
+        <a asp-page="/Admin/StudentDetails" asp-route-id="@Model.StudentId" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Details
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-card-text me-2"></i>Student Information
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Student ID:</strong> <code>@Model.StudentIdDisplay</code> (cannot be changed)
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.StatusMessage))
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @Model.StatusMessage
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.LRN" class="form-label"></label>
+                            <input asp-for="Input.LRN" class="form-control" maxlength="12" />
+                            <span asp-validation-for="Input.LRN" class="text-danger"></span>
+                            <div class="form-text">Optional - 12 digits</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.FirstName" class="form-label"></label>
+                            <input asp-for="Input.FirstName" class="form-control" />
+                            <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.MiddleName" class="form-label"></label>
+                            <input asp-for="Input.MiddleName" class="form-control" />
+                            <span asp-validation-for="Input.MiddleName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.LastName" class="form-label"></label>
+                            <input asp-for="Input.LastName" class="form-control" />
+                            <span asp-validation-for="Input.LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Current Grade & Section</label>
+                            @if (Model.CurrentEnrollment != null)
+                            {
+                                <div class="alert alert-light mb-2">
+                                    <strong>@Model.CurrentEnrollment.Section.GradeLevel.Name</strong> - Section <strong>@Model.CurrentEnrollment.Section.Name</strong>
+                                    @if (Model.CurrentEnrollment.Section.Adviser != null)
+                                    {
+                                        <br /><small class="text-muted">Adviser: @Model.CurrentEnrollment.Section.Adviser.FullName</small>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning">No current enrollment found</div>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.SectionId" class="form-label">Transfer to Section</label>
+                            <select asp-for="Input.SectionId" class="form-select">
+                                <option value="">-- Select Section --</option>
+                                @foreach (var section in Model.Sections)
+                                {
+                                    <option value="@(section.Id)">
+                                        @(section.GradeLevel.Name) - Section @(section.Name)
+                                        @if (section.Adviser != null)
+                                        {
+                                            @:((@(section.Adviser.FullName)))
+                                        }
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.SectionId" class="text-danger"></span>
+                            <div class="form-text">Select a different section to transfer the student</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+                <h5>Parent/Guardian Information</h5>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.ParentGuardianName" class="form-label"></label>
+                            <input asp-for="Input.ParentGuardianName" class="form-control" />
+                            <span asp-validation-for="Input.ParentGuardianName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.GuardianRelationship" class="form-label"></label>
+                            <select asp-for="Input.GuardianRelationship" class="form-select">
+                                <option value="">-- Select Relationship --</option>
+                                <option value="Mother">Mother</option>
+                                <option value="Father">Father</option>
+                                <option value="Guardian">Guardian</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="Input.GuardianRelationship" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.ParentPhone" class="form-label"></label>
+                            <input asp-for="Input.ParentPhone" class="form-control" />
+                            <span asp-validation-for="Input.ParentPhone" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+                <h5>Profile Picture</h5>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Current Profile Picture</label>
+                            @if (!string.IsNullOrEmpty(Model.CurrentProfilePicturePath))
+                            {
+                                <div class="mb-2">
+                                    <img src="@Model.CurrentProfilePicturePath"
+                                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;" />
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No profile picture uploaded</p>
+                            }
+                            <label asp-for="Input.ProfilePicture" class="form-label">Upload New Picture</label>
+                            <input asp-for="Input.ProfilePicture" type="file" class="form-control"
+                                   accept="image/*" onchange="previewImage(this)" />
+                            <span asp-validation-for="Input.ProfilePicture" class="text-danger"></span>
+                            <small class="form-text text-muted">JPG, PNG, or GIF. Max 5MB. Leave empty to keep current picture.</small>
+                        </div>
+                        <div id="imagePreview" class="text-center" style="display:none;">
+                            <img id="previewImg" style="max-width: 200px; border-radius: 10px;" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>Save Changes
+                    </button>
+                    <a asp-page="/Admin/StudentDetails" asp-route-id="@Model.StudentId" class="btn btn-secondary btn-lg ms-2">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Enrollment History -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="bi bi-clock-history me-2"></i>Enrollment History
+        </div>
+        <div class="card-body">
+            @if (Model.EnrollmentHistory.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Academic Year</th>
+                                <th>Grade Level</th>
+                                <th>Section</th>
+                                <th>Adviser</th>
+                                <th>Enrolled Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var enrollment in Model.EnrollmentHistory)
+                            {
+                                <tr class="@(enrollment.IsActive ? "table-success" : "")">
+                                    <td>@enrollment.AcademicYear.Name</td>
+                                    <td>@enrollment.Section.GradeLevel.Name</td>
+                                    <td>@enrollment.Section.Name</td>
+                                    <td>@(enrollment.Section.Adviser?.FullName ?? "Not assigned")</td>
+                                    <td>@enrollment.EnrolledAt.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        @if (enrollment.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>No enrollment history available for this student.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Preview profile picture before upload
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            const img = document.getElementById('previewImg');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+    </script>
+}

@@ -1,0 +1,203 @@
+@page
+@model SmartLog.Web.Pages.Admin.CreateStudentModel
+@{
+    ViewData["Title"] = "Create Student";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-person-plus me-2"></i>Create New Student</h1>
+        <a asp-page="/Admin/Students" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Students
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-card-text me-2"></i>Student Information
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Note:</strong> Student ID will be automatically generated based on the selected grade level.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label asp-for="Input.LRN" class="form-label"></label>
+                            <input asp-for="Input.LRN" class="form-control" placeholder="12 digits" maxlength="12" />
+                            <span asp-validation-for="Input.LRN" class="text-danger"></span>
+                            <div class="form-text">Optional - DepEd Learner Reference Number</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.FirstName" class="form-label"></label>
+                            <input asp-for="Input.FirstName" class="form-control" />
+                            <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.MiddleName" class="form-label"></label>
+                            <input asp-for="Input.MiddleName" class="form-control" />
+                            <span asp-validation-for="Input.MiddleName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label asp-for="Input.LastName" class="form-label"></label>
+                            <input asp-for="Input.LastName" class="form-control" />
+                            <span asp-validation-for="Input.LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.GradeLevelId" class="form-label">Grade Level</label>
+                            <select asp-for="Input.GradeLevelId" class="form-select" id="gradeLevelSelect">
+                                <option value="">-- Select Grade Level --</option>
+                                @foreach (var grade in Model.GradeLevels)
+                                {
+                                    <option value="@grade.Id" data-grade-code="@grade.Code">@grade.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.GradeLevelId" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.SectionId" class="form-label">Section</label>
+                            <select asp-for="Input.SectionId" class="form-select" id="sectionSelect">
+                                <option value="">-- Select Section --</option>
+                                @foreach (var section in Model.Sections)
+                                {
+                                    <option value="@(section.Id)" data-grade-id="@(section.GradeLevelId)">
+                                        @(section.GradeLevel.Name) - @(section.Name)
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.SectionId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+                <h5>Parent/Guardian Information</h5>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.ParentGuardianName" class="form-label"></label>
+                            <input asp-for="Input.ParentGuardianName" class="form-control" />
+                            <span asp-validation-for="Input.ParentGuardianName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.GuardianRelationship" class="form-label"></label>
+                            <select asp-for="Input.GuardianRelationship" class="form-select">
+                                <option value="">-- Select Relationship --</option>
+                                <option value="Mother">Mother</option>
+                                <option value="Father">Father</option>
+                                <option value="Guardian">Guardian</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <span asp-validation-for="Input.GuardianRelationship" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.ParentPhone" class="form-label"></label>
+                            <input asp-for="Input.ParentPhone" class="form-control" placeholder="09XXXXXXXXX" />
+                            <span asp-validation-for="Input.ParentPhone" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.ProfilePicture" class="form-label">Profile Picture (Optional)</label>
+                            <input asp-for="Input.ProfilePicture" type="file" class="form-control"
+                                   accept="image/*" onchange="previewImage(this)" />
+                            <span asp-validation-for="Input.ProfilePicture" class="text-danger"></span>
+                            <small class="form-text text-muted">JPG, PNG, or GIF. Max 5MB.</small>
+                        </div>
+                        <div id="imagePreview" class="text-center" style="display:none;">
+                            <img id="previewImg" style="max-width: 200px; border-radius: 10px;" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>Create Student
+                    </button>
+                    <a asp-page="/Admin/Students" class="btn btn-secondary btn-lg ms-2">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Cascading dropdown: Filter sections by selected grade level
+        document.getElementById('gradeLevelSelect').addEventListener('change', function() {
+            var gradeId = this.value;
+            var sectionSelect = document.getElementById('sectionSelect');
+            var options = sectionSelect.querySelectorAll('option');
+
+            // Reset section selection
+            sectionSelect.value = '';
+
+            // Show/hide options based on grade level
+            options.forEach(function(option) {
+                if (option.value === '') {
+                    option.style.display = 'block';
+                    return;
+                }
+
+                var optionGradeId = option.getAttribute('data-grade-id');
+                if (gradeId === '' || optionGradeId === gradeId) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        });
+
+        // Preview profile picture before upload
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            const img = document.getElementById('previewImg');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+    </script>
+}
