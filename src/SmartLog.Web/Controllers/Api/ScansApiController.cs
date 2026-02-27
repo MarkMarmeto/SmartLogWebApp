@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
@@ -15,6 +16,7 @@ namespace SmartLog.Web.Controllers.Api;
 [ApiController]
 [Route("api/v1/scans")]
 [Produces("application/json")]
+[EnableCors("ScannerDevices")]
 public class ScansApiController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -22,6 +24,7 @@ public class ScansApiController : ControllerBase
     private readonly IDeviceService _deviceService;
     private readonly ICalendarService _calendarService;
     private readonly ISmsService _smsService;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly ILogger<ScansApiController> _logger;
 
     public ScansApiController(
@@ -30,6 +33,7 @@ public class ScansApiController : ControllerBase
         IDeviceService deviceService,
         ICalendarService calendarService,
         ISmsService smsService,
+        IAppSettingsService appSettingsService,
         ILogger<ScansApiController> logger)
     {
         _context = context;
@@ -37,6 +41,7 @@ public class ScansApiController : ControllerBase
         _deviceService = deviceService;
         _calendarService = calendarService;
         _smsService = smsService;
+        _appSettingsService = appSettingsService;
         _logger = logger;
     }
 
@@ -102,7 +107,7 @@ public class ScansApiController : ControllerBase
         var (studentIdStr, timestamp, signature) = parsed.Value;
 
         // US0031-AC3: Verify HMAC signature
-        if (!_qrCodeService.VerifyQrCode(request.QrPayload, signature))
+        if (!await _qrCodeService.VerifyQrCodeAsync(request.QrPayload, signature))
         {
             _logger.LogWarning("Invalid QR signature from device {DeviceId}", device.Id);
             await LogRejectedScanAsync(device.Id, null, request, "REJECTED_INVALID_QR");
@@ -255,24 +260,16 @@ public class ScansApiController : ControllerBase
 
     private async Task<Device?> AuthenticateDeviceAsync(string apiKey)
     {
-        var devices = await _context.Devices.ToListAsync();
-
-        foreach (var device in devices)
-        {
-            if (_deviceService.VerifyApiKey(apiKey, device.ApiKeyHash))
-            {
-                return device;
-            }
-        }
-
-        return null;
+        var keyHash = _deviceService.HashApiKey(apiKey);
+        return await _context.Devices.FirstOrDefaultAsync(d => d.ApiKeyHash == keyHash);
     }
 
     private async Task<Scan?> CheckDuplicateScanAsync(Guid deviceId, int studentId, string scanType, DateTime scannedAt)
     {
-        // US0032-AC1: Check for scan within 5-minute window
-        var fiveMinutesAgo = scannedAt.AddMinutes(-5);
-        var fiveMinutesLater = scannedAt.AddMinutes(5);
+        // US0032-AC1: Check for scan within configurable window
+        var windowMinutes = await _appSettingsService.GetAsync("QRCode.DuplicateScanWindowMinutes", 5);
+        var fiveMinutesAgo = scannedAt.AddMinutes(-windowMinutes);
+        var fiveMinutesLater = scannedAt.AddMinutes(windowMinutes);
 
         return await _context.Scans
             .Where(s => s.DeviceId == deviceId &&

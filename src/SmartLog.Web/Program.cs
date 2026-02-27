@@ -71,7 +71,11 @@ try
         options.AccessDeniedPath = "/Account/AccessDenied";
     });
 
+    // Add memory cache
+    builder.Services.AddMemoryCache();
+
     // Add application services
+    builder.Services.AddScoped<IAppSettingsService, AppSettingsService>();
     builder.Services.AddScoped<IAuditService, AuditService>();
     builder.Services.AddScoped<IQrCodeService, QrCodeService>();
     builder.Services.AddScoped<IDeviceService, DeviceService>();
@@ -124,13 +128,22 @@ try
         options.AddPolicy("CanViewAuditLogs", policy =>
             policy.RequireRole("SuperAdmin"));
 
-        // Settings access (SuperAdmin only)
+        // Settings access (SuperAdmin and Admin)
         options.AddPolicy("CanManageSettings", policy =>
-            policy.RequireRole("SuperAdmin"));
+            policy.RequireRole("SuperAdmin", "Admin"));
 
         // Attendance (Phase 2)
         options.AddPolicy("CanViewAttendance", policy =>
             policy.RequireRole("SuperAdmin", "Admin", "Teacher", "Security"));
+    });
+
+    // Add CORS for scanner devices
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("ScannerDevices", policy =>
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader());
     });
 
     // Add Razor Pages
@@ -162,6 +175,10 @@ try
             var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
             await DbInitializer.SeedAsync(userManager, roleManager, context, logger);
+
+            // Seed app settings defaults
+            var appSettingsService = services.GetRequiredService<IAppSettingsService>();
+            await appSettingsService.SeedDefaultsAsync();
         }
         catch (Exception ex)
         {
@@ -182,6 +199,18 @@ try
     }
 
     app.UseHttpsRedirection();
+
+    // Security headers
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        await next();
+    });
+
     app.UseStaticFiles();
 
     // Add cache control headers to prevent back button showing cached pages
@@ -194,6 +223,8 @@ try
     });
 
     app.UseRouting();
+
+    app.UseCors();
 
     app.UseAuthentication();
     app.UseAuthorization();

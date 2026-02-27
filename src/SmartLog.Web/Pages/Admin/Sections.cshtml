@@ -88,5 +88,35 @@
                 </table>
             </div>
         </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Sections"
+                               asp-route-pageNumber="@(Model.PageNumber - 1)"
+                               asp-route-gradeId="@Model.GradeId">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                <a class="page-link" asp-page="/Admin/Sections"
+                                   asp-route-pageNumber="@i"
+                                   asp-route-gradeId="@Model.GradeId">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Sections"
+                               asp-route-pageNumber="@(Model.PageNumber + 1)"
+                               asp-route-gradeId="@Model.GradeId">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-center text-muted mt-2">
+                    Showing @Model.Sections.Count of @Model.TotalSections sections
+                </p>
+            </div>
+        }
     </div>
 </div>

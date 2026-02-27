@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public class EditStudentModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IAuditService _auditService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IGradeSectionService _gradeSectionService;
     private readonly IAcademicYearService _academicYearService;
     private readonly IFileUploadService _fileUploadService;
@@ -26,6 +28,7 @@ public class EditStudentModel : PageModel
     public EditStudentModel(
         ApplicationDbContext context,
         IAuditService auditService,
+        UserManager<ApplicationUser> userManager,
         IGradeSectionService gradeSectionService,
         IAcademicYearService academicYearService,
         IFileUploadService fileUploadService,
@@ -33,6 +36,7 @@ public class EditStudentModel : PageModel
     {
         _context = context;
         _auditService = auditService;
+        _userManager = userManager;
         _gradeSectionService = gradeSectionService;
         _academicYearService = academicYearService;
         _fileUploadService = fileUploadService;
@@ -245,7 +249,7 @@ public class EditStudentModel : PageModel
                 await _auditService.LogAsync(
                     action: "StudentTransferred",
                     userId: null,
-                    performedByUserId: null,
+                    performedByUserId: _userManager.GetUserId(User),
                     details: $"Student '{student.FullName}' transferred to section '{newSection?.Name}'",
                     ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
                     userAgent: Request.Headers.UserAgent.ToString());
@@ -265,17 +269,17 @@ public class EditStudentModel : PageModel
         await _context.SaveChangesAsync();
 
         // Audit log
-        var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "StudentEdited",
             userId: null,
-            performedByUserId: null,
-            details: $"Student '{student.FullName}' (ID: {student.StudentId}) edited by {currentUser}",
+            performedByUserId: currentUserId,
+            details: $"Student '{student.FullName}' (ID: {student.StudentId}) edited by {User.Identity?.Name}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
 
         _logger.LogInformation("Student {StudentId} edited by {User}",
-            student.StudentId, currentUser);
+            student.StudentId, User.Identity?.Name);
 
         return RedirectToPage("/Admin/StudentDetails", new
         {

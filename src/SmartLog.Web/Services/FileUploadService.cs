@@ -6,17 +6,33 @@ namespace SmartLog.Web.Services;
 public class FileUploadService : IFileUploadService
 {
     private readonly IWebHostEnvironment _environment;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly ILogger<FileUploadService> _logger;
-    private const long MaxFileSize = 5 * 1024 * 1024; // 5MB
-    private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
+    private static readonly string[] DefaultAllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
     private static readonly string[] AllowedMimeTypes = { "image/jpeg", "image/png", "image/gif" };
 
     public FileUploadService(
         IWebHostEnvironment environment,
+        IAppSettingsService appSettingsService,
         ILogger<FileUploadService> logger)
     {
         _environment = environment;
+        _appSettingsService = appSettingsService;
         _logger = logger;
+    }
+
+    private async Task<long> GetMaxFileSizeAsync()
+    {
+        var sizeMb = await _appSettingsService.GetAsync("FileUpload.MaxFileSizeMB", 5);
+        return sizeMb * 1024L * 1024L;
+    }
+
+    private async Task<string[]> GetAllowedExtensionsAsync()
+    {
+        var extensions = await _appSettingsService.GetAsync("FileUpload.AllowedExtensions");
+        if (string.IsNullOrEmpty(extensions))
+            return DefaultAllowedExtensions;
+        return extensions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     public async Task<string> UploadProfilePictureAsync(IFormFile file, string entityType, string entityId)
@@ -71,7 +87,14 @@ public class FileUploadService : IFileUploadService
         {
             // Remove leading slash if present
             var cleanPath = filePath.TrimStart('/');
-            var fullPath = Path.Combine(_environment.WebRootPath, cleanPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            var fullPath = Path.GetFullPath(Path.Combine(_environment.WebRootPath, cleanPath.Replace("/", Path.DirectorySeparatorChar.ToString())));
+
+            // Path traversal protection
+            if (!fullPath.StartsWith(_environment.WebRootPath))
+            {
+                _logger.LogWarning("Path traversal attempt detected: {Path}", filePath);
+                return Task.CompletedTask;
+            }
 
             if (File.Exists(fullPath))
             {
@@ -95,16 +118,18 @@ public class FileUploadService : IFileUploadService
             return false;
         }
 
-        // Check file size
-        if (file.Length > MaxFileSize)
+        // Check file size (use sync-over-async since interface is sync; cached after first call)
+        var maxFileSize = GetMaxFileSizeAsync().GetAwaiter().GetResult();
+        if (file.Length > maxFileSize)
         {
-            _logger.LogWarning("File too large: {Size} bytes", file.Length);
+            _logger.LogWarning("File too large: {Size} bytes (max: {Max})", file.Length, maxFileSize);
             return false;
         }
 
         // Check extension
+        var allowedExtensions = GetAllowedExtensionsAsync().GetAwaiter().GetResult();
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!AllowedExtensions.Contains(extension))
+        if (!allowedExtensions.Contains(extension))
         {
             _logger.LogWarning("Invalid file extension: {Extension}", extension);
             return false;
@@ -117,8 +142,32 @@ public class FileUploadService : IFileUploadService
             return false;
         }
 
+        // Magic byte validation
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var header = new byte[8];
+            _ = stream.Read(header, 0, 8);
+            stream.Position = 0;
+
+            if (!IsJpeg(header) && !IsPng(header) && !IsGif(header))
+            {
+                _logger.LogWarning("Invalid magic bytes for file: {FileName}", file.FileName);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading file header for validation");
+            return false;
+        }
+
         return true;
     }
+
+    private static bool IsJpeg(byte[] header) => header.Length >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+    private static bool IsPng(byte[] header) => header.Length >= 4 && header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47;
+    private static bool IsGif(byte[] header) => header.Length >= 4 && header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38;
 
     public string GetProfilePictureUrl(string? relativePath)
     {

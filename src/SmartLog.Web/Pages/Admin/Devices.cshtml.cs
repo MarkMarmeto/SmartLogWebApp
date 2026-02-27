@@ -32,14 +32,31 @@ public class DevicesModel : PageModel
 
     public List<Device> Devices { get; set; } = new();
 
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    public int PageSize { get; set; } = 20;
+    public int TotalPages { get; set; }
+    public int TotalDevices { get; set; }
+
     [TempData]
     public string? StatusMessage { get; set; }
 
     public async Task OnGetAsync()
     {
-        Devices = await _context.Devices
+        var query = _context.Devices
             .Include(d => d.RegisteredByUser)
-            .OrderByDescending(d => d.RegisteredAt)
+            .OrderByDescending(d => d.RegisteredAt);
+
+        TotalDevices = await query.CountAsync();
+        TotalPages = (int)Math.Ceiling(TotalDevices / (double)PageSize);
+
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageNumber > TotalPages && TotalPages > 0) PageNumber = TotalPages;
+
+        Devices = await query
+            .Skip((PageNumber - 1) * PageSize)
+            .Take(PageSize)
             .ToListAsync();
     }
 

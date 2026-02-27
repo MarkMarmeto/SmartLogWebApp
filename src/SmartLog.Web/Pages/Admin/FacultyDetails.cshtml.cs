@@ -13,7 +13,7 @@ namespace SmartLog.Web.Pages.Admin;
 /// Faculty details page.
 /// Implements US0025 (Deactivate/Reactivate Faculty) and US0027 (Link/Unlink Faculty to User Account).
 /// </summary>
-[Authorize(Policy = "CanManageUsers")]
+[Authorize(Policy = "CanViewFaculty")]
 public class FacultyDetailsModel : PageModel
 {
     private readonly ApplicationDbContext _context;

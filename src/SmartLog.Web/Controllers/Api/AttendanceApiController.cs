@@ -64,6 +64,7 @@ public class AttendanceApiController : ControllerBase
     {
         try
         {
+            pageSize = Math.Clamp(pageSize, 1, 200);
             var targetDate = date ?? DateTime.Today;
             var records = await _attendanceService.GetAttendanceListAsync(
                 targetDate, grade, section, search, status, page, pageSize);

@@ -22,6 +22,13 @@ public class TemplatesModel : PageModel
 
     public List<SmsTemplate> Templates { get; set; } = new();
 
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    public int PageSize { get; set; } = 20;
+    public int TotalPages { get; set; }
+    public int TotalTemplates { get; set; }
+
     [TempData]
     public string? StatusMessage { get; set; }
 
@@ -30,7 +37,20 @@ public class TemplatesModel : PageModel
 
     public async Task OnGetAsync()
     {
-        Templates = await _templateService.GetAllTemplatesAsync();
+        var allTemplates = await _templateService.GetAllTemplatesAsync();
+
+        TotalTemplates = allTemplates.Count;
+        TotalPages = (int)Math.Ceiling(TotalTemplates / (double)PageSize);
+
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageNumber > TotalPages && TotalPages > 0) PageNumber = TotalPages;
+
+        Templates = allTemplates
+            .OrderBy(t => t.Code)
+            .ThenBy(t => t.Name)
+            .Skip((PageNumber - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
     }
 
     public async Task<IActionResult> OnPostAsync(

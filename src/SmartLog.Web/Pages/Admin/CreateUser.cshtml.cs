@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -183,38 +182,8 @@ public class CreateUserModel : PageModel
         }
     }
 
-    private string GenerateTemporaryPassword()
+    private static string GenerateTemporaryPassword()
     {
-        // Generate secure temporary password: 12 chars with uppercase, lowercase, digit, special char
-        const string lowercase = "abcdefghijklmnopqrstuvwxyz";
-        const string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const string digits = "0123456789";
-        const string special = "!@#$%";
-        const string all = lowercase + uppercase + digits + special;
-
-        var random = new Random();
-        var password = new StringBuilder();
-
-        // Ensure at least one of each required type
-        password.Append(uppercase[random.Next(uppercase.Length)]);
-        password.Append(lowercase[random.Next(lowercase.Length)]);
-        password.Append(digits[random.Next(digits.Length)]);
-        password.Append(special[random.Next(special.Length)]);
-
-        // Fill remaining with random characters
-        for (int i = 4; i < 12; i++)
-        {
-            password.Append(all[random.Next(all.Length)]);
-        }
-
-        // Shuffle the password
-        var chars = password.ToString().ToCharArray();
-        for (int i = chars.Length - 1; i > 0; i--)
-        {
-            int j = random.Next(i + 1);
-            (chars[i], chars[j]) = (chars[j], chars[i]);
-        }
-
-        return new string(chars);
+        return PasswordGenerator.GenerateTemporaryPassword();
     }
 }

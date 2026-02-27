@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ public class CreateStudentModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly IQrCodeService _qrCodeService;
     private readonly IAuditService _auditService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IIdGenerationService _idGenerationService;
     private readonly IGradeSectionService _gradeSectionService;
     private readonly IAcademicYearService _academicYearService;
@@ -29,6 +31,7 @@ public class CreateStudentModel : PageModel
         ApplicationDbContext context,
         IQrCodeService qrCodeService,
         IAuditService auditService,
+        UserManager<ApplicationUser> userManager,
         IIdGenerationService idGenerationService,
         IGradeSectionService gradeSectionService,
         IAcademicYearService academicYearService,
@@ -38,6 +41,7 @@ public class CreateStudentModel : PageModel
         _context = context;
         _qrCodeService = qrCodeService;
         _auditService = auditService;
+        _userManager = userManager;
         _idGenerationService = idGenerationService;
         _gradeSectionService = gradeSectionService;
         _academicYearService = academicYearService;
@@ -196,17 +200,17 @@ public class CreateStudentModel : PageModel
         await _context.SaveChangesAsync();
 
         // US0015-AC6: Audit log
-        var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "StudentCreated",
             userId: null,
-            performedByUserId: null,
-            details: $"Student '{student.FullName}' (ID: {student.StudentId}) created by {currentUser}",
+            performedByUserId: currentUserId,
+            details: $"Student '{student.FullName}' (ID: {student.StudentId}) created by {User.Identity?.Name}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
 
         _logger.LogInformation("Student {StudentId} created with QR code by {User}",
-            student.StudentId, currentUser);
+            student.StudentId, User.Identity?.Name);
 
         // US0015-AC2: Redirect to student details page with success message
         return RedirectToPage("/Admin/StudentDetails", new

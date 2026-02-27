@@ -29,6 +29,13 @@ public class AcademicYearsModel : PageModel
 
     public List<AcademicYear> AcademicYears { get; set; } = new();
 
+    [BindProperty(SupportsGet = true)]
+    public int PageNumber { get; set; } = 1;
+
+    public int PageSize { get; set; } = 20;
+    public int TotalPages { get; set; }
+    public int TotalAcademicYears { get; set; }
+
     [TempData]
     public string? StatusMessage { get; set; }
 
@@ -37,7 +44,20 @@ public class AcademicYearsModel : PageModel
 
     public async Task OnGetAsync()
     {
-        AcademicYears = await _academicYearService.GetAllAcademicYearsAsync(activeOnly: false);
+        var allYears = await _academicYearService.GetAllAcademicYearsAsync(activeOnly: false);
+
+        TotalAcademicYears = allYears.Count;
+        TotalPages = (int)Math.Ceiling(TotalAcademicYears / (double)PageSize);
+
+        if (PageNumber < 1) PageNumber = 1;
+        if (PageNumber > TotalPages && TotalPages > 0) PageNumber = TotalPages;
+
+        AcademicYears = allYears
+            .OrderByDescending(y => y.StartDate)
+            .ThenByDescending(y => y.EndDate)
+            .Skip((PageNumber - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
     }
 
     public async Task<IActionResult> OnPostSetCurrentAsync(int id)

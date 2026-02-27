@@ -86,6 +86,33 @@
                 </table>
             </div>
         </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Sms/Templates"
+                               asp-route-pageNumber="@(Model.PageNumber - 1)">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(Model.PageNumber == i ? "active" : "")">
+                                <a class="page-link" asp-page="/Admin/Sms/Templates"
+                                   asp-route-pageNumber="@i">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-page="/Admin/Sms/Templates"
+                               asp-route-pageNumber="@(Model.PageNumber + 1)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-center text-muted mt-2">
+                    Showing @Model.Templates.Count of @Model.TotalTemplates templates
+                </p>
+            </div>
+        }
     </div>
 </div>
 

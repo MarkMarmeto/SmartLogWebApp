@@ -11,14 +11,29 @@ namespace SmartLog.Web.Services;
 /// </summary>
 public class QrCodeService : IQrCodeService
 {
-    private readonly string _secretKey;
+    private readonly IAppSettingsService _appSettingsService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<QrCodeService> _logger;
 
-    public QrCodeService(IConfiguration configuration, ILogger<QrCodeService> logger)
+    public QrCodeService(
+        IAppSettingsService appSettingsService,
+        IConfiguration configuration,
+        ILogger<QrCodeService> logger)
     {
-        _secretKey = configuration["QrCode:HmacSecretKey"]
-            ?? throw new InvalidOperationException("QR Code HMAC secret key not configured");
+        _appSettingsService = appSettingsService;
+        _configuration = configuration;
         _logger = logger;
+    }
+
+    private async Task<string> GetSecretKeyAsync()
+    {
+        var key = await _appSettingsService.GetAsync("QRCode.HmacSecretKey");
+        if (!string.IsNullOrEmpty(key))
+            return key;
+
+        // Fall back to appsettings.json for backward compatibility
+        return _configuration["QrCode:HmacSecretKey"]
+            ?? throw new InvalidOperationException("QR Code HMAC secret key not configured");
     }
 
     /// <summary>
@@ -27,12 +42,14 @@ public class QrCodeService : IQrCodeService
     /// </summary>
     public async Task<QrCode> GenerateQrCodeAsync(string studentId)
     {
+        var secretKey = await GetSecretKeyAsync();
+
         // US0019-AC3: Get Unix timestamp
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // US0019-AC3: Compute HMAC-SHA256
         var dataToSign = $"{studentId}:{timestamp}";
-        var hmacSignature = ComputeHmac(dataToSign);
+        var hmacSignature = ComputeHmac(dataToSign, secretKey);
 
         // US0019-AC2: Build QR payload
         var payload = $"SMARTLOG:{studentId}:{timestamp}:{hmacSignature}";
@@ -59,7 +76,7 @@ public class QrCodeService : IQrCodeService
     /// Verify QR code HMAC signature using constant-time comparison.
     /// US0031-AC7: Uses constant-time comparison to prevent timing attacks.
     /// </summary>
-    public bool VerifyQrCode(string payload, string hmacSignature)
+    public async Task<bool> VerifyQrCodeAsync(string payload, string hmacSignature)
     {
         var parts = payload.Split(':');
         if (parts.Length != 4 || parts[0] != "SMARTLOG")
@@ -67,10 +84,12 @@ public class QrCodeService : IQrCodeService
             return false;
         }
 
+        var secretKey = await GetSecretKeyAsync();
+
         var studentId = parts[1];
         var timestamp = parts[2];
         var dataToVerify = $"{studentId}:{timestamp}";
-        var expectedHmac = ComputeHmac(dataToVerify);
+        var expectedHmac = ComputeHmac(dataToVerify, secretKey);
 
         // US0031-AC7: Constant-time comparison to prevent timing attacks
         try
@@ -104,9 +123,9 @@ public class QrCodeService : IQrCodeService
         return (parts[1], timestamp, parts[3]);
     }
 
-    private string ComputeHmac(string data)
+    private static string ComputeHmac(string data, string secretKey)
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_secretKey));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
         var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToBase64String(hashBytes);
     }

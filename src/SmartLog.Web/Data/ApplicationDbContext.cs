@@ -30,6 +30,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SmsQueue> SmsQueues => Set<SmsQueue>();
     public DbSet<SmsLog> SmsLogs => Set<SmsLog>();
     public DbSet<SmsSettings> SmsSettings => Set<SmsSettings>();
+    public DbSet<AppSettings> AppSettings => Set<AppSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -128,6 +129,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Device>(entity =>
         {
             entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.ApiKeyHash);
             entity.HasIndex(e => e.IsActive);
 
             entity.HasOne(e => e.RegisteredByUser)
@@ -325,6 +327,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         // Configure SmsSettings
         builder.Entity<SmsSettings>(entity =>
+        {
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.HasIndex(e => e.Category);
+
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure AppSettings
+        builder.Entity<AppSettings>(entity =>
         {
             entity.HasIndex(e => e.Key).IsUnique();
             entity.HasIndex(e => e.Category);

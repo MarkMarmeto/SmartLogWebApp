@@ -15,7 +15,7 @@ public interface IQrCodeService
     /// <summary>
     /// Verify a QR code payload against its HMAC signature.
     /// </summary>
-    bool VerifyQrCode(string payload, string hmacSignature);
+    Task<bool> VerifyQrCodeAsync(string payload, string hmacSignature);
 
     /// <summary>
     /// Parse QR code payload and extract components.

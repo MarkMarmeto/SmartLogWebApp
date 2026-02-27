@@ -1,16 +1,180 @@
 @page
 @model SmartLog.Web.Pages.Admin.SettingsModel
 @{
-    ViewData["Title"] = "Settings";
+    ViewData["Title"] = "System Settings";
 }
 
-<div class="container mt-4">
+@section Styles {
+    <link rel="stylesheet" href="~/css/settings.css" />
+}
+
+<div class="settings-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-gear me-2"></i>Settings</h1>
+        <h1><i class="bi bi-gear me-2"></i>System Settings</h1>
     </div>
 
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle me-2"></i>
-        System settings will be available in a future release.
-    </div>
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        @foreach (var category in Model.Categories)
+        {
+            var isActive = category == Model.ActiveTab;
+            var icon = category switch
+            {
+                "Security" => "bi-shield-lock",
+                "QRCode" => "bi-qr-code",
+                "FileUpload" => "bi-cloud-upload",
+                "Attendance" => "bi-calendar-check",
+                "System" => "bi-gear",
+                _ => "bi-sliders"
+            };
+            <li class="nav-item" role="presentation">
+                <a class="nav-link @(isActive ? "active" : "")" href="?tab=@category">
+                    <i class="bi @icon me-1"></i>@category
+                </a>
+            </li>
+        }
+    </ul>
+
+    <!-- Settings for Active Tab -->
+    @{
+        var categorySettings = Model.AllSettings
+            .Where(s => s.Category == Model.ActiveTab)
+            .OrderBy(s => s.Key)
+            .ToList();
+    }
+
+    @if (!categorySettings.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>No settings found for this category.
+        </div>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Save">
+            <input type="hidden" name="category" value="@Model.ActiveTab" />
+
+            <div class="card">
+                <div class="card-header">
+                    <strong>@Model.ActiveTab Settings</strong>
+                </div>
+                <div class="card-body">
+                    @foreach (var setting in categorySettings)
+                    {
+                        var shortKey = setting.Key.Split('.').Last();
+                        var isBool = setting.Value == "true" || setting.Value == "false";
+                        var isNumber = int.TryParse(setting.Value, out _);
+                        var displayValue = setting.IsSensitive ? "********" : setting.Value;
+
+                        <div class="mb-3 row align-items-center">
+                            <label class="col-md-4 col-form-label">
+                                <strong>@shortKey</strong>
+                                @if (!string.IsNullOrEmpty(setting.Description))
+                                {
+                                    <br /><small class="text-muted">@setting.Description</small>
+                                }
+                            </label>
+                            <div class="col-md-5">
+                                @if (isBool)
+                                {
+                                    <div class="form-check form-switch mt-2">
+                                        <input type="hidden" name="settings[@setting.Key]" value="false" />
+                                        <input class="form-check-input" type="checkbox"
+                                               name="settings[@setting.Key]" value="true"
+                                               @(setting.Value == "true" ? "checked" : "") />
+                                    </div>
+                                }
+                                else if (setting.IsSensitive)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" class="form-control sensitive-field"
+                                               name="settings[@setting.Key]" value="@displayValue" />
+                                        <button class="btn btn-outline-secondary toggle-visibility" type="button"
+                                                title="Toggle visibility">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    @if (setting.Key == "QRCode.HmacSecretKey")
+                                    {
+                                        <div class="form-text text-warning">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            Changing this key will invalidate ALL existing student QR codes.
+                                        </div>
+                                    }
+                                }
+                                else if (isNumber)
+                                {
+                                    <input type="number" class="form-control"
+                                           name="settings[@setting.Key]" value="@setting.Value" />
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control"
+                                           name="settings[@setting.Key]" value="@setting.Value" />
+                                }
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted d-block">
+                                    @if (!string.IsNullOrEmpty(setting.UpdatedBy))
+                                    {
+                                        <span>Last updated by @setting.UpdatedBy</span>
+                                        <br />
+                                    }
+                                    <span>@setting.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                </small>
+                                <form method="post" asp-page-handler="Reset" class="d-inline">
+                                    <input type="hidden" name="key" value="@setting.Key" />
+                                    <button type="submit" class="btn btn-link btn-sm p-0 text-secondary"
+                                            onclick="return confirm('Reset this setting to its default value?')">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <hr />
+                    }
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Save @Model.ActiveTab Settings
+                    </button>
+                </div>
+            </div>
+        </form>
+    }
 </div>
+
+@section Scripts {
+    <script>
+        // Toggle sensitive field visibility
+        document.querySelectorAll('.toggle-visibility').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const input = this.closest('.input-group').querySelector('.sensitive-field');
+                const icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            });
+        });
+    </script>
+}

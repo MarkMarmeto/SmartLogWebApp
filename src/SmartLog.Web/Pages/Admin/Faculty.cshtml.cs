@@ -11,7 +11,7 @@ namespace SmartLog.Web.Pages.Admin;
 /// Faculty list page with search and filter.
 /// Implements US0026 (Faculty List with Search and Filter).
 /// </summary>
-[Authorize(Policy = "CanManageUsers")]
+[Authorize(Policy = "CanViewFaculty")]
 public class FacultyModel : PageModel
 {
     private readonly ApplicationDbContext _context;

@@ -63,7 +63,11 @@ public class SmsSettingsService : ISmsSettingsService
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("SMS setting updated: {Key} = {Value}", key, value);
+            var isSensitive = key.Contains("ApiKey", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("Secret", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("Password", StringComparison.OrdinalIgnoreCase);
+            var logValue = isSensitive ? "***" : value;
+            _logger.LogInformation("SMS setting updated: {Key} = {Value}", key, logValue);
         }
         catch (Exception ex)
         {

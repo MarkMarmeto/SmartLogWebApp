@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public class StudentDetailsModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly IQrCodeService _qrCodeService;
     private readonly IAuditService _auditService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileUploadService _fileUploadService;
     private readonly ILogger<StudentDetailsModel> _logger;
 
@@ -25,12 +27,14 @@ public class StudentDetailsModel : PageModel
         ApplicationDbContext context,
         IQrCodeService qrCodeService,
         IAuditService auditService,
+        UserManager<ApplicationUser> userManager,
         IFileUploadService fileUploadService,
         ILogger<StudentDetailsModel> logger)
     {
         _context = context;
         _qrCodeService = qrCodeService;
         _auditService = auditService;
+        _userManager = userManager;
         _fileUploadService = fileUploadService;
         _logger = logger;
     }
@@ -91,10 +95,11 @@ public class StudentDetailsModel : PageModel
 
         // Audit log
         var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "QrCodeRegenerated",
             userId: null,
-            performedByUserId: null,
+            performedByUserId: currentUserId,
             details: $"QR code regenerated for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
@@ -124,10 +129,11 @@ public class StudentDetailsModel : PageModel
 
         // Audit log
         var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "StudentDeactivated",
             userId: null,
-            performedByUserId: null,
+            performedByUserId: currentUserId,
             details: $"Student '{student.FullName}' (ID: {student.StudentId}) deactivated by {currentUser}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
@@ -157,10 +163,11 @@ public class StudentDetailsModel : PageModel
 
         // Audit log
         var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "StudentReactivated",
             userId: null,
-            performedByUserId: null,
+            performedByUserId: currentUserId,
             details: $"Student '{student.FullName}' (ID: {student.StudentId}) reactivated by {currentUser}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());

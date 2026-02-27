@@ -34,7 +34,12 @@ public static class DbInitializer
         // Seed default admin user (Admin Amy from personas)
         const string adminUserName = "admin.amy";
         const string adminEmail = "admin.amy@smartlog.local";
-        const string adminPassword = "SecurePass1!";
+        var adminPassword = Environment.GetEnvironmentVariable("SMARTLOG_SEED_PASSWORD") ?? "SecurePass1!";
+
+        if (adminPassword == "SecurePass1!")
+        {
+            logger.LogWarning("Using default seed password. Set SMARTLOG_SEED_PASSWORD environment variable for production.");
+        }
 
         var existingUser = await userManager.FindByNameAsync(adminUserName);
         if (existingUser == null)
