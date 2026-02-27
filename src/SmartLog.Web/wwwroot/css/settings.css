@@ -1,0 +1,314 @@
+/* SmartLog Settings Page - Teal Green Theme */
+
+/* Custom Color Variables */
+:root {
+    --primary-teal: #2C7873;
+    --accent-teal: #3D9B96;
+    --light-teal: #6EC5C0;
+    --success-green: #52C41A;
+    --background: #F8FAFB;
+    --card-bg: #FFFFFF;
+    --text-primary: #2C3E50;
+    --text-secondary: #718096;
+    --border: #E2E8F0;
+    --hover-bg: #EDF7F6;
+}
+
+/* Settings Page Container */
+.settings-container {
+    background: var(--background);
+    padding: 1rem 1.5rem;
+    font-size: 0.875rem;
+}
+
+.settings-container h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.settings-container h1 i {
+    color: var(--primary-teal);
+}
+
+/* Compact Alerts */
+.settings-container .alert {
+    font-size: 0.813rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.settings-container .alert-success {
+    background-color: #F0F9F4;
+    border-color: var(--success-green);
+    color: #2F5233;
+}
+
+.settings-container .alert-danger {
+    background-color: #FEF2F2;
+    border-color: #EF4444;
+    color: #991B1B;
+}
+
+.settings-container .alert-warning {
+    background-color: #FFFBEB;
+    border-color: #F59E0B;
+    color: #92400E;
+}
+
+/* Compact Tabs */
+.settings-container .nav-tabs {
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+}
+
+.settings-container .nav-tabs .nav-item {
+    margin-bottom: -2px;
+}
+
+.settings-container .nav-tabs .nav-link {
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.settings-container .nav-tabs .nav-link:hover {
+    color: var(--primary-teal);
+    background-color: var(--hover-bg);
+    border-color: transparent;
+}
+
+.settings-container .nav-tabs .nav-link.active {
+    color: var(--primary-teal);
+    background-color: transparent;
+    border-color: var(--primary-teal);
+    font-weight: 600;
+}
+
+.settings-container .nav-tabs .nav-link i {
+    font-size: 0.875rem;
+    margin-right: 0.375rem;
+}
+
+/* Compact Cards */
+.settings-container .card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background: var(--card-bg);
+}
+
+.settings-container .card-header {
+    background-color: #F7FAFA;
+    border-bottom: 1px solid var(--border);
+    padding: 0.875rem 1.25rem;
+    font-size: 0.938rem;
+    font-weight: 600;
+    color: var(--primary-teal);
+}
+
+.settings-container .card-body {
+    padding: 1.25rem;
+}
+
+.settings-container .card-footer {
+    background-color: #F7FAFA;
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.25rem;
+}
+
+/* Compact Form Elements */
+.settings-container .form-label,
+.settings-container .col-form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.375rem;
+}
+
+.settings-container .form-label strong {
+    font-weight: 600;
+}
+
+.settings-container .form-control,
+.settings-container .form-select {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.settings-container .form-control:focus,
+.settings-container .form-select:focus {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px rgba(61, 155, 150, 0.1);
+}
+
+.settings-container .form-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.settings-container .form-text.text-warning {
+    color: #D97706;
+}
+
+/* Toggle Switches */
+.settings-container .form-check-input {
+    width: 2.5rem;
+    height: 1.25rem;
+    border: 2px solid var(--border);
+    background-color: #E2E8F0;
+}
+
+.settings-container .form-check-input:checked {
+    background-color: var(--primary-teal);
+    border-color: var(--primary-teal);
+}
+
+.settings-container .form-check-input:focus {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px rgba(61, 155, 150, 0.15);
+}
+
+/* Compact Buttons */
+.settings-container .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.settings-container .btn-primary {
+    background-color: var(--primary-teal);
+    border-color: var(--primary-teal);
+    color: white;
+}
+
+.settings-container .btn-primary:hover,
+.settings-container .btn-primary:focus {
+    background-color: #245E5A;
+    border-color: #245E5A;
+    box-shadow: 0 2px 4px rgba(44, 120, 115, 0.2);
+}
+
+.settings-container .btn-link {
+    font-size: 0.813rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+}
+
+.settings-container .btn-link:hover {
+    color: var(--primary-teal);
+    background-color: var(--hover-bg);
+    border-radius: 4px;
+}
+
+.settings-container .btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border);
+    background-color: white;
+}
+
+.settings-container .btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--accent-teal);
+    color: var(--primary-teal);
+}
+
+/* Setting Rows */
+.settings-container .mb-3.row {
+    margin-bottom: 1rem !important;
+    padding: 0.75rem 0;
+}
+
+.settings-container hr {
+    margin: 0.75rem 0;
+    border-color: var(--border);
+    opacity: 0.5;
+}
+
+/* Sensitive Field Toggle */
+.settings-container .input-group .toggle-visibility {
+    border: 1px solid var(--border);
+    border-left: none;
+    background-color: #F7FAFA;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.settings-container .input-group .toggle-visibility:hover {
+    background-color: var(--hover-bg);
+    color: var(--primary-teal);
+}
+
+/* Metadata Text */
+.settings-container small.text-muted {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Badge Styling */
+.settings-container .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 0.75rem;
+    }
+
+    .settings-container h1 {
+        font-size: 1.25rem;
+    }
+
+    .settings-container .nav-tabs .nav-link {
+        font-size: 0.813rem;
+        padding: 0.5rem 0.875rem;
+    }
+
+    .settings-container .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Info Alert Specific Styling */
+.settings-container .alert-info {
+    background-color: #EDF7F6;
+    border-color: var(--accent-teal);
+    color: var(--primary-teal);
+}
+
+/* Loading States */
+.settings-container .form-control:disabled,
+.settings-container .form-select:disabled {
+    background-color: #F1F5F9;
+    color: var(--text-secondary);
+}
+
+/* Focus States */
+.settings-container *:focus {
+    outline: none;
+}
+
+/* Smooth Transitions */
+.settings-container * {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}

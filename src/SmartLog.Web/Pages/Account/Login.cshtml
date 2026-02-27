@@ -4,6 +4,10 @@
     ViewData["Title"] = "Sign In";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/login.css" />
+}
+
 <div class="row justify-content-center">
     <div class="col-md-5 col-lg-4">
         <div class="card shadow">
@@ -59,4 +63,38 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const usernameInput = document.querySelector('input[name="Input.Username"]');
+            const passwordInput = document.querySelector('input[name="Input.Password"]');
+
+            // Handle Enter key press on both inputs
+            function handleEnterKey(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitBtn.click();
+                }
+            }
+
+            usernameInput.addEventListener('keypress', handleEnterKey);
+            passwordInput.addEventListener('keypress', handleEnterKey);
+
+            // Add loading state on form submit
+            form.addEventListener('submit', function(e) {
+                if (form.checkValidity()) {
+                    submitBtn.classList.add('loading');
+                    submitBtn.disabled = true;
+
+                    // Create loading text
+                    const originalContent = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<span>' + originalContent + '</span>';
+                }
+            });
+
+            // Focus username field on page load
+            usernameInput.focus();
+        });
+    </script>
 }

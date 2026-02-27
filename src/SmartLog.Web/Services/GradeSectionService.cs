@@ -22,7 +22,9 @@ public class GradeSectionService : IGradeSectionService
 
     public async Task<List<GradeLevel>> GetAllGradeLevelsAsync(bool activeOnly = true)
     {
-        var query = _context.GradeLevels.AsQueryable();
+        var query = _context.GradeLevels
+            .Include(gl => gl.Sections)
+            .AsQueryable();
 
         if (activeOnly)
         {

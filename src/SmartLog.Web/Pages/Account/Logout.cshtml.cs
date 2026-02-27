@@ -29,9 +29,6 @@ public class LogoutModel : PageModel
         _logger = logger;
     }
 
-    [TempData]
-    public string? StatusMessage { get; set; }
-
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         // Get user ID before signing out
@@ -57,8 +54,8 @@ public class LogoutModel : PageModel
                 userAgent: userAgent);
         }
 
-        StatusMessage = "You have been logged out successfully";
-
+        // Display the logout confirmation page
+        // Don't set TempData to avoid message persisting after re-login
         if (returnUrl != null)
         {
             return LocalRedirect(returnUrl);

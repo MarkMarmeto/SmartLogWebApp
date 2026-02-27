@@ -12,10 +12,16 @@
             --sidebar-width: 260px;
             --sidebar-collapsed-width: 70px;
             --topbar-height: 60px;
-            --primary-color: #0d6efd;
-            --sidebar-bg: #1e293b;
-            --sidebar-hover: #334155;
-            --sidebar-text: #e2e8f0;
+            --primary-color: #2C7873;
+            --accent-color: #3D9B96;
+            --sidebar-bg: #1A3C3A;
+            --sidebar-hover: #245E5A;
+            --sidebar-active: #2C7873;
+            --sidebar-text: #E8F4F3;
+            --sidebar-text-muted: #B8D4D2;
+            --base-font-size: 0.875rem;
+            --menu-font-size: 0.875rem;
+            --table-font-size: 0.813rem;
         }
 
         * {
@@ -28,6 +34,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #f8f9fa;
             overflow-x: hidden;
+            font-size: var(--base-font-size);
         }
 
         /* Sidebar */
@@ -60,7 +67,7 @@
 
         .sidebar-header .logo-icon {
             font-size: 1.5rem;
-            color: var(--primary-color);
+            color: #6EC5C0;
             min-width: 38px;
         }
 
@@ -96,23 +103,33 @@
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
+            padding: 0.625rem 1rem;
             color: var(--sidebar-text);
             text-decoration: none;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             cursor: pointer;
-            border-left: 3px solid transparent;
+            border-left: 4px solid transparent;
+            font-size: var(--menu-font-size);
+            margin: 0.125rem 0.5rem;
+            border-radius: 0 6px 6px 0;
+            position: relative;
         }
 
         .menu-item:hover {
             background-color: var(--sidebar-hover);
             color: white;
+            transform: translateX(2px);
         }
 
         .menu-item.active {
-            background-color: var(--sidebar-hover);
-            border-left-color: var(--primary-color);
+            background: linear-gradient(90deg, rgba(61, 155, 150, 0.2) 0%, rgba(44, 120, 115, 0.15) 100%);
+            border-left-color: #6EC5C0;
             color: white;
+            font-weight: 600;
+        }
+
+        .menu-item.active i {
+            color: #6EC5C0;
         }
 
         .menu-item i {
@@ -134,11 +151,11 @@
 
         .menu-section {
             padding: 0.5rem 1rem;
-            font-size: 0.75rem;
+            font-size: 0.688rem;
             font-weight: 600;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.5);
-            letter-spacing: 0.5px;
+            color: var(--sidebar-text-muted);
+            letter-spacing: 0.75px;
             margin-top: 1rem;
         }
 
@@ -151,7 +168,7 @@
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
-            background-color: rgba(0,0,0,0.2);
+            background-color: rgba(0,0,0,0.15);
         }
 
         .submenu.show {
@@ -160,7 +177,8 @@
 
         .submenu .menu-item {
             padding-left: 3.5rem;
-            font-size: 0.9rem;
+            font-size: 0.813rem;
+            margin-left: 0.75rem;
         }
 
         .sidebar.collapsed .submenu {
@@ -214,7 +232,7 @@
         .user-avatar-placeholder {
             width: 100%;
             height: 100%;
-            background-color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -230,7 +248,8 @@
 
         .user-name {
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
+            color: #6EC5C0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -238,7 +257,7 @@
 
         .user-role {
             font-size: 0.75rem;
-            color: rgba(255,255,255,0.6);
+            color: var(--sidebar-text-muted);
         }
 
         .sidebar.collapsed .user-details {
@@ -278,15 +297,15 @@
         }
 
         .toggle-btn:hover {
-            background-color: #f1f5f9;
+            background-color: #EDF7F6;
             color: var(--primary-color);
         }
 
         .topbar-title {
             margin-left: 1rem;
-            font-size: 1.125rem;
+            font-size: 1rem;
             font-weight: 600;
-            color: #1e293b;
+            color: var(--primary-color);
         }
 
         .topbar-actions {
@@ -300,9 +319,13 @@
         .main-content {
             margin-left: var(--sidebar-width);
             margin-top: var(--topbar-height);
-            padding: 2rem;
+            padding: 1.5rem;
             min-height: calc(100vh - var(--topbar-height));
             transition: margin-left 0.3s ease;
+        }
+
+        .main-content table {
+            font-size: var(--table-font-size);
         }
 
         .sidebar.collapsed ~ .main-wrapper .main-content {
@@ -356,6 +379,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="~/css/admin.css" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
@@ -439,7 +463,7 @@
                 @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                 {
                     <div class="menu-section">Notifications</div>
-                    <a href="#" class="menu-item has-submenu" onclick="toggleSubmenu(event, 'sms-submenu')">
+                    <a href="javascript:void(0)" class="menu-item has-submenu" role="button" aria-expanded="false" onclick="toggleSubmenu(event, 'sms-submenu')">
                         <i class="bi bi-chat-dots"></i>
                         <span>SMS</span>
                     </a>
@@ -475,7 +499,7 @@
                 @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher") || User.IsInRole("Staff"))
                 {
                     <div class="menu-section">Reports</div>
-                    <a href="#" class="menu-item has-submenu" onclick="toggleSubmenu(event, 'reports-submenu')">
+                    <a href="javascript:void(0)" class="menu-item has-submenu" role="button" aria-expanded="false" onclick="toggleSubmenu(event, 'reports-submenu')">
                         <i class="bi bi-file-earmark-bar-graph"></i>
                         <span>Reports</span>
                     </a>
@@ -500,17 +524,20 @@
                 }
 
                 <!-- System -->
-                @if (User.IsInRole("SuperAdmin"))
+                @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                 {
                     <div class="menu-section">System</div>
-                    <a asp-page="/Admin/Devices" class="menu-item">
-                        <i class="bi bi-phone"></i>
-                        <span>Devices</span>
-                    </a>
-                    <a asp-page="/Admin/AuditLogs" class="menu-item">
-                        <i class="bi bi-journal-text"></i>
-                        <span>Audit Logs</span>
-                    </a>
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <a asp-page="/Admin/Devices" class="menu-item">
+                            <i class="bi bi-phone"></i>
+                            <span>Devices</span>
+                        </a>
+                        <a asp-page="/Admin/AuditLogs" class="menu-item">
+                            <i class="bi bi-journal-text"></i>
+                            <span>Audit Logs</span>
+                        </a>
+                    }
                     <a asp-page="/Admin/Settings" class="menu-item">
                         <i class="bi bi-gear"></i>
                         <span>Settings</span>
@@ -567,7 +594,7 @@
                 }
                 @if (currentAcademicYear != null)
                 {
-                    <div class="badge bg-primary" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+                    <div class="badge" style="padding: 0.5rem 0.875rem; font-size: 0.813rem; background: linear-gradient(135deg, #2C7873 0%, #3D9B96 100%); color: white; border-radius: 6px; font-weight: 500;">
                         <i class="bi bi-calendar3 me-1"></i>
                         <span>@currentAcademicYear.Name</span>
                     </div>
@@ -630,15 +657,25 @@
 
             submenu.classList.toggle('show');
             menuItem.classList.toggle('active');
+            menuItem.setAttribute('aria-expanded', submenu.classList.contains('show'));
         }
 
         // Restore sidebar state on page load
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
+            const sidebarMenu = sidebar ? sidebar.querySelector('.sidebar-menu') : null;
             const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 
             if (sidebarCollapsed && window.innerWidth > 768) {
                 sidebar.classList.add('collapsed');
+            }
+
+            // Restore sidebar scroll position
+            if (sidebarMenu) {
+                const savedScrollPosition = sessionStorage.getItem('sidebarScrollPosition');
+                if (savedScrollPosition) {
+                    sidebarMenu.scrollTop = parseInt(savedScrollPosition, 10);
+                }
             }
 
             // Highlight active menu item
@@ -661,6 +698,25 @@
                     }
                 }
             });
+        });
+
+        // Save sidebar scroll position before navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarMenu = document.querySelector('.sidebar-menu');
+            if (sidebarMenu) {
+                // Save scroll position when scrolling
+                sidebarMenu.addEventListener('scroll', function() {
+                    sessionStorage.setItem('sidebarScrollPosition', sidebarMenu.scrollTop);
+                });
+
+                // Save scroll position before clicking a link
+                const menuLinks = document.querySelectorAll('.menu-item[href]');
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        sessionStorage.setItem('sidebarScrollPosition', sidebarMenu.scrollTop);
+                    });
+                });
+            }
         });
 
         // Close sidebar on mobile when clicking outside

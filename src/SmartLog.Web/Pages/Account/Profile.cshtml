@@ -15,7 +15,7 @@
         }
 
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #2C7873 0%, #3D9B96 100%);">
                 <i class="bi bi-person-circle me-2"></i>My Profile
             </div>
             <div class="card-body">
@@ -62,7 +62,7 @@
                             </tr>
                             <tr>
                                 <th><i class="bi bi-shield me-2"></i>Role:</th>
-                                <td><span class="badge bg-primary">@Model.Role</span></td>
+                                <td><span class="badge" style="background: linear-gradient(135deg, #2C7873 0%, #3D9B96 100%); color: white;">@Model.Role</span></td>
                             </tr>
                             <tr>
                                 <th><i class="bi bi-check-circle me-2"></i>Status:</th>
@@ -103,13 +103,35 @@
             height: 200px;
             border-radius: 50%;
             object-fit: cover;
-            border: 4px solid #dee2e6;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 4px solid #6EC5C0;
+            box-shadow: 0 4px 12px rgba(44, 120, 115, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .profile-picture:hover {
+            box-shadow: 0 6px 16px rgba(44, 120, 115, 0.3);
+            transform: scale(1.02);
         }
 
         .profile-picture-loading {
             opacity: 0.5;
             filter: grayscale(100%);
+        }
+
+        /* Table styling for profile info */
+        .table th {
+            color: #2C7873;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .table th i {
+            color: #3D9B96;
+        }
+
+        .table td {
+            color: #2C3E50;
+            font-size: 0.875rem;
         }
     </style>
 }
