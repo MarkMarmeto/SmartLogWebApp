@@ -126,6 +126,7 @@ public class CreateUserModel : PageModel
             PhoneNumber = Input.PhoneNumber,
             EmailConfirmed = true,
             IsActive = true,
+            MustChangePassword = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

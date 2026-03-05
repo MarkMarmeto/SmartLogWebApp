@@ -53,7 +53,7 @@ public class SectionsModel : PageModel
         if (PageNumber > TotalPages && TotalPages > 0) PageNumber = TotalPages;
 
         Sections = allSections
-            .OrderBy(s => s.GradeLevel.Name)
+            .OrderBy(s => s.GradeLevel.SortOrder)
             .ThenBy(s => s.Name)
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)

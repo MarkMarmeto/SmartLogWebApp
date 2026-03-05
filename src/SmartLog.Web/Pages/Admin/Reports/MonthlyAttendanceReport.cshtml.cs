@@ -140,7 +140,7 @@ public class MonthlyAttendanceReportModel : PageModel
         }
 
         var students = await studentsQuery
-            .OrderBy(s => s.GradeLevel)
+            .OrderBy(s => s.GradeLevel.Length).ThenBy(s => s.GradeLevel)
             .ThenBy(s => s.Section)
             .ThenBy(s => s.LastName)
             .Select(s => new { s.Id, s.StudentId, s.FirstName, s.LastName, s.GradeLevel, s.Section })

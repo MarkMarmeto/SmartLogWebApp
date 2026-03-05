@@ -94,7 +94,7 @@ public class StudentsModel : PageModel
 
         // Pagination
         Students = query
-            .OrderBy(s => s.GradeLevel)
+            .OrderBy(s => s.GradeLevel.Length).ThenBy(s => s.GradeLevel)
             .ThenBy(s => s.Section)
             .ThenBy(s => s.LastName)
             .ThenBy(s => s.FirstName)

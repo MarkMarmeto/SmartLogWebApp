@@ -331,25 +331,18 @@ public static class DbInitializer
 
         var gradeLevels = new List<GradeLevel>
         {
-            new GradeLevel { Code = "K", Name = "Kindergarten", SortOrder = 0, IsActive = true },
-            new GradeLevel { Code = "1", Name = "Grade 1", SortOrder = 1, IsActive = true },
-            new GradeLevel { Code = "2", Name = "Grade 2", SortOrder = 2, IsActive = true },
-            new GradeLevel { Code = "3", Name = "Grade 3", SortOrder = 3, IsActive = true },
-            new GradeLevel { Code = "4", Name = "Grade 4", SortOrder = 4, IsActive = true },
-            new GradeLevel { Code = "5", Name = "Grade 5", SortOrder = 5, IsActive = true },
-            new GradeLevel { Code = "6", Name = "Grade 6", SortOrder = 6, IsActive = true },
-            new GradeLevel { Code = "7", Name = "Grade 7", SortOrder = 7, IsActive = true },
-            new GradeLevel { Code = "8", Name = "Grade 8", SortOrder = 8, IsActive = true },
-            new GradeLevel { Code = "9", Name = "Grade 9", SortOrder = 9, IsActive = true },
-            new GradeLevel { Code = "10", Name = "Grade 10", SortOrder = 10, IsActive = true },
-            new GradeLevel { Code = "11", Name = "Grade 11", SortOrder = 11, IsActive = true },
-            new GradeLevel { Code = "12", Name = "Grade 12", SortOrder = 12, IsActive = true }
+            new GradeLevel { Code = "7", Name = "Grade 7", SortOrder = 1, IsActive = true },
+            new GradeLevel { Code = "8", Name = "Grade 8", SortOrder = 2, IsActive = true },
+            new GradeLevel { Code = "9", Name = "Grade 9", SortOrder = 3, IsActive = true },
+            new GradeLevel { Code = "10", Name = "Grade 10", SortOrder = 4, IsActive = true },
+            new GradeLevel { Code = "11", Name = "Grade 11", SortOrder = 5, IsActive = true },
+            new GradeLevel { Code = "12", Name = "Grade 12", SortOrder = 6, IsActive = true }
         };
 
         context.GradeLevels.AddRange(gradeLevels);
         await context.SaveChangesAsync();
 
-        logger.LogInformation("Seeded {Count} grade levels (K-12)", gradeLevels.Count);
+        logger.LogInformation("Seeded {Count} grade levels (7-12)", gradeLevels.Count);
     }
 
     private static async Task SeedAcademicYearsAsync(ApplicationDbContext context, ILogger logger)

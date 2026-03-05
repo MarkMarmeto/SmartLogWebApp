@@ -4,62 +4,228 @@
     ViewData["Title"] = "Dashboard";
 }
 
+<!-- Welcome -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="alert alert-primary d-flex align-items-center" role="alert">
-            <i class="bi bi-person-check-fill me-2 fs-4"></i>
+        <div class="d-flex justify-content-between align-items-center">
             <div>
-                <strong>Welcome back, @Model.UserFullName!</strong>
-                <span class="ms-2 text-muted">You are signed in as @Model.UserRole</span>
+                <h4 class="mb-1" style="color: #2C7873;">Welcome back, @Model.UserFullName!</h4>
+                <p class="text-muted mb-0">Here's your school overview for today.</p>
+            </div>
+            <span class="badge" style="padding: 0.5rem 0.875rem; font-size: 0.813rem; background: linear-gradient(135deg, #2C7873 0%, #3D9B96 100%); color: white; border-radius: 6px;">
+                @Model.UserRole
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Row 1: Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small">Total Students</p>
+                        <h3 class="mb-0 fw-bold">@Model.Summary.TotalStudents</h3>
+                        @if (Model.Summary.StudentChange != 0)
+                        {
+                            var changeClass = Model.Summary.StudentChange > 0 ? "text-success" : "text-danger";
+                            var changeIcon = Model.Summary.StudentChange > 0 ? "bi-arrow-up" : "bi-arrow-down";
+                            <small class="@changeClass">
+                                <i class="bi @changeIcon"></i> @Math.Abs(Model.Summary.StudentChange) this month
+                            </small>
+                        }
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(44, 120, 115, 0.1);">
+                        <i class="bi bi-mortarboard fs-4" style="color: #2C7873;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small">Total Faculty</p>
+                        <h3 class="mb-0 fw-bold">@Model.Summary.TotalFaculty</h3>
+                        @if (Model.Summary.FacultyChange != 0)
+                        {
+                            var changeClass = Model.Summary.FacultyChange > 0 ? "text-success" : "text-danger";
+                            var changeIcon = Model.Summary.FacultyChange > 0 ? "bi-arrow-up" : "bi-arrow-down";
+                            <small class="@changeClass">
+                                <i class="bi @changeIcon"></i> @Math.Abs(Model.Summary.FacultyChange) this month
+                            </small>
+                        }
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(61, 155, 150, 0.1);">
+                        <i class="bi bi-person-badge fs-4" style="color: #3D9B96;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small">Today's Attendance</p>
+                        <h3 class="mb-0 fw-bold">@Model.Summary.TodayAttendanceRate%</h3>
+                        <small class="text-muted">
+                            @Model.Summary.TodayPresent / @Model.Summary.TodayTotal students
+                        </small>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(82, 196, 26, 0.1);">
+                        <i class="bi bi-clipboard-check fs-4" style="color: #52C41A;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted mb-1 small">Active Sections</p>
+                        <h3 class="mb-0 fw-bold">@Model.Summary.TotalSections</h3>
+                        <small class="text-muted">Across all grade levels</small>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(110, 197, 192, 0.1);">
+                        <i class="bi bi-grid-3x3 fs-4" style="color: #6EC5C0;"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-people display-4 text-primary"></i>
-                <h5 class="card-title mt-3">Students</h5>
-                <p class="card-text text-muted">Manage student records and QR codes</p>
-                <a href="#" class="btn btn-outline-primary disabled">Coming Soon</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-person-badge display-4 text-success"></i>
-                <h5 class="card-title mt-3">Faculty</h5>
-                <p class="card-text text-muted">Manage faculty and staff records</p>
-                <a href="#" class="btn btn-outline-success disabled">Coming Soon</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-qr-code-scan display-4 text-info"></i>
-                <h5 class="card-title mt-3">Attendance</h5>
-                <p class="card-text text-muted">View attendance dashboard</p>
-                <a href="#" class="btn btn-outline-info disabled">Coming Soon</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <i class="bi bi-info-circle me-2"></i>System Information
+<!-- Row 2: Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2" style="color: #2C7873;"></i>Attendance Trend</h6>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary trend-range-btn" data-days="7" onclick="setTrendRange(7)">7D</button>
+                    <button type="button" class="btn btn-outline-secondary trend-range-btn active" data-days="30" onclick="setTrendRange(30)">30D</button>
+                    <button type="button" class="btn btn-outline-secondary trend-range-btn" data-days="90" onclick="setTrendRange(90)">90D</button>
+                </div>
             </div>
             <div class="card-body">
-                <p class="mb-1"><strong>Application:</strong> SmartLog v1.0.0</p>
-                <p class="mb-1"><strong>Server Time:</strong> @DateTime.Now.ToString("f")</p>
-                <p class="mb-0"><strong>Environment:</strong> @Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")</p>
+                <div style="height: 280px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2" style="color: #2C7873;"></i>Attendance by Grade (Today)</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 280px;">
+                    <canvas id="gradeChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Row 3: Weekly Pattern & Activity Feed -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="mb-0"><i class="bi bi-calendar-week me-2" style="color: #2C7873;"></i>Weekly Attendance Pattern</h6>
+            </div>
+            <div class="card-body">
+                <div style="height: 280px;">
+                    <canvas id="weekdayChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2" style="color: #2C7873;"></i>Recent Activity</h6>
+                <small class="text-muted">Auto-refreshes every 60s</small>
+            </div>
+            <div class="card-body p-0" style="max-height: 320px; overflow-y: auto;">
+                <div id="activityFeed">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+                        <p class="text-muted small mt-2 mb-0">Loading activity...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 4: Quick Actions -->
+@if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+{
+    <div class="row g-3">
+        <div class="col-12">
+            <h6 class="text-muted mb-3"><i class="bi bi-lightning me-1"></i>Quick Actions</h6>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <a asp-page="/Admin/CreateStudent" class="card shadow-sm border-0 text-decoration-none h-100" style="transition: transform 0.2s;">
+                <div class="card-body text-center py-3">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 44px; height: 44px; background: rgba(44, 120, 115, 0.1);">
+                        <i class="bi bi-person-plus fs-5" style="color: #2C7873;"></i>
+                    </div>
+                    <h6 class="mb-1" style="color: #2C3E50;">Create Student</h6>
+                    <small class="text-muted">Add a new student record</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <a asp-page="/Admin/CreateFaculty" class="card shadow-sm border-0 text-decoration-none h-100" style="transition: transform 0.2s;">
+                <div class="card-body text-center py-3">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 44px; height: 44px; background: rgba(61, 155, 150, 0.1);">
+                        <i class="bi bi-person-badge fs-5" style="color: #3D9B96;"></i>
+                    </div>
+                    <h6 class="mb-1" style="color: #2C3E50;">Create Faculty</h6>
+                    <small class="text-muted">Add a new faculty member</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <a asp-page="/Admin/Reports/DailyAttendanceReport" class="card shadow-sm border-0 text-decoration-none h-100" style="transition: transform 0.2s;">
+                <div class="card-body text-center py-3">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 44px; height: 44px; background: rgba(82, 196, 26, 0.1);">
+                        <i class="bi bi-file-earmark-bar-graph fs-5" style="color: #52C41A;"></i>
+                    </div>
+                    <h6 class="mb-1" style="color: #2C3E50;">View Reports</h6>
+                    <small class="text-muted">Daily attendance reports</small>
+                </div>
+            </a>
+        </div>
+        @if (User.IsInRole("SuperAdmin"))
+        {
+            <div class="col-lg-3 col-md-6">
+                <a asp-page="/Admin/Devices" class="card shadow-sm border-0 text-decoration-none h-100" style="transition: transform 0.2s;">
+                    <div class="card-body text-center py-3">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 44px; height: 44px; background: rgba(110, 197, 192, 0.1);">
+                            <i class="bi bi-phone fs-5" style="color: #6EC5C0;"></i>
+                        </div>
+                        <h6 class="mb-1" style="color: #2C3E50;">Manage Devices</h6>
+                        <small class="text-muted">QR scanner devices</small>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="~/js/dashboard-charts.js"></script>
+}

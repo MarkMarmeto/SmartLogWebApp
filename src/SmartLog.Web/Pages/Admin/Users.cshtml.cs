@@ -144,6 +144,7 @@ public class UsersModel : PageModel
                 LockoutEnd = lockoutEnd?.UtcDateTime,
                 Roles = roles.ToList(),
                 IsCurrentUser = isCurrentUser,
+                MustChangePassword = user.MustChangePassword,
                 CanEdit = canEdit,
                 CanDeactivate = canDeactivate
             });
@@ -355,6 +356,11 @@ public class UsersModel : PageModel
             return new JsonResult(new { success = false, error = "Failed to reset password" });
         }
 
+        // Set force password change flag
+        user.MustChangePassword = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userManager.UpdateAsync(user);
+
         // If user was locked, unlock them
         if (await _userManager.IsLockedOutAsync(user))
         {
@@ -396,6 +402,7 @@ public class UsersModel : PageModel
         public DateTime? LockoutEnd { get; set; }
         public List<string> Roles { get; set; } = new();
         public bool IsCurrentUser { get; set; }
+        public bool MustChangePassword { get; set; }
         public bool CanEdit { get; set; }
         public bool CanDeactivate { get; set; }
     }

@@ -1,0 +1,268 @@
+@page
+@model SmartLog.Web.Pages.Admin.BulkImportFacultyModel
+@{
+    ViewData["Title"] = "Bulk Import Faculty";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-cloud-upload me-2"></i>Bulk Import Faculty</h1>
+        <a asp-page="/Admin/Faculty" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Faculty
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-1"></i>@Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Step Indicator -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-center">
+                <div class="d-flex align-items-center">
+                    <span class="badge rounded-pill @(Model.CurrentStep == "upload" ? "bg-primary" : "bg-success") me-2" style="width: 28px; height: 28px; line-height: 20px;">1</span>
+                    <span class="me-4 @(Model.CurrentStep == "upload" ? "fw-bold" : "")">Upload</span>
+                    <i class="bi bi-arrow-right text-muted me-4"></i>
+                    <span class="badge rounded-pill @(Model.CurrentStep == "preview" ? "bg-primary" : Model.CurrentStep == "results" ? "bg-success" : "bg-secondary") me-2" style="width: 28px; height: 28px; line-height: 20px;">2</span>
+                    <span class="me-4 @(Model.CurrentStep == "preview" ? "fw-bold" : "")">Preview & Validate</span>
+                    <i class="bi bi-arrow-right text-muted me-4"></i>
+                    <span class="badge rounded-pill @(Model.CurrentStep == "results" ? "bg-primary" : "bg-secondary") me-2" style="width: 28px; height: 28px; line-height: 20px;">3</span>
+                    <span class="@(Model.CurrentStep == "results" ? "fw-bold" : "")">Results</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.CurrentStep == "upload")
+    {
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-arrow-up me-2"></i>Upload CSV File
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <form method="post" asp-page-handler="Validate" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Select CSV File</label>
+                                <input type="file" name="CsvFile" class="form-control" accept=".csv" required />
+                                <div class="form-text">Maximum 200 rows per import. File must be in CSV format.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check2-circle me-1"></i>Validate & Preview
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="bi bi-download me-1"></i>CSV Template</h6>
+                                <p class="small text-muted mb-2">Download the template to see the expected format with sample data.</p>
+                                <a asp-page-handler="DownloadTemplate" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download Template
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card bg-light mt-3">
+                            <div class="card-body">
+                                <h6><i class="bi bi-info-circle me-1"></i>Required Fields</h6>
+                                <ul class="small mb-0">
+                                    <li>FirstName, LastName</li>
+                                    <li>Department</li>
+                                    <li>Position</li>
+                                </ul>
+                                <h6 class="mt-2"><i class="bi bi-info-circle me-1"></i>Optional Fields</h6>
+                                <ul class="small mb-0">
+                                    <li>Email, PhoneNumber</li>
+                                    <li>HireDate (YYYY-MM-DD)</li>
+                                    <li>ExternalEmployeeId</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.CurrentStep == "preview" && Model.ValidationResult != null)
+    {
+        var vr = Model.ValidationResult;
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0">@vr.TotalRows</h3>
+                        <small class="text-muted">Total Rows</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-success">@vr.ValidCount</h3>
+                        <small class="text-muted">Valid Rows</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-danger">@vr.ErrorCount</h3>
+                        <small class="text-muted">Rows with Errors</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (vr.Errors.Any(e => e.RowNumber == 0))
+        {
+            <div class="alert alert-danger">
+                @foreach (var err in vr.Errors.Where(e => e.RowNumber == 0))
+                {
+                    <p class="mb-0"><i class="bi bi-exclamation-triangle me-1"></i>@err.Message</p>
+                }
+            </div>
+        }
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-table me-2"></i>Preview Data
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Row</th>
+                                <th>Status</th>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Department</th>
+                                <th>Position</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var vRow in vr.ValidFacultyRows)
+                            {
+                                <tr class="@(vRow.IsValid ? "" : "table-danger")">
+                                    <td>@vRow.Row.RowNumber</td>
+                                    <td>
+                                        @if (vRow.IsValid)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td>@vRow.Row.FirstName</td>
+                                    <td>@vRow.Row.LastName</td>
+                                    <td>@vRow.Row.Department</td>
+                                    <td>@vRow.Row.Position</td>
+                                    <td>@vRow.Row.Email</td>
+                                    <td>@vRow.Row.PhoneNumber</td>
+                                    <td>
+                                        @if (vRow.RowErrors.Any())
+                                        {
+                                            <ul class="list-unstyled mb-0 small">
+                                                @foreach (var err in vRow.RowErrors)
+                                                {
+                                                    <li class="text-danger"><strong>@err.Field:</strong> @err.Message</li>
+                                                }
+                                            </ul>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @if (vr.ValidCount > 0)
+        {
+            <div class="d-flex gap-2">
+                <form method="post" asp-page-handler="Import">
+                    <button type="submit" class="btn btn-success btn-lg"
+                            onclick="return confirm('Import @vr.ValidCount valid faculty members? Invalid rows will be skipped.');">
+                        <i class="bi bi-cloud-upload me-1"></i>Import @vr.ValidCount Valid Faculty
+                    </button>
+                </form>
+                <a asp-page="/Admin/BulkImportFaculty" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Start Over
+                </a>
+            </div>
+        }
+        else
+        {
+            <a asp-page="/Admin/BulkImportFaculty" class="btn btn-primary">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Upload a Different File
+            </a>
+        }
+    }
+
+    @if (Model.CurrentStep == "results" && Model.ImportResultData != null)
+    {
+        var ir = Model.ImportResultData;
+
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-check-circle me-2"></i>Import Complete
+            </div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-md-3">
+                        <h3 class="text-success">@ir.TotalImported</h3>
+                        <small class="text-muted">Faculty Imported</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-warning">@ir.TotalSkipped</h3>
+                        <small class="text-muted">Skipped</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-danger">@ir.TotalErrors</h3>
+                        <small class="text-muted">Errors</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-info">@ir.Duration.TotalSeconds.ToString("F1")s</h3>
+                        <small class="text-muted">Duration</small>
+                    </div>
+                </div>
+
+                @if (ir.Errors.Any())
+                {
+                    <div class="alert alert-danger mt-3">
+                        <h6>Errors:</h6>
+                        <ul class="mb-0">
+                            @foreach (var err in ir.Errors)
+                            {
+                                <li>Row @err.RowNumber - @err.Field: @err.Message</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-page="/Admin/Faculty" class="btn btn-primary">
+                <i class="bi bi-list me-1"></i>View Faculty
+            </a>
+            <a asp-page="/Admin/BulkImportFaculty" class="btn btn-outline-secondary">
+                <i class="bi bi-cloud-upload me-1"></i>Import More
+            </a>
+        </div>
+    }
+</div>

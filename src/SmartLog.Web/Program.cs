@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Middleware;
 using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 
@@ -87,6 +88,8 @@ try
     builder.Services.AddScoped<IGradeSectionService, GradeSectionService>();
     builder.Services.AddScoped<IIdGenerationService, IdGenerationService>();
     builder.Services.AddScoped<ICalendarService, CalendarService>();
+    builder.Services.AddScoped<IBulkImportService, BulkImportService>();
+    builder.Services.AddScoped<IDashboardService, DashboardService>();
 
     // Add SMS services
     builder.Services.AddScoped<ISmsSettingsService, SmsSettingsService>();
@@ -228,6 +231,9 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // Force password change for new accounts and admin resets
+    app.UseMiddleware<ForcePasswordChangeMiddleware>();
 
     app.UseSerilogRequestLogging();
 

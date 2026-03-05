@@ -27,6 +27,12 @@ public class ApplicationUser : IdentityUser
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// When true, user must change password before accessing any page.
+    /// Set on account creation and admin password reset.
+    /// </summary>
+    public bool MustChangePassword { get; set; } = false;
+
+    /// <summary>
     /// Path to profile picture (relative to wwwroot)
     /// </summary>
     [StringLength(500)]

@@ -42,7 +42,7 @@ public class GradeLevelsModel : PageModel
         if (PageNumber > TotalPages && TotalPages > 0) PageNumber = TotalPages;
 
         GradeLevels = allGrades
-            .OrderBy(g => g.Code)
+            .OrderBy(g => g.SortOrder)
             .ThenBy(g => g.Name)
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)

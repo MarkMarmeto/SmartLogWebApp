@@ -46,7 +46,7 @@ public class ReportExportService : IReportExportService
         csv.AppendLine();
 
         csv.AppendLine("Student ID,Name,Grade,Section,Status,Entry Time,Exit Time");
-        foreach (var record in records.OrderBy(r => r.GradeLevel).ThenBy(r => r.Section).ThenBy(r => r.FullName))
+        foreach (var record in records.OrderBy(r => int.TryParse(r.GradeLevel, out var g) ? g : 0).ThenBy(r => r.Section).ThenBy(r => r.FullName))
         {
             csv.AppendLine($"{record.StudentId},{record.FullName},{record.GradeLevel},{record.Section}," +
                           $"{record.Status},{record.EntryTime?.ToString("HH:mm") ?? "-"},{record.ExitTime?.ToString("HH:mm") ?? "-"}");
@@ -319,7 +319,7 @@ public class ReportExportService : IReportExportService
         html.AppendLine("</div>");
 
         html.AppendLine("<table><tr><th>Student ID</th><th>Name</th><th>Grade</th><th>Section</th><th>Status</th><th>Entry</th><th>Exit</th></tr>");
-        foreach (var record in records.OrderBy(r => r.GradeLevel).ThenBy(r => r.Section).ThenBy(r => r.FullName))
+        foreach (var record in records.OrderBy(r => int.TryParse(r.GradeLevel, out var g) ? g : 0).ThenBy(r => r.Section).ThenBy(r => r.FullName))
         {
             html.AppendLine($"<tr><td>{record.StudentId}</td><td>{record.FullName}</td><td>{record.GradeLevel}</td>" +
                           $"<td>{record.Section}</td><td>{record.Status}</td>" +
