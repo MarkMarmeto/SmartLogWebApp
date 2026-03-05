@@ -146,8 +146,9 @@ public class SemaphoreGateway : ISmsGateway
                 return status;
             }
 
-            // Check account balance
-            var response = await _httpClient.GetAsync($"{BaseUrl}/account?apikey={apiKey}");
+            // Check account balance using POST to avoid API key in URL/logs
+            var formData = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("apikey", apiKey) });
+            var response = await _httpClient.PostAsync($"{BaseUrl}/account", formData);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)

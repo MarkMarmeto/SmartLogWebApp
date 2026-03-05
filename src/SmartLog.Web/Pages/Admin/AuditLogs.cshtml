@@ -250,7 +250,12 @@
             const ip = button.getAttribute('data-ip');
 
             document.getElementById('modal-timestamp').textContent = timestamp;
-            document.getElementById('modal-action').innerHTML = '<span class="badge ' + getBadgeClass(action) + '">' + action + '</span>';
+            const actionEl = document.getElementById('modal-action');
+            actionEl.textContent = '';
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + getBadgeClass(action);
+            badge.textContent = action;
+            actionEl.appendChild(badge);
             document.getElementById('modal-user').textContent = user;
             document.getElementById('modal-performedby').textContent = performedBy;
             document.getElementById('modal-ip').textContent = ip;

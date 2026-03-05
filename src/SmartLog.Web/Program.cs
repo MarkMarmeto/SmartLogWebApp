@@ -26,8 +26,10 @@ try
         .WriteTo.Console());
 
     // Add DbContext with SQL Server
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    // Prefer environment variable, then fall back to configuration
+    var connectionString = Environment.GetEnvironmentVariable("SMARTLOG_DB_CONNECTION")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found. Set SMARTLOG_DB_CONNECTION environment variable.");
 
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(connectionString));
@@ -39,7 +41,7 @@ try
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = false; // Special chars allowed but not required
+        options.Password.RequireNonAlphanumeric = true;
         options.Password.RequiredLength = 8;
 
         // Lockout settings (for US0002, configured here for consistency)
@@ -141,11 +143,13 @@ try
     });
 
     // Add CORS for scanner devices
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? new[] { "http://localhost:5050", "https://localhost:5051" };
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("ScannerDevices", policy =>
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
+            policy.WithOrigins(allowedOrigins)
+                  .WithMethods("GET", "POST")
                   .AllowAnyHeader());
     });
 

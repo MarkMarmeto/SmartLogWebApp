@@ -83,7 +83,6 @@
                         <thead>
                             <tr>
                                 <th>Student ID</th>
-                                <th>Photo</th>
                                 <th>Name</th>
                                 <th>Grade/Section</th>
                                 <th>Parent/Guardian</th>
@@ -97,21 +96,6 @@
                             {
                                 <tr>
                                     <td><code>@student.StudentId</code></td>
-                                    <td>
-                                        @if (!string.IsNullOrEmpty(student.ProfilePicturePath))
-                                        {
-                                            <img src="@student.ProfilePicturePath"
-                                                 style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
-                                        }
-                                        else
-                                        {
-                                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #0d6efd;
-                                                        color: white; display: flex; align-items: center; justify-content: center;
-                                                        font-weight: bold; font-size: 14px;">
-                                                @student.FirstName.Substring(0,1)@student.LastName.Substring(0,1)
-                                            </div>
-                                        }
-                                    </td>
                                     <td>@student.FullName</td>
                                     <td>Grade @student.GradeLevel - @student.Section</td>
                                     <td>@student.ParentGuardianName</td>

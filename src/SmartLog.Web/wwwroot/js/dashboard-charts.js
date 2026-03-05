@@ -289,8 +289,9 @@ async function loadRecentActivity() {
             });
 
             const icon = getActionIcon(activity.action);
-            const linkStart = activity.linkUrl ? `<a href="${activity.linkUrl}" class="list-group-item list-group-item-action py-2">` : '<div class="list-group-item py-2">';
-            const linkEnd = activity.linkUrl ? '</a>' : '</div>';
+            const safeUrl = activity.linkUrl && activity.linkUrl.startsWith('/') ? activity.linkUrl : null;
+            const linkStart = safeUrl ? `<a href="${safeUrl}" class="list-group-item list-group-item-action py-2">` : '<div class="list-group-item py-2">';
+            const linkEnd = safeUrl ? '</a>' : '</div>';
 
             html += `${linkStart}
                 <div class="d-flex justify-content-between align-items-start">

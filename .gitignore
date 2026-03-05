@@ -48,6 +48,9 @@ artifacts/
 *.key
 appsettings.*.local.json
 secrets.json
+.env
+.env.*
+!.env.example
 
 # macOS
 .DS_Store

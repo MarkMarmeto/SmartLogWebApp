@@ -27,13 +27,17 @@ public class QrCodeService : IQrCodeService
 
     private async Task<string> GetSecretKeyAsync()
     {
+        // Priority: environment variable > app settings DB > appsettings.json
+        var envKey = Environment.GetEnvironmentVariable("SMARTLOG_HMAC_SECRET_KEY");
+        if (!string.IsNullOrEmpty(envKey))
+            return envKey;
+
         var key = await _appSettingsService.GetAsync("QRCode.HmacSecretKey");
         if (!string.IsNullOrEmpty(key))
             return key;
 
-        // Fall back to appsettings.json for backward compatibility
         return _configuration["QrCode:HmacSecretKey"]
-            ?? throw new InvalidOperationException("QR Code HMAC secret key not configured");
+            ?? throw new InvalidOperationException("QR Code HMAC secret key not configured. Set SMARTLOG_HMAC_SECRET_KEY environment variable.");
     }
 
     /// <summary>

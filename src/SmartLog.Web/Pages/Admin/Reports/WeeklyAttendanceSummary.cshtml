@@ -223,7 +223,7 @@
         // US0046-AC4: Render attendance trend chart
         const ctx = document.getElementById('attendanceChart');
         const data = {
-            labels: [@Html.Raw(string.Join(",", Model.DailySummaries.Select(d => $"'{d.Date:MMM dd}'")))],
+            labels: @Json.Serialize(Model.DailySummaries.Select(d => d.Date.ToString("MMM dd"))),
             datasets: [
                 {
                     label: 'Present',
