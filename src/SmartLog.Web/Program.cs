@@ -91,6 +91,7 @@ try
     builder.Services.AddScoped<IIdGenerationService, IdGenerationService>();
     builder.Services.AddScoped<ICalendarService, CalendarService>();
     builder.Services.AddScoped<IBulkImportService, BulkImportService>();
+    builder.Services.AddScoped<IBatchReenrollmentService, BatchReenrollmentService>();
     builder.Services.AddScoped<IDashboardService, DashboardService>();
 
     // Add SMS services

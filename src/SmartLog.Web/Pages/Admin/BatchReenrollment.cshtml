@@ -1,0 +1,397 @@
+@page
+@model SmartLog.Web.Pages.Admin.BatchReenrollmentModel
+@using SmartLog.Web.Services
+@{
+    ViewData["Title"] = "Batch Re-enrollment";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-arrow-repeat me-2"></i>Batch Re-enrollment</h1>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-1"></i>@Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Step Indicator -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-center">
+                <div class="d-flex align-items-center">
+                    <span class="badge rounded-pill @(Model.CurrentStep == "select" ? "bg-primary" : "bg-success") me-2" style="width: 28px; height: 28px; line-height: 20px;">1</span>
+                    <span class="me-4 @(Model.CurrentStep == "select" ? "fw-bold" : "")">Select Years</span>
+                    <i class="bi bi-arrow-right text-muted me-4"></i>
+                    <span class="badge rounded-pill @(Model.CurrentStep == "preview" ? "bg-primary" : Model.CurrentStep == "results" ? "bg-success" : "bg-secondary") me-2" style="width: 28px; height: 28px; line-height: 20px;">2</span>
+                    <span class="me-4 @(Model.CurrentStep == "preview" ? "fw-bold" : "")">Preview</span>
+                    <i class="bi bi-arrow-right text-muted me-4"></i>
+                    <span class="badge rounded-pill @(Model.CurrentStep == "results" ? "bg-primary" : "bg-secondary") me-2" style="width: 28px; height: 28px; line-height: 20px;">3</span>
+                    <span class="@(Model.CurrentStep == "results" ? "fw-bold" : "")">Results</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.CurrentStep == "select")
+    {
+        <!-- Step 1: Select -->
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-calendar3-range me-2"></i>Select Academic Years
+                    </div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="Preview">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Source Year (current enrollments)</label>
+                                <select asp-for="SourceYearId" asp-items="Model.AcademicYears" class="form-select">
+                                    <option value="">-- Select Source Year --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Target Year (new enrollments)</label>
+                                <select asp-for="TargetYearId" asp-items="Model.AcademicYears" class="form-select">
+                                    <option value="">-- Select Target Year --</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-eye me-1"></i>Generate Preview
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6><i class="bi bi-info-circle me-1"></i>Promotion Rules</h6>
+                        <ul class="small mb-0">
+                            <li>Grade 7 &rarr; Grade 8, Grade 8 &rarr; Grade 9, and so on</li>
+                            <li>Grade 12 students are <strong>graduated</strong> (enrollment deactivated)</li>
+                            <li>Inactive students are <strong>skipped</strong></li>
+                            <li>Students already enrolled in the target year are <strong>skipped</strong></li>
+                            <li>Sections are auto-assigned for even distribution</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.CurrentStep == "preview" && Model.Preview != null)
+    {
+        var preview = Model.Preview;
+
+        <!-- Step 2: Preview -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="mb-0">@preview.Students.Count</h3>
+                        <small class="text-muted">Total Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-success">@preview.PromoteCount</h3>
+                        <small class="text-muted">To Promote</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-info">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-info">@preview.GraduateCount</h3>
+                        <small class="text-muted">To Graduate</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-secondary">
+                    <div class="card-body">
+                        <h3 class="mb-0 text-secondary">@preview.SkipCount</h3>
+                        <small class="text-muted">To Skip</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (preview.Warnings.Any())
+        {
+            <div class="alert alert-warning">
+                <h6 class="mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Warnings</h6>
+                <ul class="mb-0 small">
+                    @foreach (var warning in preview.Warnings)
+                    {
+                        <li>@warning</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <form method="post" asp-page-handler="Execute" id="executeForm">
+            <input type="hidden" asp-for="SourceYearId" />
+            <input type="hidden" asp-for="TargetYearId" />
+
+            <!-- Promote Table -->
+            @{
+                var promoteStudents = preview.Students.Where(s => s.Action == PromotionAction.Promote).ToList();
+            }
+            @if (promoteStudents.Any())
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-arrow-up-circle text-success me-2"></i>Students to Promote (@(promoteStudents.Count))
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Current Grade</th>
+                                        <th>Current Section</th>
+                                        <th><i class="bi bi-arrow-right"></i></th>
+                                        <th>Target Grade</th>
+                                        <th>Assigned Section</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in promoteStudents)
+                                    {
+                                        <tr>
+                                            <td>@student.StudentDisplayId</td>
+                                            <td>@student.FullName</td>
+                                            <td>@student.CurrentGradeName</td>
+                                            <td>@student.CurrentSection</td>
+                                            <td><i class="bi bi-arrow-right text-success"></i></td>
+                                            <td>@student.TargetGradeName</td>
+                                            <td>
+                                                @if (preview.SectionsByGrade.TryGetValue(student.TargetGradeCode, out var sections) && sections.Count > 1)
+                                                {
+                                                    <select name="SectionOverride_@student.StudentId" class="form-select form-select-sm">
+                                                        @foreach (var sec in sections.OrderBy(s => s.SectionName))
+                                                        {
+                                                            <option value="@sec.SectionId"
+                                                                    selected="@(sec.SectionId == student.AssignedSectionId)">
+                                                                @sec.SectionName (@sec.RemainingCapacity remaining)
+                                                            </option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else
+                                                {
+                                                    <span>@student.AssignedSectionName</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Graduate Table -->
+            @{
+                var graduateStudents = preview.Students.Where(s => s.Action == PromotionAction.Graduate).ToList();
+            }
+            @if (graduateStudents.Any())
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-mortarboard text-info me-2"></i>Students to Graduate (@(graduateStudents.Count))
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Current Grade</th>
+                                        <th>Current Section</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in graduateStudents)
+                                    {
+                                        <tr>
+                                            <td>@student.StudentDisplayId</td>
+                                            <td>@student.FullName</td>
+                                            <td>@student.CurrentGradeName</td>
+                                            <td>@student.CurrentSection</td>
+                                            <td><span class="badge bg-info">Graduate</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Skip Table -->
+            @{
+                var skipStudents = preview.Students.Where(s => s.Action == PromotionAction.Skip).ToList();
+            }
+            @if (skipStudents.Any())
+            {
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-skip-forward text-secondary me-2"></i>Students to Skip (@(skipStudents.Count))
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Current Grade</th>
+                                        <th>Current Section</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in skipStudents)
+                                    {
+                                        <tr>
+                                            <td>@student.StudentDisplayId</td>
+                                            <td>@student.FullName</td>
+                                            <td>@student.CurrentGradeName</td>
+                                            <td>@student.CurrentSection</td>
+                                            <td><span class="text-muted">@student.SkipReason</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (preview.PromoteCount > 0 || preview.GraduateCount > 0)
+            {
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#confirmModal">
+                        <i class="bi bi-check2-all me-1"></i>Execute Re-enrollment
+                    </button>
+                    <a asp-page="/Admin/BatchReenrollment" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Start Over
+                    </a>
+                </div>
+            }
+            else
+            {
+                <a asp-page="/Admin/BatchReenrollment" class="btn btn-primary">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Start Over
+                </a>
+            }
+
+            <!-- Confirmation Modal -->
+            <div class="modal fade" id="confirmModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Re-enrollment</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>You are about to execute the following actions:</p>
+                            <ul>
+                                <li><strong>@preview.PromoteCount</strong> students will be promoted to the next grade</li>
+                                <li><strong>@preview.GraduateCount</strong> students will be graduated</li>
+                                <li><strong>@preview.SkipCount</strong> students will be skipped</li>
+                            </ul>
+                            <p class="text-danger mb-0"><strong>This action cannot be easily undone.</strong> Please make sure the preview is correct before proceeding.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check2-all me-1"></i>Confirm & Execute
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    }
+
+    @if (Model.CurrentStep == "results" && Model.ResultData != null)
+    {
+        var result = Model.ResultData;
+
+        <!-- Step 3: Results -->
+        <div class="card mb-4">
+            <div class="card-header @(result.Errors.Any() ? "bg-warning" : "bg-success text-white")">
+                <i class="bi bi-check-circle me-2"></i>Re-enrollment Complete
+            </div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-md-3">
+                        <h3 class="text-success">@result.PromotedCount</h3>
+                        <small class="text-muted">Promoted</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-info">@result.GraduatedCount</h3>
+                        <small class="text-muted">Graduated</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-secondary">@result.SkippedCount</h3>
+                        <small class="text-muted">Skipped</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-info">@result.Duration.TotalSeconds.ToString("F1")s</h3>
+                        <small class="text-muted">Duration</small>
+                    </div>
+                </div>
+
+                @if (result.Errors.Any())
+                {
+                    <div class="alert alert-danger mt-3">
+                        <h6><i class="bi bi-exclamation-triangle me-1"></i>Errors (@result.Errors.Count)</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Error</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var error in result.Errors)
+                                    {
+                                        <tr>
+                                            <td>@error.StudentName</td>
+                                            <td>@error.Message</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-page="/Admin/Students" class="btn btn-primary">
+                <i class="bi bi-list me-1"></i>View Students
+            </a>
+            <a asp-page="/Admin/BatchReenrollment" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-repeat me-1"></i>Run Again
+            </a>
+        </div>
+    }
+</div>
