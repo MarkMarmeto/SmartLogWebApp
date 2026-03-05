@@ -21,6 +21,7 @@ public class StudentDetailsModel : PageModel
     private readonly IAuditService _auditService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileUploadService _fileUploadService;
+    private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<StudentDetailsModel> _logger;
 
     public StudentDetailsModel(
@@ -29,6 +30,7 @@ public class StudentDetailsModel : PageModel
         IAuditService auditService,
         UserManager<ApplicationUser> userManager,
         IFileUploadService fileUploadService,
+        IAuthorizationService authorizationService,
         ILogger<StudentDetailsModel> logger)
     {
         _context = context;
@@ -36,6 +38,7 @@ public class StudentDetailsModel : PageModel
         _auditService = auditService;
         _userManager = userManager;
         _fileUploadService = fileUploadService;
+        _authorizationService = authorizationService;
         _logger = logger;
     }
 
@@ -67,9 +70,14 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0020: Regenerate QR code (invalidates old code).
     /// </summary>
-    [Authorize(Policy = "CanManageStudents")]
     public async Task<IActionResult> OnPostRegenerateQrAsync(int studentId)
     {
+        var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
+        if (!authResult.Succeeded)
+        {
+            return Forbid();
+        }
+
         var student = await _context.Students
             .Include(s => s.QrCode)
             .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -114,9 +122,14 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0017-AC1: Deactivate student.
     /// </summary>
-    [Authorize(Policy = "CanManageStudents")]
     public async Task<IActionResult> OnPostDeactivateAsync(int studentId)
     {
+        var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
+        if (!authResult.Succeeded)
+        {
+            return Forbid();
+        }
+
         var student = await _context.Students.FindAsync(studentId);
         if (student == null)
         {
@@ -148,9 +161,14 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0017-AC3: Reactivate student.
     /// </summary>
-    [Authorize(Policy = "CanManageStudents")]
     public async Task<IActionResult> OnPostReactivateAsync(int studentId)
     {
+        var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
+        if (!authResult.Succeeded)
+        {
+            return Forbid();
+        }
+
         var student = await _context.Students.FindAsync(studentId);
         if (student == null)
         {

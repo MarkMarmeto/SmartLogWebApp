@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E6991A99-CFB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartLog.Web", "src\SmartLog.Web\SmartLog.Web.csproj", "{E21761B2-0300-4C9F-9EE9-703526E5D6A2}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A50FF3DB-B84D-4159-A55A-D79DBD5B31B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartLog.Web.Tests", "tests\SmartLog.Web.Tests\SmartLog.Web.Tests.csproj", "{1FFC5758-BE7E-419C-89F3-360FF4CC3351}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{E21761B2-0300-4C9F-9EE9-703526E5D6A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E21761B2-0300-4C9F-9EE9-703526E5D6A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E21761B2-0300-4C9F-9EE9-703526E5D6A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FFC5758-BE7E-419C-89F3-360FF4CC3351}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FFC5758-BE7E-419C-89F3-360FF4CC3351}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FFC5758-BE7E-419C-89F3-360FF4CC3351}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FFC5758-BE7E-419C-89F3-360FF4CC3351}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E21761B2-0300-4C9F-9EE9-703526E5D6A2} = {E6991A99-CFBD-43F6-817F-B8E4205E56A6}
+		{1FFC5758-BE7E-419C-89F3-360FF4CC3351} = {A50FF3DB-B84D-4159-A55A-D79DBD5B31B4}
 	EndGlobalSection
 EndGlobal

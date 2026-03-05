@@ -110,7 +110,7 @@ public class EditStudentModel : PageModel
     {
         var student = await _context.Students
             .Include(s => s.CurrentEnrollment)
-                .ThenInclude(e => e.Section)
+                .ThenInclude(e => e!.Section)
                     .ThenInclude(s => s.GradeLevel)
             .FirstOrDefaultAsync(s => s.Id == id);
 

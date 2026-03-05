@@ -63,7 +63,7 @@ public class SemaphoreGateway : ISmsGateway
                 throw new InvalidOperationException("Semaphore API key not configured");
             }
 
-            var senderName = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog");
+            var senderName = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
 
             // Normalize phone number
             var normalizedPhone = NormalizePhoneNumber(phoneNumber);
