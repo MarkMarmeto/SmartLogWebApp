@@ -21,6 +21,7 @@ public class StudentsModel : PageModel
     }
 
     public List<Student> Students { get; set; } = new();
+    public List<GradeLevel> GradeLevels { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public string? SearchTerm { get; set; }
@@ -46,6 +47,11 @@ public class StudentsModel : PageModel
 
     public void OnGet()
     {
+        GradeLevels = _context.GradeLevels
+            .Where(g => g.IsActive)
+            .OrderBy(g => g.SortOrder)
+            .ToList();
+
         var query = _context.Students.AsQueryable();
 
         // Search by name or student ID

@@ -83,9 +83,9 @@
                     <label for="gradeFilter" class="form-label">Grade</label>
                     <select class="form-select" id="gradeFilter" name="gradeFilter">
                         <option value="">All Grades</option>
-                        @foreach (var grade in Model.Grades)
+                        @foreach (var grade in Model.GradeLevelList)
                         {
-                            <option value="@grade" selected="@(Model.GradeFilter == grade)">Grade @grade</option>
+                            <option value="@grade.Code" selected="@(Model.GradeFilter == grade.Code)">@grade.Name</option>
                         }
                     </select>
                 </div>

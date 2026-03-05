@@ -38,9 +38,15 @@ public class MonthlyAttendanceReportModel : PageModel
     public List<DailyAttendanceSummary> DailySummaries { get; set; } = new();
     public MonthlyTotals Totals { get; set; } = new();
     public List<StudentMonthlyAttendance> StudentAttendance { get; set; } = new();
+    public List<Data.Entities.GradeLevel> GradeLevels { get; set; } = new();
 
     public async Task OnGetAsync()
     {
+        GradeLevels = _context.GradeLevels
+            .Where(g => g.IsActive)
+            .OrderBy(g => g.SortOrder)
+            .ToList();
+
         var monthStart = new DateTime(ReportYear, ReportMonth, 1);
         var monthEnd = monthStart.AddMonths(1);
         var daysInMonth = DateTime.DaysInMonth(ReportYear, ReportMonth);

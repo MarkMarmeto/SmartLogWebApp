@@ -34,8 +34,13 @@
                 </div>
                 <div class="col-md-3">
                     <label for="gradeFilter" class="form-label">Grade (Optional)</label>
-                    <input type="text" class="form-control" id="gradeFilter" name="gradeFilter"
-                           value="@Model.GradeFilter" placeholder="e.g., 7" />
+                    <select class="form-select" id="gradeFilter" name="gradeFilter">
+                        <option value="">All Grades</option>
+                        @foreach (var grade in Model.GradeLevels)
+                        {
+                            <option value="@grade.Code" selected="@(Model.GradeFilter == grade.Code)">@grade.Name</option>
+                        }
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label for="sectionFilter" class="form-label">Section (Optional)</label>

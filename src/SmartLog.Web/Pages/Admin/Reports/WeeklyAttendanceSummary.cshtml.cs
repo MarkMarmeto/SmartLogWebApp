@@ -33,9 +33,15 @@ public class WeeklyAttendanceSummaryModel : PageModel
     public DateTime WeekEnd { get; set; }
     public List<DailyAttendanceSummary> DailySummaries { get; set; } = new();
     public WeeklyTotals Totals { get; set; } = new();
+    public List<Data.Entities.GradeLevel> GradeLevels { get; set; } = new();
 
     public async Task OnGetAsync()
     {
+        GradeLevels = _context.GradeLevels
+            .Where(g => g.IsActive)
+            .OrderBy(g => g.SortOrder)
+            .ToList();
+
         // US0046-AC1: Default to current week (Monday to Sunday)
         var referenceDate = StartDate ?? DateTime.Today;
         WeekStart = referenceDate.AddDays(-(int)referenceDate.DayOfWeek + (int)DayOfWeek.Monday);

@@ -41,10 +41,9 @@
                     <label for="gradeFilter" class="form-label">Grade</label>
                     <select class="form-select" id="gradeFilter" name="gradeFilter">
                         <option value="">All Grades</option>
-                        <option value="K" selected="@(Model.GradeFilter == "K")">Kindergarten</option>
-                        @for (int i = 1; i <= 12; i++)
+                        @foreach (var grade in Model.GradeLevels)
                         {
-                            <option value="@i" selected="@(Model.GradeFilter == i.ToString())">Grade @i</option>
+                            <option value="@grade.Code" selected="@(Model.GradeFilter == grade.Code)">@grade.Name</option>
                         }
                     </select>
                 </div>

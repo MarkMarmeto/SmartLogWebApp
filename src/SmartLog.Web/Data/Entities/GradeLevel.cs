@@ -18,7 +18,7 @@ public class GradeLevel
     public string Code { get; set; } = string.Empty;
 
     /// <summary>
-    /// Display name: Kindergarten, Grade 1, Grade 2, etc.
+    /// Display name: Grade 7, Grade 8, etc.
     /// </summary>
     [Required]
     [StringLength(50)]

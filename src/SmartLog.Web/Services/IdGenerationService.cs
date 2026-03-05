@@ -24,19 +24,15 @@ public class IdGenerationService : IIdGenerationService
         // we'll use UTC year as it's simpler and consistent
         var year = DateTime.UtcNow.Year;
 
-        // Format grade code to 2 digits, or use 'K' for Kindergarten
+        // Format grade code to 2 digits
         string gradeFormatted;
-        if (gradeCode.Equals("K", StringComparison.OrdinalIgnoreCase))
+        if (int.TryParse(gradeCode, out int gradeNum))
         {
-            gradeFormatted = "K";
-        }
-        else if (int.TryParse(gradeCode, out int gradeNum))
-        {
-            gradeFormatted = gradeNum.ToString("00"); // 2-digit padding: 01, 02, ..., 12
+            gradeFormatted = gradeNum.ToString("00"); // 2-digit padding: 07, 08, ..., 12
         }
         else
         {
-            throw new ArgumentException($"Invalid grade code: {gradeCode}. Must be 'K' or a number 1-12.");
+            throw new ArgumentException($"Invalid grade code: {gradeCode}. Must be a number (e.g., 7-12).");
         }
 
         // Pattern for matching existing IDs for this year and grade

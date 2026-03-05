@@ -148,7 +148,7 @@ public class DashboardService : IDashboardService
             result.Add(new GradeAttendance
             {
                 GradeLevel = group.GradeLevel,
-                GradeName = group.GradeLevel == "K" ? "Kindergarten" : $"Grade {group.GradeLevel}",
+                GradeName = $"Grade {group.GradeLevel}",
                 PresentCount = presentCount,
                 TotalEnrolled = group.TotalEnrolled,
                 AttendanceRate = rate

@@ -42,7 +42,7 @@ public class CalendarEvent
 
     public bool AffectsClasses { get; set; }
 
-    // Scope - JSON array of grade codes, e.g., ["K","1","2"]
+    // Scope - JSON array of grade codes, e.g., ["7","8","9"]
     // NULL means all grades
     [StringLength(100)]
     public string? AffectedGrades { get; set; }

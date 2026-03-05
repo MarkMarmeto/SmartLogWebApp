@@ -35,6 +35,7 @@ public class AttendanceDashboardModel : PageModel
     public AttendanceSummary Summary { get; set; } = new();
     public List<StudentAttendanceRecord> AttendanceRecords { get; set; } = new();
     public List<string> Grades { get; set; } = new();
+    public List<Data.Entities.GradeLevel> GradeLevelList { get; set; } = new();
     public List<string> Sections { get; set; } = new();
     public List<AcademicYear> AcademicYears { get; set; } = new();
     public AcademicYear? CurrentAcademicYear { get; set; }
@@ -105,13 +106,13 @@ public class AttendanceDashboardModel : PageModel
 
     private async Task LoadFiltersAsync()
     {
-        // Get unique grades
-        Grades = await _context.Students
-            .Where(s => s.IsActive)
-            .Select(s => s.GradeLevel)
-            .Distinct()
-            .OrderBy(g => g)
+        // Get grade levels from database
+        GradeLevelList = await _context.GradeLevels
+            .Where(g => g.IsActive)
+            .OrderBy(g => g.SortOrder)
             .ToListAsync();
+
+        Grades = GradeLevelList.Select(g => g.Code).ToList();
 
         // Get unique sections
         Sections = await _context.Students
