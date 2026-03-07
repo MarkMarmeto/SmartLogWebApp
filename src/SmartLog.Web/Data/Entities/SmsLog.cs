@@ -53,6 +53,23 @@ public class SmsLog
     [StringLength(500)]
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// External message ID from provider for matching delivery report webhooks
+    /// </summary>
+    [StringLength(100)]
+    public string? ProviderMessageId { get; set; }
+
+    /// <summary>
+    /// Delivery status from provider: DELIVERED / UNDELIVERED / REJECTED
+    /// </summary>
+    [StringLength(30)]
+    public string? DeliveryStatus { get; set; }
+
+    /// <summary>
+    /// When provider confirmed delivery
+    /// </summary>
+    public DateTime? DeliveredAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? SentAt { get; set; }

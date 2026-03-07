@@ -246,7 +246,8 @@ public class SmsService : ISmsService
         string phoneNumber,
         string message,
         SmsPriority priority = SmsPriority.Normal,
-        string messageType = "CUSTOM")
+        string messageType = "CUSTOM",
+        DateTime? scheduledAt = null)
     {
         try
         {
@@ -259,7 +260,8 @@ public class SmsService : ISmsService
                 MessageType = messageType,
                 RetryCount = 0,
                 MaxRetries = 3,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ScheduledAt = scheduledAt
             };
 
             _context.SmsQueues.Add(queueEntry);
@@ -308,11 +310,27 @@ public class SmsService : ISmsService
         }
     }
 
+    public async Task<int> GetScheduledCountAsync()
+    {
+        try
+        {
+            return await _context.SmsQueues
+                .CountAsync(q => q.Status == SmsStatus.Pending && q.ScheduledAt > DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting scheduled SMS count");
+            return 0;
+        }
+    }
+
     public async Task<SmsStatistics> GetStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
         try
         {
-            var query = _context.SmsQueues.AsQueryable();
+            var query = _context.SmsQueues
+                .Where(q => q.MessageType != "TEST")
+                .AsQueryable();
 
             if (startDate.HasValue)
             {
@@ -324,13 +342,33 @@ public class SmsService : ISmsService
                 query = query.Where(q => q.CreatedAt <= endDate.Value);
             }
 
+            var totalSent = await query.CountAsync(q => q.Status == SmsStatus.Sent);
+
+            // Query delivery stats from SmsLog
+            var logQuery = _context.SmsLogs
+                .Where(l => l.Status == "SENT");
+
+            if (startDate.HasValue)
+            {
+                logQuery = logQuery.Where(l => l.CreatedAt >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                logQuery = logQuery.Where(l => l.CreatedAt <= endDate.Value);
+            }
+
+            var totalDelivered = await logQuery.CountAsync(l => l.DeliveryStatus == "DELIVERED");
+
             var stats = new SmsStatistics
             {
                 TotalQueued = await query.CountAsync(),
-                TotalSent = await query.CountAsync(q => q.Status == SmsStatus.Sent),
+                TotalSent = totalSent,
                 TotalFailed = await query.CountAsync(q => q.Status == SmsStatus.Failed),
                 TotalPending = await query.CountAsync(q => q.Status == SmsStatus.Pending),
                 TotalProcessing = await query.CountAsync(q => q.Status == SmsStatus.Processing),
+                TotalDelivered = totalDelivered,
+                DeliverySuccessRate = totalSent > 0 ? Math.Round((double)totalDelivered / totalSent * 100, 1) : 0,
                 ByMessageType = await query
                     .GroupBy(q => q.MessageType)
                     .Select(g => new { Type = g.Key, Count = g.Count() })

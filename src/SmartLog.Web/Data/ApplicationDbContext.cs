@@ -293,6 +293,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.StudentId);
             entity.HasIndex(e => e.MessageType);
 
+            entity.HasIndex(e => e.ScheduledAt);
+
             entity.HasOne(e => e.Student)
                 .WithMany()
                 .HasForeignKey(e => e.StudentId)
@@ -310,6 +312,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.PhoneNumber, e.CreatedAt });
+            entity.HasIndex(e => e.ProviderMessageId);
 
             entity.HasOne(e => e.Queue)
                 .WithMany()

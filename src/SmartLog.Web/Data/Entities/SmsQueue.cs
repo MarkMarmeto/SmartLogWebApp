@@ -68,6 +68,11 @@ public class SmsQueue
 
     public DateTime? SentAt { get; set; }
 
+    /// <summary>
+    /// Scheduled delivery time — null = send immediately, future date = hold until then
+    /// </summary>
+    public DateTime? ScheduledAt { get; set; }
+
     // Navigation properties
     public virtual Student? Student { get; set; }
 }

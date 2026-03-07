@@ -25,7 +25,7 @@ public interface ISmsService
     /// <summary>
     /// Queue custom SMS message
     /// </summary>
-    Task<long> QueueCustomSmsAsync(string phoneNumber, string message, SmsPriority priority = SmsPriority.Normal, string messageType = "CUSTOM");
+    Task<long> QueueCustomSmsAsync(string phoneNumber, string message, SmsPriority priority = SmsPriority.Normal, string messageType = "CUSTOM", DateTime? scheduledAt = null);
 
     /// <summary>
     /// Cancel a queued SMS
@@ -36,6 +36,11 @@ public interface ISmsService
     /// Get SMS statistics
     /// </summary>
     Task<SmsStatistics> GetStatisticsAsync(DateTime? startDate = null, DateTime? endDate = null);
+
+    /// <summary>
+    /// Get count of scheduled (future) pending messages
+    /// </summary>
+    Task<int> GetScheduledCountAsync();
 
     /// <summary>
     /// Check if message is duplicate within time window
@@ -53,6 +58,8 @@ public class SmsStatistics
     public int TotalFailed { get; set; }
     public int TotalPending { get; set; }
     public int TotalProcessing { get; set; }
+    public int TotalDelivered { get; set; }
+    public double DeliverySuccessRate { get; set; }
     public Dictionary<string, int> ByMessageType { get; set; } = new();
     public Dictionary<string, int> ByProvider { get; set; } = new();
 }

@@ -1,0 +1,196 @@
+@page
+@model SmartLog.Web.Pages.Admin.Sms.TestSendModel
+@{
+    ViewData["Title"] = "Test SMS";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-bug me-2"></i>Test SMS</h1>
+        <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Test Mode:</strong> Test messages are excluded from statistics.
+    </div>
+
+    <form method="post" id="testForm">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-file-text me-2"></i>Template Selection
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="templateSelect" class="form-label">Select Template <span class="text-danger">*</span></label>
+                    <select class="form-select" id="templateSelect" name="SelectedTemplateId" required>
+                        <option value="">-- Select a template --</option>
+                        @foreach (var template in Model.Templates)
+                        {
+                            <option value="@template.Id">@template.Name (@template.Code)</option>
+                        }
+                    </select>
+                </div>
+
+                <div id="placeholderInputs" class="mb-3" style="display: none;">
+                    <label class="form-label">Placeholders</label>
+                    <div id="placeholderFields"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="autoFillSampleData()">
+                        <i class="bi bi-magic me-1"></i>Auto-fill Sample Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4" id="previewCard" style="display: none;">
+            <div class="card-header">
+                <i class="bi bi-eye me-2"></i>Preview
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>English</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre class="mb-0" id="previewEn" style="white-space: pre-wrap;"></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Filipino</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre class="mb-0" id="previewFil" style="white-space: pre-wrap;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-send me-2"></i>Send Test
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" id="phoneNumber" name="PhoneNumber"
+                           required maxlength="20" placeholder="e.g. 09171234567" />
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-send me-1"></i>Send Test SMS
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        var currentPlaceholders = [];
+
+        var sampleData = {
+            'StudentName': 'Juan Dela Cruz',
+            'Grade': '7',
+            'Section': 'A',
+            'Time': new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            'Date': new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+            'EventTitle': 'National Heroes Day',
+            'Message': 'This is a test emergency message.'
+        };
+
+        document.getElementById('templateSelect').addEventListener('change', function () {
+            var templateId = this.value;
+            if (!templateId) {
+                document.getElementById('placeholderInputs').style.display = 'none';
+                document.getElementById('previewCard').style.display = 'none';
+                return;
+            }
+
+            fetch('?handler=Preview&templateId=' + templateId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) return;
+
+                    currentPlaceholders = data.availablePlaceholders;
+
+                    // Build placeholder input fields
+                    var container = document.getElementById('placeholderFields');
+                    container.innerHTML = '';
+
+                    data.availablePlaceholders.forEach(function (ph) {
+                        var div = document.createElement('div');
+                        div.className = 'input-group mb-2';
+                        div.innerHTML =
+                            '<span class="input-group-text">{' + ph + '}</span>' +
+                            '<input type="text" class="form-control placeholder-input" ' +
+                            'name="Placeholders[' + ph + ']" data-key="' + ph + '" ' +
+                            'placeholder="Enter value for ' + ph + '">';
+                        container.appendChild(div);
+                    });
+
+                    document.getElementById('placeholderInputs').style.display = 'block';
+
+                    // Show preview
+                    document.getElementById('previewEn').textContent = data.previewEn;
+                    document.getElementById('previewFil').textContent = data.previewFil;
+                    document.getElementById('previewCard').style.display = 'block';
+
+                    // Add input listeners for live preview
+                    document.querySelectorAll('.placeholder-input').forEach(function (input) {
+                        input.addEventListener('input', updatePreview);
+                    });
+                });
+        });
+
+        function updatePreview() {
+            var templateId = document.getElementById('templateSelect').value;
+            if (!templateId) return;
+
+            var params = new URLSearchParams();
+            params.append('templateId', templateId);
+            document.querySelectorAll('.placeholder-input').forEach(function (input) {
+                var key = input.dataset.key;
+                var val = input.value;
+                if (val) params.append('placeholders[' + key + ']', val);
+            });
+
+            fetch('?handler=Preview&' + params.toString())
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) return;
+                    document.getElementById('previewEn').textContent = data.previewEn;
+                    document.getElementById('previewFil').textContent = data.previewFil;
+                });
+        }
+
+        function autoFillSampleData() {
+            document.querySelectorAll('.placeholder-input').forEach(function (input) {
+                var key = input.dataset.key;
+                if (sampleData[key]) {
+                    input.value = sampleData[key];
+                }
+            });
+            updatePreview();
+        }
+    </script>
+}

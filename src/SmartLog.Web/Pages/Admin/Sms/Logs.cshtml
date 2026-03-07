@@ -74,6 +74,7 @@
                             <th>Message</th>
                             <th>Status</th>
                             <th>Provider</th>
+                            <th>Delivery</th>
                             <th>Parts</th>
                             <th>Time (ms)</th>
                         </tr>
@@ -132,6 +133,24 @@
                                             <span class="text-muted">-</span>
                                         }
                                     </td>
+                                    <td>
+                                        @if (log.DeliveryStatus == "DELIVERED")
+                                        {
+                                            <span class="badge bg-success">Delivered</span>
+                                        }
+                                        else if (log.DeliveryStatus == "UNDELIVERED")
+                                        {
+                                            <span class="badge bg-warning">Undelivered</span>
+                                        }
+                                        else if (log.DeliveryStatus == "REJECTED")
+                                        {
+                                            <span class="badge bg-danger">Rejected</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
                                     <td>@log.MessageParts</td>
                                     <td>@log.ProcessingTimeMs</td>
                                 </tr>
@@ -140,7 +159,7 @@
                         else
                         {
                             <tr>
-                                <td colspan="9" class="text-center text-muted">No logs found</td>
+                                <td colspan="10" class="text-center text-muted">No logs found</td>
                             </tr>
                         }
                     </tbody>

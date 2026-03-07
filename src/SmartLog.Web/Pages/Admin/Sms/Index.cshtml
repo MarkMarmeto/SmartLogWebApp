@@ -129,6 +129,26 @@
         </div>
     </div>
 
+    <!-- Delivery Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h3 class="text-info">@Model.Stats.TotalDelivered</h3>
+                    <p class="text-muted mb-0">Delivered</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h3 class="text-info">@Model.Stats.DeliverySuccessRate%</h3>
+                    <p class="text-muted mb-0">Delivery Rate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Message Types Chart -->
     <div class="row mb-4">
         <div class="col-md-6">
@@ -271,6 +291,21 @@
                         <div class="col-md-3">
                             <a asp-page="/Admin/Sms/Settings" class="btn btn-outline-primary w-100 mb-2">
                                 <i class="bi bi-gear me-1"></i>Settings
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/ScheduledSend" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-clock me-1"></i>Schedule SMS
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/BulkSend" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-people me-1"></i>Bulk Send
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/TestSend" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-bug me-1"></i>Test SMS
                             </a>
                         </div>
                     </div>

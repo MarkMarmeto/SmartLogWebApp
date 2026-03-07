@@ -115,7 +115,15 @@
                                         @switch (msg.Status)
                                         {
                                             case SmartLog.Web.Data.Entities.SmsStatus.Pending:
-                                                <span class="badge bg-warning">Pending</span>
+                                                @if (msg.ScheduledAt.HasValue && msg.ScheduledAt > DateTime.UtcNow)
+                                                {
+                                                    <span class="badge bg-info">Scheduled</span>
+                                                    <small class="text-muted d-block">@msg.ScheduledAt.Value.ToLocalTime().ToString("MMM dd HH:mm")</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pending</span>
+                                                }
                                                 break;
                                             case SmartLog.Web.Data.Entities.SmsStatus.Processing:
                                                 <span class="badge bg-info">Processing</span>

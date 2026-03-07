@@ -60,7 +60,8 @@ public class SmsWorkerService : BackgroundService
 
         // Get pending messages ordered by priority (Emergency → High → Normal → Low) then FIFO
         var pendingMessages = await context.SmsQueues
-            .Where(q => q.Status == SmsStatus.Pending ||
+            .Where(q => (q.Status == SmsStatus.Pending &&
+                        (q.ScheduledAt == null || q.ScheduledAt <= DateTime.UtcNow)) ||
                        (q.Status == SmsStatus.Failed &&
                         q.RetryCount < q.MaxRetries &&
                         q.NextRetryAt <= DateTime.UtcNow))
@@ -179,6 +180,7 @@ public class SmsWorkerService : BackgroundService
                     Message = message.Message,
                     Status = "SENT",
                     Provider = provider,
+                    ProviderMessageId = result.ProviderMessageId,
                     MessageParts = result.MessageParts,
                     ProcessingTimeMs = result.ProcessingTimeMs,
                     StudentId = message.StudentId,
@@ -210,6 +212,7 @@ public class SmsWorkerService : BackgroundService
                         Message = message.Message,
                         Status = "FAILED",
                         Provider = provider,
+                        ProviderMessageId = result.ProviderMessageId,
                         ErrorMessage = result.ErrorMessage,
                         ProcessingTimeMs = result.ProcessingTimeMs,
                         StudentId = message.StudentId,
