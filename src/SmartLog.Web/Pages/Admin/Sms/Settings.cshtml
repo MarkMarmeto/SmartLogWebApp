@@ -73,9 +73,29 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="gsmPortName" class="form-label">Serial Port</label>
-                        <input type="text" class="form-control" id="gsmPortName"
-                               name="GsmPortName" value="@Model.GsmPortName" />
-                        <div class="form-text">COM port (Windows: COM3, Linux: /dev/ttyUSB0)</div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="gsmPortName"
+                                   name="GsmPortName" value="@Model.GsmPortName" />
+                            <button type="button" class="btn btn-outline-secondary" onclick="detectPorts()">
+                                <i class="bi bi-search me-1"></i>Detect
+                            </button>
+                        </div>
+                        @if (Model.AvailablePorts.Any())
+                        {
+                            <div class="form-text">
+                                Detected ports:
+                                @foreach (var port in Model.AvailablePorts)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary ms-1"
+                                            onclick="document.getElementById('gsmPortName').value='@port'">@port</button>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="form-text text-warning">No serial ports detected. Plug in your GSM modem and click Detect.</div>
+                        }
+                        <div id="portDetectionResult" class="form-text" style="display:none;"></div>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -205,4 +225,63 @@
             </button>
         </div>
     </form>
+
+    <!-- Direct Send Test -->
+    <div class="card mt-4 mb-4">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-send-check me-2"></i>Direct Send Test
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Send a real SMS directly through the gateway to verify it works end-to-end. This bypasses the queue and gives instant feedback.</p>
+            <form method="post" asp-page-handler="SendTestSms"
+                  onsubmit="return confirm('Send a test SMS to this number? This will use real SMS credits.');">
+                <input type="hidden" name="DefaultProvider" value="@Model.DefaultProvider" />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="testPhoneNumber" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="testPhoneNumber"
+                               name="TestPhoneNumber" placeholder="e.g. 09171234567" required maxlength="20" />
+                        <div class="form-text">Enter your own number to receive the test SMS</div>
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-send me-1"></i>Send Test SMS via @Model.DefaultProvider
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        function detectPorts() {
+            var resultDiv = document.getElementById('portDetectionResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<span class="text-muted">Scanning for serial ports...</span>';
+
+            fetch('?handler=DetectPorts')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        resultDiv.innerHTML = '<span class="text-danger">Error: ' + data.error + '</span>';
+                        return;
+                    }
+                    if (data.count === 0) {
+                        resultDiv.innerHTML = '<span class="text-warning">No serial ports found. Make sure your GSM modem is plugged in.</span>';
+                        return;
+                    }
+                    var html = '<span class="text-success">Found ' + data.count + ' port(s): </span>';
+                    data.ports.forEach(function(port) {
+                        html += '<button type="button" class="btn btn-sm btn-outline-success ms-1" ' +
+                                'onclick="document.getElementById(\'gsmPortName\').value=\'' + port + '\'">' + port + '</button> ';
+                    });
+                    resultDiv.innerHTML = html;
+                })
+                .catch(function() {
+                    resultDiv.innerHTML = '<span class="text-danger">Failed to detect ports.</span>';
+                });
+        }
+    </script>
+}

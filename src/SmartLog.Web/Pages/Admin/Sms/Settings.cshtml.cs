@@ -1,3 +1,4 @@
+using System.IO.Ports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -58,8 +59,12 @@ public class SettingsModel : PageModel
     [BindProperty]
     public int PollingInterval { get; set; } = 5;
 
+    [BindProperty]
+    public string? TestPhoneNumber { get; set; }
+
     public GatewayHealthStatus GsmHealth { get; set; } = new();
     public GatewayHealthStatus SemaphoreHealth { get; set; } = new();
+    public string[] AvailablePorts { get; set; } = Array.Empty<string>();
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -89,6 +94,16 @@ public class SettingsModel : PageModel
         if (dbEnabled != null)
         {
             SmsEnabled = dbEnabled == "true" || dbEnabled == "1";
+        }
+
+        // Detect available serial ports
+        try
+        {
+            AvailablePorts = SerialPort.GetPortNames();
+        }
+        catch
+        {
+            AvailablePorts = Array.Empty<string>();
         }
 
         // Get gateway health status
@@ -164,5 +179,65 @@ public class SettingsModel : PageModel
         }
 
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSendTestSmsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(TestPhoneNumber))
+        {
+            ErrorMessage = "Phone number is required for test SMS.";
+            return RedirectToPage();
+        }
+
+        try
+        {
+            var testMessage = $"[SmartLog] Test SMS sent at {DateTime.Now:MMM dd, yyyy h:mm:ss tt}. If you received this, your SMS gateway is working.";
+
+            SmsSendResult result;
+            string provider;
+
+            // Send directly through gateway (bypass queue)
+            if (DefaultProvider == "SEMAPHORE")
+            {
+                result = await _semaphoreGateway.SendAsync(TestPhoneNumber, testMessage);
+                provider = "Semaphore";
+            }
+            else
+            {
+                result = await _gsmGateway.SendAsync(TestPhoneNumber, testMessage);
+                provider = "GSM Modem";
+            }
+
+            if (result.Success)
+            {
+                StatusMessage = $"Test SMS sent successfully via {provider} to {TestPhoneNumber} in {result.ProcessingTimeMs}ms. Message ID: {result.ProviderMessageId ?? "N/A"}";
+                _logger.LogInformation("Test SMS sent via {Provider} to {Phone}", provider, TestPhoneNumber);
+            }
+            else
+            {
+                ErrorMessage = $"Test SMS failed via {provider}: {result.ErrorMessage}";
+                _logger.LogWarning("Test SMS failed via {Provider}: {Error}", provider, result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Test SMS failed: {ex.Message}";
+            _logger.LogError(ex, "Error sending test SMS to {Phone}", TestPhoneNumber);
+        }
+
+        return RedirectToPage();
+    }
+
+    public IActionResult OnGetDetectPorts()
+    {
+        try
+        {
+            var ports = SerialPort.GetPortNames();
+            return new JsonResult(new { ports, count = ports.Length });
+        }
+        catch (Exception ex)
+        {
+            return new JsonResult(new { ports = Array.Empty<string>(), count = 0, error = ex.Message });
+        }
     }
 }
