@@ -13,6 +13,9 @@
         <div class="d-flex gap-2 align-items-center">
             <span class="badge bg-info" id="autoRefreshStatus">Auto-refresh: ON (every 30s)</span>
             <span class="text-muted small" id="lastUpdated">Last updated: @DateTime.Now.ToString("h:mm:ss tt")</span>
+            <a asp-page="/Admin/ScanLogs" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-qr-code-scan"></i> Scan Logs
+            </a>
             <button class="btn btn-outline-primary btn-sm" onclick="manualRefresh()">
                 <i class="bi bi-arrow-clockwise"></i> Refresh Now
             </button>
