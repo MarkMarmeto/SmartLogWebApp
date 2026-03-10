@@ -25,6 +25,9 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console());
 
+    // Enable running as a Windows Service (no-op when running as console app)
+    builder.Host.UseWindowsService();
+
     // Add DbContext with SQL Server
     // Prefer environment variable, then fall back to configuration
     var connectionString = Environment.GetEnvironmentVariable("SMARTLOG_DB_CONNECTION")
