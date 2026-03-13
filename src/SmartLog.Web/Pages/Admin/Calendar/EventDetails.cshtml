@@ -1,0 +1,167 @@
+@page "{id:int}"
+@model SmartLog.Web.Pages.Admin.Calendar.EventDetailsModel
+@{
+    ViewData["Title"] = "Event Details";
+
+    var badgeClass = Model.CalendarEvent.EventType switch
+    {
+        SmartLog.Web.Data.Entities.EventType.Holiday => "bg-danger",
+        SmartLog.Web.Data.Entities.EventType.Suspension => "bg-warning text-dark",
+        _ => "bg-info"
+    };
+
+    var dateDisplay = Model.CalendarEvent.StartDate.Date == Model.CalendarEvent.EndDate.Date
+        ? Model.CalendarEvent.StartDate.ToString("MMMM dd, yyyy")
+        : $"{Model.CalendarEvent.StartDate:MMMM dd, yyyy} — {Model.CalendarEvent.EndDate:MMMM dd, yyyy}";
+
+    var duration = (Model.CalendarEvent.EndDate.Date - Model.CalendarEvent.StartDate.Date).Days + 1;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Event Details</h2>
+                    <span class="badge @badgeClass fs-6">@Model.CalendarEvent.EventType</span>
+                </div>
+                <div class="card-body">
+                    <!-- Title -->
+                    <h3 class="mb-3">@Model.CalendarEvent.Title</h3>
+
+                    <!-- Date & Category -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted fw-bold">Date</label>
+                                <div>
+                                    <i class="bi bi-calendar3 me-1"></i>@dateDisplay
+                                    @if (duration > 1)
+                                    {
+                                        <span class="text-muted ms-1">(@duration days)</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted fw-bold">Category</label>
+                                <div>@Model.CalendarEvent.Category</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    @if (!string.IsNullOrWhiteSpace(Model.CalendarEvent.Description))
+                    {
+                        <div class="mb-4">
+                            <label class="form-label text-muted fw-bold">Description</label>
+                            <p>@Model.CalendarEvent.Description</p>
+                        </div>
+                    }
+
+                    <!-- Location -->
+                    @if (!string.IsNullOrWhiteSpace(Model.CalendarEvent.Location))
+                    {
+                        <div class="mb-4">
+                            <label class="form-label text-muted fw-bold">Location</label>
+                            <div><i class="bi bi-geo-alt me-1"></i>@Model.CalendarEvent.Location</div>
+                        </div>
+                    }
+
+                    <!-- Impact Settings -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <strong>Impact Settings</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        @if (Model.CalendarEvent.IsAllDay)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle text-muted me-1"></i>
+                                        }
+                                        All Day Event
+                                    </div>
+                                    <div class="mb-2">
+                                        @if (Model.CalendarEvent.AffectsAttendance)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle text-muted me-1"></i>
+                                        }
+                                        Affects Attendance
+                                        @if (Model.CalendarEvent.AffectsAttendance)
+                                        {
+                                            <div class="form-text">Scanning is prevented on this date</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        @if (Model.CalendarEvent.AffectsClasses)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle text-muted me-1"></i>
+                                        }
+                                        Affects Classes
+                                    </div>
+                                    <div class="mb-2">
+                                        @if (Model.CalendarEvent.IsActive)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i><span>Active</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle text-danger me-1"></i><span>Inactive</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Academic Year -->
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold">Academic Year</label>
+                        <div>@Model.CalendarEvent.AcademicYear?.Name</div>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="text-muted small">
+                        <div>Created: @Model.CalendarEvent.CreatedAt.ToString("MMMM dd, yyyy h:mm tt")</div>
+                        @if (Model.CalendarEvent.UpdatedAt != Model.CalendarEvent.CreatedAt)
+                        {
+                            <div>Last updated: @Model.CalendarEvent.UpdatedAt.ToString("MMMM dd, yyyy h:mm tt")</div>
+                        }
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <a asp-page="./EditEvent" asp-route-id="@Model.CalendarEvent.Id" class="btn btn-primary">
+                            <i class="bi bi-pencil me-1"></i>Edit Event
+                        </a>
+                        <a asp-page="./Index" asp-route-academicYearId="@Model.CalendarEvent.AcademicYearId"
+                           asp-route-year="@Model.CalendarEvent.StartDate.Year"
+                           asp-route-month="@Model.CalendarEvent.StartDate.Month"
+                           class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Calendar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
