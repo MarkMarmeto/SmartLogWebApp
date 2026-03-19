@@ -16,6 +16,12 @@ public class GsmModemGateway : ISmsGateway, IDisposable
     private readonly SemaphoreSlim _portLock = new(1, 1);
     private DateTime _lastSendTime = DateTime.MinValue;
 
+    // Circuit breaker: skip modem attempts after consecutive failures
+    private int _consecutiveFailures;
+    private DateTime _circuitOpenUntil = DateTime.MinValue;
+    private const int CircuitBreakerThreshold = 3;
+    private static readonly TimeSpan CircuitBreakerCooldown = TimeSpan.FromMinutes(5);
+
     public string ProviderName => "GSM_MODEM";
 
     public GsmModemGateway(
@@ -28,27 +34,59 @@ public class GsmModemGateway : ISmsGateway, IDisposable
 
     public async Task<bool> IsAvailableAsync()
     {
+        // Circuit breaker: skip if recently failed too many times
+        if (_consecutiveFailures >= CircuitBreakerThreshold && DateTime.UtcNow < _circuitOpenUntil)
+        {
+            _logger.LogDebug("GSM modem circuit breaker open until {Until}, skipping availability check",
+                _circuitOpenUntil);
+            return false;
+        }
+
         await _portLock.WaitAsync();
         try
         {
             EnsurePortOpen();
             if (_serialPort == null || !_serialPort.IsOpen)
             {
+                RecordFailure();
                 return false;
             }
 
             // Test with AT command
             var response = await SendAtCommandAsync("AT", 1000);
-            return response.Contains("OK");
+            var available = response.Contains("OK");
+            if (available)
+            {
+                _consecutiveFailures = 0; // Reset on success
+            }
+            else
+            {
+                RecordFailure();
+            }
+            return available;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "GSM modem not available");
+            RecordFailure();
+            _logger.LogWarning(ex, "GSM modem not available (failure {Count}/{Threshold})",
+                _consecutiveFailures, CircuitBreakerThreshold);
             return false;
         }
         finally
         {
             _portLock.Release();
+        }
+    }
+
+    private void RecordFailure()
+    {
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= CircuitBreakerThreshold)
+        {
+            _circuitOpenUntil = DateTime.UtcNow.Add(CircuitBreakerCooldown);
+            _logger.LogWarning("GSM modem circuit breaker opened after {Count} consecutive failures. " +
+                "Will retry after {Until}. All SMS routed to fallback gateway.",
+                _consecutiveFailures, _circuitOpenUntil);
         }
     }
 
@@ -114,6 +152,7 @@ public class GsmModemGateway : ISmsGateway, IDisposable
                 var messageId = ExtractMessageId(response);
                 var messageParts = CalculateMessageParts(message);
 
+                _consecutiveFailures = 0; // Reset circuit breaker on successful send
                 _logger.LogInformation("SMS sent via GSM modem to {Phone} in {Ms}ms",
                     normalizedPhone, stopwatch.ElapsedMilliseconds);
 
