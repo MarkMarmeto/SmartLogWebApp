@@ -20,6 +20,24 @@
         </div>
     }
 
+    @if (!string.IsNullOrEmpty(Model.RegeneratedApiKey))
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <h5><i class="bi bi-key me-2"></i>New API Key Generated</h5>
+            <p class="mb-2">Copy the new API key below. <strong>It will not be shown again.</strong>
+                Update the scanner device configuration with this new key.</p>
+            <div class="input-group mb-2">
+                <input type="text" class="form-control font-monospace" id="regeneratedApiKey"
+                       value="@Model.RegeneratedApiKey" readonly />
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="navigator.clipboard.writeText(document.getElementById('regeneratedApiKey').value).then(() => { this.innerHTML = '<i class=\'bi bi-check\'></i> Copied'; setTimeout(() => this.innerHTML = '<i class=\'bi bi-clipboard\'></i> Copy', 2000); })">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
     <div class="card">
         <div class="card-header">
             <i class="bi bi-list me-2"></i>Registered Devices
@@ -88,6 +106,12 @@
                                         <div class="btn-group" role="group">
                                             @if (device.IsActive)
                                             {
+                                                <form method="post" asp-page-handler="RegenerateKey" asp-route-id="@device.Id" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                            onclick="return confirm('Regenerate API key for this device? The old key will stop working immediately. You will need to update the scanner with the new key.')">
+                                                        <i class="bi bi-key"></i> Regenerate Key
+                                                    </button>
+                                                </form>
                                                 <form method="post" asp-page-handler="Revoke" asp-route-id="@device.Id" class="d-inline">
                                                     <button type="submit" class="btn btn-sm btn-warning"
                                                             onclick="return confirm('Are you sure you want to revoke this device? It will no longer be able to submit scans.')">
@@ -163,7 +187,8 @@
                     <li>Revoked devices can be reactivated at any time</li>
                     <li>Device names must be unique across the system</li>
                     <li>"Last Seen" is updated each time a device submits a scan</li>
-                    <li>API keys are never displayed after initial registration</li>
+                    <li>Use "Regenerate Key" to rotate a compromised API key without deleting the device</li>
+                    <li>After regenerating, update the scanner device with the new key</li>
                 </ul>
             </div>
         </div>

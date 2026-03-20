@@ -18,15 +18,18 @@ public class DevicesModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IDeviceService _deviceService;
     private readonly IAuditService _auditService;
 
     public DevicesModel(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
+        IDeviceService deviceService,
         IAuditService auditService)
     {
         _context = context;
         _userManager = userManager;
+        _deviceService = deviceService;
         _auditService = auditService;
     }
 
@@ -41,6 +44,16 @@ public class DevicesModel : PageModel
 
     [TempData]
     public string? StatusMessage { get; set; }
+
+    /// <summary>
+    /// Newly regenerated API key (displayed once after regeneration).
+    /// </summary>
+    public string? RegeneratedApiKey { get; set; }
+
+    /// <summary>
+    /// Device ID for which the API key was regenerated.
+    /// </summary>
+    public Guid? RegeneratedDeviceId { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -122,5 +135,42 @@ public class DevicesModel : PageModel
 
         StatusMessage = $"Device '{device.Name}' has been reactivated.";
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRegenerateKeyAsync(Guid id)
+    {
+        var device = await _context.Devices
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (device == null)
+        {
+            return NotFound();
+        }
+
+        if (!device.IsActive)
+        {
+            StatusMessage = "Cannot regenerate API key for a revoked device. Reactivate it first.";
+            return RedirectToPage();
+        }
+
+        // Generate new API key and update hash
+        var newApiKey = _deviceService.GenerateApiKey();
+        device.ApiKeyHash = _deviceService.HashApiKey(newApiKey);
+        await _context.SaveChangesAsync();
+
+        // Audit log
+        var currentUser = await _userManager.GetUserAsync(User);
+        await _auditService.LogAsync(
+            action: "DeviceApiKeyRegenerated",
+            userId: null,
+            performedByUserId: currentUser?.Id,
+            details: $"Regenerated API key for device: {device.Name} (ID: {device.Id})",
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        // Show the new key (must reload page data since we're not redirecting)
+        RegeneratedApiKey = newApiKey;
+        RegeneratedDeviceId = device.Id;
+        await OnGetAsync();
+        return Page();
     }
 }
