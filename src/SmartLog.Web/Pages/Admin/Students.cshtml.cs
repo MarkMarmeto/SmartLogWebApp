@@ -61,7 +61,8 @@ public class StudentsModel : PageModel
             query = query.Where(s =>
                 s.StudentId.ToLower().Contains(searchLower) ||
                 s.FirstName.ToLower().Contains(searchLower) ||
-                s.LastName.ToLower().Contains(searchLower));
+                s.LastName.ToLower().Contains(searchLower) ||
+                (s.LRN != null && s.LRN.Contains(searchLower)));
         }
 
         // Filter by grade

@@ -130,7 +130,8 @@ public class AttendanceService : IAttendanceService
             studentsQuery = studentsQuery.Where(s =>
                 s.FirstName.ToLower().Contains(search) ||
                 s.LastName.ToLower().Contains(search) ||
-                s.StudentId.ToLower().Contains(search));
+                s.StudentId.ToLower().Contains(search) ||
+                (s.LRN != null && s.LRN.Contains(search)));
         }
 
         // Get students with their scans
@@ -143,6 +144,7 @@ public class AttendanceService : IAttendanceService
             {
                 s.Id,
                 s.StudentId,
+                s.LRN,
                 s.FirstName,
                 s.LastName,
                 s.GradeLevel,
@@ -200,6 +202,7 @@ public class AttendanceService : IAttendanceService
             {
                 StudentId = student.Id,
                 StudentIdNumber = student.StudentId,
+                LRN = student.LRN,
                 FullName = $"{student.FirstName} {student.LastName}",
                 GradeLevel = student.GradeLevel,
                 Section = student.Section,
@@ -247,7 +250,8 @@ public class AttendanceService : IAttendanceService
             studentsQuery = studentsQuery.Where(s =>
                 s.FirstName.ToLower().Contains(search) ||
                 s.LastName.ToLower().Contains(search) ||
-                s.StudentId.ToLower().Contains(search));
+                s.StudentId.ToLower().Contains(search) ||
+                (s.LRN != null && s.LRN.Contains(search)));
         }
 
         return await studentsQuery.CountAsync();

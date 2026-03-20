@@ -114,7 +114,7 @@
                 <div class="col-md-3">
                     <label for="searchTerm" class="form-label">Search</label>
                     <input type="text" class="form-control" id="searchTerm" name="searchTerm"
-                           value="@Model.SearchTerm" placeholder="Student name or ID..." />
+                           value="@Model.SearchTerm" placeholder="Student name, ID, or LRN..." />
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
@@ -140,6 +140,7 @@
                             <thead>
                                 <tr>
                                     <th>Student ID</th>
+                                    <th>LRN</th>
                                     <th>Name</th>
                                     <th>Grade / Section</th>
                                     <th>Status</th>
@@ -152,6 +153,7 @@
                                 {
                                     <tr>
                                         <td><code>@record.StudentIdNumber</code></td>
+                                        <td><code>@(record.LRN ?? "-")</code></td>
                                         <td>@record.FullName</td>
                                         <td>Grade @record.GradeLevel - @record.Section</td>
                                         <td>

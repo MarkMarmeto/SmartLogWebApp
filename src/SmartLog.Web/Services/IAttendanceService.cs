@@ -53,6 +53,7 @@ public class StudentAttendanceRecord
 {
     public int StudentId { get; set; }
     public string StudentIdNumber { get; set; } = string.Empty;
+    public string? LRN { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string GradeLevel { get; set; } = string.Empty;
     public string Section { get; set; } = string.Empty;

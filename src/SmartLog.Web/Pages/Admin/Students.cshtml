@@ -35,7 +35,7 @@
                 <div class="col-md-4">
                     <label for="searchTerm" class="form-label">Search</label>
                     <input type="text" class="form-control" id="searchTerm" name="searchTerm"
-                           value="@Model.SearchTerm" placeholder="Name or Student ID...">
+                           value="@Model.SearchTerm" placeholder="Name, Student ID, or LRN...">
                 </div>
                 <div class="col-md-2">
                     <label for="gradeFilter" class="form-label">Grade</label>
@@ -82,6 +82,7 @@
                         <thead>
                             <tr>
                                 <th>Student ID</th>
+                                <th>LRN</th>
                                 <th>Name</th>
                                 <th>Grade/Section</th>
                                 <th>Parent/Guardian</th>
@@ -95,6 +96,7 @@
                             {
                                 <tr>
                                     <td><code>@student.StudentId</code></td>
+                                    <td><code>@(student.LRN ?? "-")</code></td>
                                     <td>@student.FullName</td>
                                     <td>Grade @student.GradeLevel - @student.Section</td>
                                     <td>@student.ParentGuardianName</td>
