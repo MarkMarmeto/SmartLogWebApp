@@ -27,17 +27,22 @@ public class QrCodeService : IQrCodeService
 
     private async Task<string> GetSecretKeyAsync()
     {
-        // Priority: environment variable > app settings DB > appsettings.json
+        // Priority: app settings DB (admin-managed) > environment variable > appsettings.json
+        // DB takes highest priority so admin changes via Settings UI always take effect.
+        // Env var serves as initial/fallback configuration before first DB update.
+        var key = await _appSettingsService.GetAsync("QRCode.HmacSecretKey");
+        if (!string.IsNullOrEmpty(key) && !key.StartsWith("${"))
+            return key;
+
         var envKey = Environment.GetEnvironmentVariable("SMARTLOG_HMAC_SECRET_KEY");
         if (!string.IsNullOrEmpty(envKey))
             return envKey;
 
-        var key = await _appSettingsService.GetAsync("QRCode.HmacSecretKey");
-        if (!string.IsNullOrEmpty(key))
-            return key;
+        var configKey = _configuration["QrCode:HmacSecretKey"];
+        if (!string.IsNullOrEmpty(configKey) && !configKey.StartsWith("${"))
+            return configKey;
 
-        return _configuration["QrCode:HmacSecretKey"]
-            ?? throw new InvalidOperationException("QR Code HMAC secret key not configured. Set SMARTLOG_HMAC_SECRET_KEY environment variable.");
+        throw new InvalidOperationException("QR Code HMAC secret key not configured. Set SMARTLOG_HMAC_SECRET_KEY environment variable or update it in Admin Settings.");
     }
 
     /// <summary>

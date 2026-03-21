@@ -179,7 +179,7 @@ public class AppSettingsService : IAppSettingsService
             ("Security.LockoutDurationMinutes", "15", "Security", false, "Account lockout duration in minutes"),
             ("Security.MaxFailedAttempts", "5", "Security", false, "Max failed login attempts before lockout"),
             ("Security.SessionTimeoutHours", "10", "Security", false, "Session expiry time in hours"),
-            ("QRCode.HmacSecretKey", _configuration["QrCode:HmacSecretKey"] ?? "", "QRCode", true, "HMAC key for QR code signing"),
+            ("QRCode.HmacSecretKey", GetResolvedHmacKey(), "QRCode", true, "HMAC key for QR code signing"),
             ("QRCode.DuplicateScanWindowMinutes", "5", "QRCode", false, "Duplicate scan detection window in minutes"),
             ("FileUpload.MaxFileSizeMB", "5", "FileUpload", false, "Maximum upload file size in MB"),
             ("FileUpload.AllowedExtensions", ".jpg,.jpeg,.png,.gif", "FileUpload", false, "Allowed file upload extensions"),
@@ -191,8 +191,8 @@ public class AppSettingsService : IAppSettingsService
 
         foreach (var (key, value, category, isSensitive, description) in defaults)
         {
-            var exists = await _context.AppSettings.AnyAsync(s => s.Key == key);
-            if (!exists)
+            var existing = await _context.AppSettings.FirstOrDefaultAsync(s => s.Key == key);
+            if (existing == null)
             {
                 _context.AppSettings.Add(new AppSettings
                 {
@@ -205,9 +205,31 @@ public class AppSettingsService : IAppSettingsService
                     UpdatedBy = "System"
                 });
             }
+            else if (existing.Value != null && existing.Value.StartsWith("${"))
+            {
+                // Fix previously seeded unresolved placeholder values
+                existing.Value = value;
+                existing.UpdatedAt = DateTime.UtcNow;
+                existing.UpdatedBy = "System";
+                _logger.LogWarning("Fixed unresolved placeholder for app setting: {Key}", key);
+            }
         }
 
         await _context.SaveChangesAsync();
         _logger.LogInformation("App settings defaults seeded successfully");
+    }
+
+    private string GetResolvedHmacKey()
+    {
+        // Priority: environment variable > appsettings.json (skip unresolved placeholders)
+        var envKey = Environment.GetEnvironmentVariable("SMARTLOG_HMAC_SECRET_KEY");
+        if (!string.IsNullOrEmpty(envKey))
+            return envKey;
+
+        var configKey = _configuration["QrCode:HmacSecretKey"];
+        if (!string.IsNullOrEmpty(configKey) && !configKey.StartsWith("${"))
+            return configKey;
+
+        return "";
     }
 }
