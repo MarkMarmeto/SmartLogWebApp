@@ -531,6 +531,10 @@
                 @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                 {
                     <div class="menu-section">System</div>
+                    <a asp-page="/Admin/ScanLogs" class="menu-item">
+                        <i class="bi bi-qr-code-scan"></i>
+                        <span>Scan Logs</span>
+                    </a>
                     @if (User.IsInRole("SuperAdmin"))
                     {
                         <a asp-page="/Admin/Devices" class="menu-item">
@@ -545,6 +549,10 @@
                     <a asp-page="/Admin/Settings" class="menu-item">
                         <i class="bi bi-gear"></i>
                         <span>Settings</span>
+                    </a>
+                    <a asp-page="/Admin/About" class="menu-item">
+                        <i class="bi bi-info-circle"></i>
+                        <span>About</span>
                     </a>
                 }
             </nav>
