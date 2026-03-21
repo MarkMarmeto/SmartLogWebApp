@@ -162,29 +162,33 @@ public class ScansApiController : ControllerBase
             });
         }
 
-        // Calendar Integration: Check if it's a school day
-        var scanDate = request.ScannedAt.Date;
-        var isSchoolDay = await _calendarService.IsSchoolDayAsync(scanDate, student.GradeLevel);
-        if (!isSchoolDay)
+        // Calendar Integration: Check if it's a school day (can be disabled via settings)
+        var enforceSchoolDay = await _appSettingsService.GetAsync("Attendance.EnforceSchoolDayValidation");
+        if (enforceSchoolDay != "false")
         {
-            var events = await _calendarService.GetEventsForDateAsync(scanDate);
-            var eventReason = events.FirstOrDefault(e => e.AffectsAttendance);
-            var reasonMessage = eventReason != null
-                ? $"School is closed: {eventReason.Title}"
-                : "Not a school day";
-
-            _logger.LogWarning("Scan rejected - not a school day: {StudentId}, Date: {ScanDate}, Reason: {Reason}",
-                studentIdStr, scanDate, reasonMessage);
-
-            await LogRejectedScanAsync(device.Id, student.Id, request, "REJECTED_NOT_SCHOOL_DAY");
-
-            return BadRequest(new ErrorResponse
+            var scanDate = request.ScannedAt.Date;
+            var isSchoolDay = await _calendarService.IsSchoolDayAsync(scanDate, student.GradeLevel);
+            if (!isSchoolDay)
             {
-                Error = "NotSchoolDay",
-                Message = reasonMessage,
-                StudentId = studentIdStr,
-                Status = "REJECTED"
-            });
+                var events = await _calendarService.GetEventsForDateAsync(scanDate);
+                var eventReason = events.FirstOrDefault(e => e.AffectsAttendance);
+                var reasonMessage = eventReason != null
+                    ? $"School is closed: {eventReason.Title}"
+                    : "Not a school day";
+
+                _logger.LogWarning("Scan rejected - not a school day: {StudentId}, Date: {ScanDate}, Reason: {Reason}",
+                    studentIdStr, scanDate, reasonMessage);
+
+                await LogRejectedScanAsync(device.Id, student.Id, request, "REJECTED_NOT_SCHOOL_DAY");
+
+                return BadRequest(new ErrorResponse
+                {
+                    Error = "NotSchoolDay",
+                    Message = reasonMessage,
+                    StudentId = studentIdStr,
+                    Status = "REJECTED"
+                });
+            }
         }
 
         // US0032: Check for duplicate scan (within 5 minutes, same device, same scan type)

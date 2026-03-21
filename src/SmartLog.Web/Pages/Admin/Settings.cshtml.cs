@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
 
@@ -11,14 +13,23 @@ namespace SmartLog.Web.Pages.Admin;
 public class SettingsModel : PageModel
 {
     private readonly IAppSettingsService _appSettingsService;
+    private readonly ApplicationDbContext _context;
+    private readonly IAuditService _auditService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ILogger<SettingsModel> _logger;
 
     public SettingsModel(
         IAppSettingsService appSettingsService,
-        UserManager<ApplicationUser> userManager)
+        ApplicationDbContext context,
+        IAuditService auditService,
+        UserManager<ApplicationUser> userManager,
+        ILogger<SettingsModel> logger)
     {
         _appSettingsService = appSettingsService;
+        _context = context;
+        _auditService = auditService;
         _userManager = userManager;
+        _logger = logger;
     }
 
     public List<AppSettings> AllSettings { get; set; } = new();
@@ -47,6 +58,8 @@ public class SettingsModel : PageModel
         var existing = await _appSettingsService.GetAllAsync();
         var existingMap = existing.ToDictionary(s => s.Key, s => s);
 
+        var hmacKeyChanged = false;
+
         foreach (var (key, value) in settings)
         {
             if (!key.StartsWith(category + ".") && !existingMap.ContainsKey(key))
@@ -59,10 +72,25 @@ public class SettingsModel : PageModel
             if (isSensitive && value == "********")
                 continue;
 
+            // Detect HMAC key change
+            if (key == "QRCode.HmacSecretKey" && value != ex?.Value)
+                hmacKeyChanged = true;
+
             await _appSettingsService.SetAsync(key, value, category, updatedBy, isSensitive, description);
         }
 
-        StatusMessage = $"{category} settings saved successfully.";
+        // When HMAC key changes, invalidate all existing QR codes
+        if (hmacKeyChanged)
+        {
+            var invalidatedCount = await InvalidateAllQrCodesAsync(updatedBy);
+            StatusMessage = $"{category} settings saved. {invalidatedCount} existing QR code(s) invalidated — students will need new QR codes.";
+            _logger.LogWarning("HMAC secret key changed by {User}. {Count} QR codes invalidated.", updatedBy, invalidatedCount);
+        }
+        else
+        {
+            StatusMessage = $"{category} settings saved successfully.";
+        }
+
         return RedirectToPage(new { tab = category });
     }
 
@@ -89,6 +117,27 @@ public class SettingsModel : PageModel
         return RedirectToPage(new { tab = category });
     }
 
+    private async Task<int> InvalidateAllQrCodesAsync(string updatedBy)
+    {
+        var validQrCodes = await _context.QrCodes
+            .Where(q => q.IsValid)
+            .ToListAsync();
+
+        foreach (var qr in validQrCodes)
+        {
+            qr.IsValid = false;
+        }
+
+        await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            action: "AllQrCodesInvalidated",
+            performedByUserId: null,
+            details: $"All {validQrCodes.Count} QR codes invalidated due to HMAC secret key change by {updatedBy}");
+
+        return validQrCodes.Count;
+    }
+
     private static string? GetDefaultValue(string key) => key switch
     {
         "Security.PasswordMinLength" => "8",
@@ -103,6 +152,7 @@ public class SettingsModel : PageModel
         "FileUpload.MaxFileSizeMB" => "5",
         "FileUpload.AllowedExtensions" => ".jpg,.jpeg,.png,.gif",
         "Attendance.DefaultPageSize" => "50",
+        "Attendance.EnforceSchoolDayValidation" => "true",
         "System.ApplicationVersion" => "1.0.0",
         "System.SchoolName" => "SmartLog School",
         "System.SchoolTimezone" => "Asia/Manila",

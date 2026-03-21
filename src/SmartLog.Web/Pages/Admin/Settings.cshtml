@@ -138,13 +138,11 @@
                                     }
                                     <span>@setting.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</span>
                                 </small>
-                                <form method="post" asp-page-handler="Reset" class="d-inline">
-                                    <input type="hidden" name="key" value="@setting.Key" />
-                                    <button type="submit" class="btn btn-link btn-sm p-0 text-secondary"
-                                            onclick="return confirm('Reset this setting to its default value?')">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-secondary reset-btn"
+                                        data-key="@setting.Key"
+                                        onclick="resetSetting(this)">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                </button>
                             </div>
                         </div>
                         <hr />
@@ -159,6 +157,11 @@
         </form>
     }
 </div>
+
+<!-- Hidden form for Reset (outside the Save form to avoid nesting) -->
+<form id="resetForm" method="post" asp-page-handler="Reset" style="display:none;">
+    <input type="hidden" id="resetKey" name="key" value="" />
+</form>
 
 @section Scripts {
     <script>
@@ -176,5 +179,13 @@
                 }
             });
         });
+
+        // Reset setting via hidden form
+        function resetSetting(btn) {
+            if (confirm('Reset this setting to its default value?')) {
+                document.getElementById('resetKey').value = btn.dataset.key;
+                document.getElementById('resetForm').submit();
+            }
+        }
     </script>
 }

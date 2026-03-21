@@ -184,6 +184,7 @@ public class AppSettingsService : IAppSettingsService
             ("FileUpload.MaxFileSizeMB", "5", "FileUpload", false, "Maximum upload file size in MB"),
             ("FileUpload.AllowedExtensions", ".jpg,.jpeg,.png,.gif", "FileUpload", false, "Allowed file upload extensions"),
             ("Attendance.DefaultPageSize", "50", "Attendance", false, "Default records per page"),
+            ("Attendance.EnforceSchoolDayValidation", "true", "Attendance", false, "Reject scans on non-school days"),
             ("System.ApplicationVersion", "1.0.0", "System", false, "Application version"),
             ("System.SchoolName", "SmartLog School", "System", false, "School name for display"),
             ("System.SchoolTimezone", "Asia/Manila", "System", false, "Default timezone"),
