@@ -1,0 +1,62 @@
+name: CD — Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run tests
+        run: dotnet test --no-restore -c Release
+
+      - name: Publish (win-x64)
+        run: dotnet publish src/SmartLog.Web -c Release -r win-x64 --self-contained -o ./publish/win-x64
+
+      - name: Copy deploy scripts
+        run: |
+          Copy-Item deploy/* ./publish/win-x64/ -Recurse -ErrorAction SilentlyContinue
+          Copy-Item setup-guide.html ./publish/win-x64/ -ErrorAction SilentlyContinue
+
+      - name: Create release zip
+        run: Compress-Archive -Path ./publish/win-x64/* -DestinationPath ./SmartLogWebApp-${{ github.ref_name }}-win-x64.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SmartLog Web App ${{ github.ref_name }}
+          body: |
+            ## SmartLog Web App ${{ github.ref_name }}
+
+            ### Installation
+            1. Download `SmartLogWebApp-${{ github.ref_name }}-win-x64.zip`
+            2. Extract to `C:\SmartLog` (or your preferred directory)
+            3. Run `Setup-SmartLog.ps1` as Administrator for first-time setup
+            4. Or restart the Windows Service for updates: `sc.exe stop SmartLogWeb && sc.exe start SmartLogWeb`
+
+            ### What's included
+            - Self-contained Windows x64 build (no .NET installation required)
+            - Setup wizard script (`Setup-SmartLog.ps1`)
+            - Setup guide (`setup-guide.html`)
+          files: |
+            ./SmartLogWebApp-${{ github.ref_name }}-win-x64.zip
+          draft: false
+          prerelease: false
