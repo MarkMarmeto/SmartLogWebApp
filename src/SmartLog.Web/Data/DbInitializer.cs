@@ -306,23 +306,31 @@ public static class DbInitializer
             return;
         }
 
-        // Register a test device first
-        var testDevice = new Device
+        // Register a test device first (skip if already exists)
+        var testDevice = await context.Devices.FirstOrDefaultAsync(d => d.Name == "Main Gate Scanner (Test)");
+        if (testDevice == null)
         {
-            Id = Guid.NewGuid(),
-            Name = "Main Gate Scanner (Test)",
-            Location = "Main Gate",
-            Description = "Test scanner device for seeding data",
-            ApiKeyHash = "test-hash", // Not used for test device
-            IsActive = true,
-            RegisteredAt = DateTime.UtcNow,
-            RegisteredBy = context.Users.First(u => u.UserName == "super.admin").Id
-        };
+            testDevice = new Device
+            {
+                Id = Guid.NewGuid(),
+                Name = "Main Gate Scanner (Test)",
+                Location = "Main Gate",
+                Description = "Test scanner device for seeding data",
+                ApiKeyHash = "test-hash", // Not used for test device
+                IsActive = true,
+                RegisteredAt = DateTime.UtcNow,
+                RegisteredBy = context.Users.First(u => u.UserName == "super.admin").Id
+            };
 
-        context.Devices.Add(testDevice);
-        await context.SaveChangesAsync();
+            context.Devices.Add(testDevice);
+            await context.SaveChangesAsync();
 
-        logger.LogInformation("Seeded test device: {DeviceName}", testDevice.Name);
+            logger.LogInformation("Seeded test device: {DeviceName}", testDevice.Name);
+        }
+        else
+        {
+            logger.LogInformation("Test device already exists, skipping");
+        }
 
         // Now seed students (this will be done in a future user story, but for testing attendance we need some data)
         logger.LogInformation("Note: Student seeding will be implemented when US0015 is completed");
