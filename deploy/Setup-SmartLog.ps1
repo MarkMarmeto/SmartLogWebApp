@@ -36,7 +36,6 @@ $Script:InstallDir      = "C:\SmartLog"
 $Script:LogDir          = "C:\SmartLog\logs"
 $Script:BackupDir       = "C:\SmartLogBackups"
 $Script:HttpPort        = 8080
-$Script:HttpsPort       = 8081
 $Script:DbName          = "SmartLogDb"
 $Script:DbUser          = "SmartLogUser"
 $Script:SqlInstance     = "localhost\SQLEXPRESS"
@@ -485,7 +484,6 @@ else {
 Write-StepHeader -Step 5 -Total $totalSteps -Title "Network Configuration"
 
 $Script:HttpPort = [int](Read-Input "HTTP port" "$($Script:HttpPort)")
-$Script:HttpsPort = [int](Read-Input "HTTPS port" "$($Script:HttpsPort)")
 
 # Detect current IP
 $currentIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch 'Loopback' -and $_.PrefixOrigin -ne 'WellKnown' } | Select-Object -First 1).IPAddress
@@ -508,7 +506,7 @@ $envVars = @{
     "SMARTLOG_HMAC_SECRET_KEY" = $hmacSecret
     "SMARTLOG_SEED_PASSWORD"   = $adminPassword
     "ASPNETCORE_ENVIRONMENT"   = "Production"
-    "ASPNETCORE_URLS"          = "https://0.0.0.0:$($Script:HttpsPort);http://0.0.0.0:$($Script:HttpPort)"
+    "ASPNETCORE_URLS"          = "http://0.0.0.0:$($Script:HttpPort)"
 }
 
 foreach ($key in $envVars.Keys) {
@@ -583,8 +581,6 @@ Remove-NetFirewallRule -DisplayName "SmartLog HTTPS" -ErrorAction SilentlyContin
 New-NetFirewallRule -DisplayName "SmartLog HTTP" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpPort -Action Allow -Profile Domain,Private | Out-Null
 Write-Success "Firewall rule created: HTTP port $($Script:HttpPort) (Domain, Private networks)"
 
-New-NetFirewallRule -DisplayName "SmartLog HTTPS" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpsPort -Action Allow -Profile Domain,Private | Out-Null
-Write-Success "Firewall rule created: HTTPS port $($Script:HttpsPort) (Domain, Private networks)"
 
 # ============================================================
 # Step 9: Install Windows Service
