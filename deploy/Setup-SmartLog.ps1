@@ -104,7 +104,9 @@ function Read-YesNo {
 function Generate-SecureKey {
     param([int]$Bytes = 32)
     $keyBytes = New-Object byte[] $Bytes
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($keyBytes)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($keyBytes)
+    $rng.Dispose()
     return [Convert]::ToBase64String($keyBytes)
 }
 

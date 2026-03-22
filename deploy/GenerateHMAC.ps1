@@ -11,7 +11,9 @@
 #>
 
 $keyBytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($keyBytes)
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($keyBytes)
+$rng.Dispose()
 $hmacKey = [Convert]::ToBase64String($keyBytes)
 
 Write-Host ""
