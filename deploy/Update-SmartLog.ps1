@@ -133,13 +133,19 @@ Write-StepHeader -Step 2 -Total $totalSteps -Title "Checking for Updates"
 
 Push-Location $repoRoot
 try {
+    # Git writes info to stderr which PowerShell treats as errors with $ErrorActionPreference = "Stop"
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
     # Fetch latest from remote
     Write-Detail "Fetching from remote..."
     git fetch origin $Branch 2>&1 | Out-Null
 
     # Check if there are updates
-    $localHash = git rev-parse HEAD 2>&1
-    $remoteHash = git rev-parse "origin/$Branch" 2>&1
+    $localHash = (git rev-parse HEAD 2>&1) | Select-Object -Last 1
+    $remoteHash = (git rev-parse "origin/$Branch" 2>&1) | Select-Object -Last 1
+
+    $ErrorActionPreference = $prevEAP
 
     if ($localHash -eq $remoteHash) {
         Write-Success "Already up to date (commit: $($localHash.Substring(0, 7)))"
@@ -155,17 +161,20 @@ try {
     }
     else {
         # Show what's new
-        $commitCount = git rev-list --count "$localHash..$remoteHash" 2>&1
+        $ErrorActionPreference = "Continue"
+        $commitCount = (git rev-list --count "$localHash..$remoteHash" 2>&1) | Select-Object -Last 1
         Write-Success "$commitCount new commit(s) available"
         Write-Host ""
         Write-Host "  Recent changes:" -ForegroundColor Gray
         git log --oneline "$localHash..$remoteHash" 2>&1 | Select-Object -First 10 | ForEach-Object {
             Write-Host "    $_" -ForegroundColor White
         }
+        $ErrorActionPreference = $prevEAP
         Write-Host ""
     }
 }
 catch {
+    $ErrorActionPreference = $prevEAP
     Write-Warn "Could not check for updates: $_"
     Write-Detail "Continuing with rebuild..."
 }
@@ -221,8 +230,12 @@ else {
 
 # Pull latest code
 Write-Detail "Pulling latest changes from '$Branch'..."
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $pullOutput = git pull origin $Branch 2>&1
-if ($LASTEXITCODE -ne 0) {
+$pullExitCode = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
+if ($pullExitCode -ne 0) {
     Write-Fail "Git pull failed:"
     Write-Host $pullOutput -ForegroundColor Red
     Write-Host ""
@@ -301,7 +314,10 @@ Pop-Location
 # ============================================================
 # Summary
 # ============================================================
-$currentHash = git -C $repoRoot rev-parse --short HEAD 2>&1
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$currentHash = (git -C $repoRoot rev-parse --short HEAD 2>&1) | Select-Object -Last 1
+$ErrorActionPreference = $prevEAP
 
 Write-Host ""
 Write-Host "  ======================================================" -ForegroundColor Green
