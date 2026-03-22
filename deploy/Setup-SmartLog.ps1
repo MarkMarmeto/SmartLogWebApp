@@ -385,7 +385,8 @@ EXEC xp_instance_regwrite
     }
 
     # Create database user and grant permissions (use master connection to avoid login issues)
-    $userExists = Invoke-SqlScalar -ConnectionString $masterConnStr -Query "SELECT 1 FROM [$($Script:DbName)].sys.database_principals WHERE name = '$($Script:DbUser)'"
+    $userExistsQuery = "SELECT 1 FROM [$($Script:DbName)].sys.database_principals WHERE name = '$($Script:DbUser)'"
+    $userExists = Invoke-SqlScalar -ConnectionString $masterConnStr -Query $userExistsQuery
     if (-not $userExists) {
         Write-Detail "Creating database user and granting permissions..."
         Invoke-SqlCommand -ConnectionString $masterConnStr -Query @"
