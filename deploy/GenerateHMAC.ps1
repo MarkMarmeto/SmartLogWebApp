@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Generate a secure HMAC secret key for SmartLog QR code signing.
 
