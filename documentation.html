@@ -147,6 +147,7 @@
 
         <div class="section-title">Operations</div>
         <a href="#config">Configuration</a>
+        <a href="#deployment">Deployment</a>
         <a href="#dev">Development</a>
         <a href="#security">Security</a>
     </nav>
@@ -435,7 +436,8 @@ Example: SMARTLOG:2026-07-0001:1739512547:5Dkd9j2xQ8kL...</code></pre>
     <li><strong>Timestamp:</strong> Unix seconds (UTC) when QR was generated</li>
     <li><strong>Signature:</strong> HMAC-SHA256 over <code>{studentId}:{timestamp}</code> using shared secret</li>
 </ul>
-<div class="info">The HMAC secret is set via the <code>SMARTLOG_HMAC_SECRET_KEY</code> environment variable. The scanner app does NOT need this secret &mdash; it simply reads and forwards the QR payload to the web app for server-side verification.</div>
+<div class="info">The HMAC secret key is managed via <strong>Admin &gt; Settings &gt; QRCode</strong> tab (highest priority), the <code>SMARTLOG_HMAC_SECRET_KEY</code> environment variable (fallback), or <code>appsettings.json</code>. To generate a new key, run <code>deploy\GenerateHMAC.bat</code> on the server. The scanner app validates QR codes locally using the same HMAC key &mdash; ensure both apps have matching keys.</div>
+<div class="warn"><strong>Changing the HMAC key invalidates ALL existing student QR codes.</strong> After a key change, regenerate QR codes from the Students page. The Settings UI does this automatically when the key is updated.</div>
 
 <h2 id="attendance-flow">Attendance Processing Flow</h2>
 <div class="flow-diagram">Scanner Device                         SmartLog Web Server
@@ -576,6 +578,19 @@ Example: SMARTLOG:2026-07-0001:1739512547:5Dkd9j2xQ8kL...</code></pre>
     "Queue": { "MaxRetries": 3, "PollingIntervalSeconds": 5 }
   }
 }</code></pre>
+
+<h2 id="deployment">Deployment (Windows)</h2>
+<p>SmartLog includes automated scripts for deployment and updates on Windows. See the full <a href="deploy/deployment-guide.html">Deployment &amp; Update Guide</a> for detailed instructions.</p>
+<h3>Quick Reference</h3>
+<table>
+    <tr><th>Task</th><th>Command</th></tr>
+    <tr><td>First-time setup</td><td>Right-click <code>deploy\Setup-SmartLog.bat</code> &rarr; Run as administrator</td></tr>
+    <tr><td>Pull &amp; deploy updates</td><td>Right-click <code>deploy\Update-SmartLog.bat</code> &rarr; Run as administrator</td></tr>
+    <tr><td>Generate HMAC key</td><td>Right-click <code>deploy\GenerateHMAC.bat</code></td></tr>
+    <tr><td>Check service status</td><td><code>sc.exe query SmartLogWeb</code></td></tr>
+    <tr><td>View logs</td><td><code>Get-Content C:\SmartLog\logs\*.log -Tail 50</code></td></tr>
+</table>
+<div class="info">All <code>.bat</code> files bypass PowerShell execution policy automatically. No need to change system policy.</div>
 
 <h2 id="dev">Development</h2>
 <h3>Build &amp; Run</h3>
