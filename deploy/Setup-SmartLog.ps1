@@ -220,23 +220,52 @@ catch { }
 if ($dotnetVersion -and $dotnetVersion -match '^8\.') {
     Write-Success ".NET SDK $dotnetVersion installed"
 }
-elseif ($dotnetVersion) {
-    Write-Warn ".NET SDK $dotnetVersion found, but 8.0+ is required"
-    Write-Host ""
-    Write-Host "  Download .NET 8.0 SDK from:" -ForegroundColor Yellow
-    Write-Host "  https://dotnet.microsoft.com/download/dotnet/8.0" -ForegroundColor Cyan
-    Write-Host ""
-    if (-not (Read-YesNo "Continue anyway?")) { exit 1 }
-}
 else {
-    Write-Fail ".NET SDK not found"
-    Write-Host ""
-    Write-Host "  Download .NET 8.0 SDK from:" -ForegroundColor Yellow
-    Write-Host "  https://dotnet.microsoft.com/download/dotnet/8.0" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  Install it and run this script again." -ForegroundColor Yellow
-    Read-Host "  Press Enter to exit"
-    exit 1
+    if ($dotnetVersion) {
+        Write-Warn ".NET SDK $dotnetVersion found, but 8.0+ is required"
+    }
+    else {
+        Write-Warn ".NET SDK not found"
+    }
+
+    if (Read-YesNo "Install .NET 8.0 SDK automatically?" $true) {
+        Write-Detail "Downloading .NET 8.0 SDK installer..."
+        $dotnetInstallerUrl = "https://dot.net/v1/dotnet-install.ps1"
+        $dotnetInstallScript = Join-Path $env:TEMP "dotnet-install.ps1"
+
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $dotnetInstallerUrl -OutFile $dotnetInstallScript -UseBasicParsing
+            Write-Detail "Running .NET 8.0 SDK installer (this may take a few minutes)..."
+            & $dotnetInstallScript -Channel 8.0 -InstallDir "C:\Program Files\dotnet" -NoPath:$false
+            # Refresh PATH for current session
+            $env:PATH = "C:\Program Files\dotnet;$env:PATH"
+            $dotnetVersion = (dotnet --version 2>$null)
+            if ($dotnetVersion -and $dotnetVersion -match '^8\.') {
+                Write-Success ".NET SDK $dotnetVersion installed successfully"
+            }
+            else {
+                Write-Fail ".NET SDK installation may have failed"
+                Write-Detail "Please install manually from: https://dotnet.microsoft.com/download/dotnet/8.0"
+                Read-Host "  Press Enter to exit"
+                exit 1
+            }
+        }
+        catch {
+            Write-Fail "Failed to download .NET SDK installer: $_"
+            Write-Detail "Please install manually from: https://dotnet.microsoft.com/download/dotnet/8.0"
+            Read-Host "  Press Enter to exit"
+            exit 1
+        }
+    }
+    else {
+        Write-Host ""
+        Write-Host "  Download .NET 8.0 SDK from:" -ForegroundColor Yellow
+        Write-Host "  https://dotnet.microsoft.com/download/dotnet/8.0" -ForegroundColor Cyan
+        Write-Host ""
+        Read-Host "  Press Enter to exit"
+        exit 1
+    }
 }
 
 # Check Git
@@ -250,7 +279,7 @@ if ($gitVersion) {
     Write-Success "Git installed ($gitVersion)"
 }
 else {
-    Write-Warn "Git not found — you'll need to copy the source code manually"
+    Write-Warn "Git not found -- you'll need to copy the source code manually"
 }
 
 # Check SQL Server
@@ -274,16 +303,61 @@ try {
 catch { }
 
 if (-not $sqlRunning) {
-    Write-Fail "SQL Server is not running or not installed"
-    Write-Host ""
-    Write-Host "  Download SQL Server Express from:" -ForegroundColor Yellow
-    Write-Host "  https://www.microsoft.com/en-us/sql-server/sql-server-downloads" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  After installing, enable TCP/IP in SQL Server Configuration Manager" -ForegroundColor Yellow
-    Write-Host "  and restart the SQL Server service." -ForegroundColor Yellow
-    Write-Host ""
-    if (-not (Read-YesNo "Continue anyway (SQL Server on a different machine)?")) { exit 1 }
-    $Script:SqlInstance = Read-Input "Enter SQL Server instance" "localhost\SQLEXPRESS"
+    Write-Warn "SQL Server is not running or not installed"
+
+    if (Read-YesNo "Install SQL Server Express automatically?" $true) {
+        Write-Detail "Downloading SQL Server Express installer..."
+        $sqlInstallerUrl = "https://go.microsoft.com/fwlink/?LinkID=866658"
+        $sqlInstallerPath = Join-Path $env:TEMP "SQL2022-SSEI-Expr.exe"
+
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $sqlInstallerUrl -OutFile $sqlInstallerPath -UseBasicParsing
+            Write-Detail "Running SQL Server Express installer..."
+            Write-Detail "This will download and install SQL Server Express (may take 10-15 minutes)"
+            Write-Host ""
+
+            # Run the online installer in Basic mode (minimal user interaction)
+            Start-Process -FilePath $sqlInstallerPath -ArgumentList "/Action=Install", "/IACCEPTSQLSERVERLICENSETERMS", "/QS" -Wait
+
+            # Wait a moment for services to start
+            Start-Sleep -Seconds 10
+
+            # Check if SQL Server is now running
+            $sqlService = Get-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
+            if ($sqlService -and $sqlService.Status -eq 'Running') {
+                $sqlRunning = $true
+                Write-Success "SQL Server Express installed and running"
+            }
+            else {
+                $sqlService = Get-Service -Name 'MSSQLSERVER' -ErrorAction SilentlyContinue
+                if ($sqlService -and $sqlService.Status -eq 'Running') {
+                    $sqlRunning = $true
+                    $Script:SqlInstance = "localhost"
+                    Write-Success "SQL Server Express installed and running (default instance)"
+                }
+                else {
+                    Write-Warn "SQL Server installed but service may not be running yet"
+                    Write-Detail "You may need to restart your computer and run this setup again"
+                    if (-not (Read-YesNo "Continue anyway?")) { exit 1 }
+                }
+            }
+        }
+        catch {
+            Write-Fail "Failed to install SQL Server Express: $_"
+            Write-Detail "Please install manually from: https://www.microsoft.com/en-us/sql-server/sql-server-downloads"
+            if (-not (Read-YesNo "Continue anyway (SQL Server on a different machine)?")) { exit 1 }
+            $Script:SqlInstance = Read-Input "Enter SQL Server instance" "localhost\SQLEXPRESS"
+        }
+    }
+    else {
+        Write-Host ""
+        Write-Host "  Download SQL Server Express from:" -ForegroundColor Yellow
+        Write-Host "  https://www.microsoft.com/en-us/sql-server/sql-server-downloads" -ForegroundColor Cyan
+        Write-Host ""
+        if (-not (Read-YesNo "Continue anyway (SQL Server on a different machine)?")) { exit 1 }
+        $Script:SqlInstance = Read-Input "Enter SQL Server instance" "localhost\SQLEXPRESS"
+    }
 }
 
 # ============================================================
