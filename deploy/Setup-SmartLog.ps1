@@ -384,12 +384,12 @@ EXEC xp_instance_regwrite
         Write-Success "SQL login '$($Script:DbUser)' created"
     }
 
-    # Create database user and grant permissions
-    $dbConnStr = "Server=$($Script:SqlInstance);Database=$($Script:DbName);Trusted_Connection=true;TrustServerCertificate=True;"
-    $userExists = Invoke-SqlScalar -ConnectionString $dbConnStr -Query "SELECT 1 FROM sys.database_principals WHERE name = '$($Script:DbUser)'"
+    # Create database user and grant permissions (use master connection to avoid login issues)
+    $userExists = Invoke-SqlScalar -ConnectionString $masterConnStr -Query "SELECT 1 FROM [$($Script:DbName)].sys.database_principals WHERE name = '$($Script:DbUser)'"
     if (-not $userExists) {
         Write-Detail "Creating database user and granting permissions..."
-        Invoke-SqlCommand -ConnectionString $dbConnStr -Query @"
+        Invoke-SqlCommand -ConnectionString $masterConnStr -Query @"
+USE [$($Script:DbName)];
 CREATE USER [$($Script:DbUser)] FOR LOGIN [$($Script:DbUser)];
 ALTER ROLE db_owner ADD MEMBER [$($Script:DbUser)];
 "@
@@ -397,7 +397,7 @@ ALTER ROLE db_owner ADD MEMBER [$($Script:DbUser)];
     }
     else {
         Write-Detail "Database user already exists, ensuring permissions..."
-        Invoke-SqlCommand -ConnectionString $dbConnStr -Query "ALTER ROLE db_owner ADD MEMBER [$($Script:DbUser)];"
+        Invoke-SqlCommand -ConnectionString $masterConnStr -Query "USE [$($Script:DbName)]; ALTER ROLE db_owner ADD MEMBER [$($Script:DbUser)];"
         Write-Success "Database permissions verified"
     }
 
