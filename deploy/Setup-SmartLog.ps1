@@ -332,8 +332,8 @@ else {
     Write-Success "Connected to SQL Server"
 
     # Check if database exists
-    $dbExists = Invoke-SqlScalar -ConnectionString $masterConnStr -Query "SELECT DB_ID('$($Script:DbName)')"
-    if ($dbExists) {
+    $dbExists = Invoke-SqlScalar -ConnectionString $masterConnStr -Query "SELECT name FROM sys.databases WHERE name = '$($Script:DbName)'"
+    if ($dbExists -ne $null) {
         Write-Warn "Database '$($Script:DbName)' already exists"
         if (Read-YesNo "Use existing database?" $true) {
             Write-Detail "Using existing database"
