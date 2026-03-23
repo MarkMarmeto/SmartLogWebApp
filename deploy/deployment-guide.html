@@ -494,16 +494,108 @@ sc.exe stop SmartLogWeb &amp;&amp; timeout /t 3 &amp;&amp; sc.exe start SmartLog
 
 <h2 id="network">Network Configuration</h2>
 
-<p>For scanner devices to connect over LAN:</p>
+<p>SmartLog runs on a local network (LAN). The server PC and all scanner devices must be on the <strong>same network</strong>. A <strong>static IP address</strong> is required so the server address doesn't change when the PC restarts.</p>
 
+<h3>Automated Setup</h3>
+
+<p>Run the network helper script to auto-detect your network and configure a static IP:</p>
+
+<pre>Setup-Network.bat    (right-click &gt; Run as administrator)</pre>
+
+<p>The script will:</p>
 <ol>
-    <li><strong>Set a static IP</strong> on the server machine (Settings &gt; Network &gt; Ethernet &gt; IP assignment)</li>
-    <li><strong>Verify firewall rules</strong> allow inbound traffic on the configured port</li>
-    <li>Scanner devices connect to <code>http://[server-ip]:[port]</code></li>
-    <li>Test connectivity from a scanner device: <code>http://[server-ip]:[port]/api/v1/health</code></li>
+    <li>Detect all active network adapters and current settings</li>
+    <li>Calculate your available IP address range</li>
+    <li>Scan for unused IPs and suggest one</li>
+    <li>Optionally apply the static IP configuration</li>
 </ol>
 
-<div class="info"><strong>Tip:</strong> If the server has multiple network adapters, ensure the static IP is on the same network as the scanner devices.</div>
+<h3>Understanding IP Ranges</h3>
+
+<p>First, open a command prompt and run <code>ipconfig</code> to see your current network:</p>
+
+<pre>
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . : 192.168.2.150
+   Subnet Mask . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . : 192.168.2.1
+</pre>
+
+<p>Your IP range is determined by the <strong>Subnet Mask</strong>:</p>
+
+<table>
+    <tr><th>Subnet Mask</th><th>Network Prefix</th><th>Available IP Range</th><th>Total Hosts</th></tr>
+    <tr><td><code>255.255.255.0</code> (/24)</td><td>First 3 octets fixed</td><td><code>192.168.2.1</code> - <code>192.168.2.254</code></td><td>253</td></tr>
+    <tr><td><code>255.255.0.0</code> (/16)</td><td>First 2 octets fixed</td><td><code>192.168.0.1</code> - <code>192.168.255.254</code></td><td>65,533</td></tr>
+    <tr><td><code>255.0.0.0</code> (/8)</td><td>First octet fixed</td><td><code>10.0.0.1</code> - <code>10.255.255.254</code></td><td>16 million+</td></tr>
+</table>
+
+<p><strong>Common private network ranges:</strong></p>
+<table>
+    <tr><th>Range</th><th>Typical Use</th><th>Example</th></tr>
+    <tr><td><code>192.168.x.x</code></td><td>Home/small office routers</td><td><code>192.168.1.100</code>, <code>192.168.2.10</code></td></tr>
+    <tr><td><code>10.x.x.x</code></td><td>School/enterprise networks</td><td><code>10.0.1.50</code>, <code>10.10.0.100</code></td></tr>
+    <tr><td><code>172.16.x.x</code> - <code>172.31.x.x</code></td><td>Medium-sized networks</td><td><code>172.16.0.50</code></td></tr>
+</table>
+
+<h3>Choosing a Static IP</h3>
+
+<p>Based on your <code>ipconfig</code> output:</p>
+
+<ol>
+    <li>The static IP must be in the <strong>same network</strong> as your gateway (matching the first 3 octets for /24 networks)</li>
+    <li>Pick an IP in the <strong>low range (10-50)</strong> to avoid conflicts with DHCP, which typically assigns from 100+</li>
+    <li>Avoid <code>.1</code> (usually the router/gateway) and <code>.255</code> (broadcast address)</li>
+</ol>
+
+<div class="info">
+<strong>Example:</strong> If your gateway is <code>192.168.2.1</code> and subnet is <code>255.255.255.0</code>:<br>
+Good static IPs: <code>192.168.2.10</code>, <code>192.168.2.20</code>, <code>192.168.2.30</code><br>
+The gateway (<code>192.168.2</code>) must match. Only the last number changes.
+</div>
+
+<h3>Manual Static IP Setup (Windows)</h3>
+
+<ol>
+    <li>Open <strong>Settings</strong> &gt; <strong>Network &amp; Internet</strong> &gt; <strong>Ethernet</strong></li>
+    <li>Click on your active network connection</li>
+    <li>Click <strong>Edit</strong> next to <strong>IP assignment</strong></li>
+    <li>Change from <strong>Automatic (DHCP)</strong> to <strong>Manual</strong></li>
+    <li>Enable <strong>IPv4</strong> and enter:
+        <table>
+            <tr><td>IP address</td><td>Your chosen static IP (e.g., <code>192.168.2.10</code>)</td></tr>
+            <tr><td>Subnet mask</td><td>Same as <code>ipconfig</code> output (e.g., <code>255.255.255.0</code>)</td></tr>
+            <tr><td>Gateway</td><td>Same as <code>ipconfig</code> output (e.g., <code>192.168.2.1</code>)</td></tr>
+            <tr><td>Preferred DNS</td><td>Same as gateway or <code>8.8.8.8</code> (Google DNS)</td></tr>
+        </table>
+    </li>
+    <li>Click <strong>Save</strong></li>
+</ol>
+
+<h3>Verify Network Configuration</h3>
+
+<p>After setting the static IP:</p>
+
+<ol>
+    <li><strong>Verify the IP</strong> is applied: <code>ipconfig</code></li>
+    <li><strong>Check internet access</strong>: <code>ping google.com</code></li>
+    <li><strong>Verify firewall rules</strong> allow inbound traffic on port 8080</li>
+    <li><strong>Access SmartLog</strong> from the server: <code>http://localhost:8080</code></li>
+    <li><strong>Access from another device</strong> on the same network: <code>http://[static-ip]:8080</code></li>
+    <li><strong>Test health endpoint</strong> from scanner device: <code>http://[static-ip]:8080/api/v1/health</code></li>
+</ol>
+
+<div class="info"><strong>Tip:</strong> If the server has multiple network adapters (Wi-Fi + Ethernet), ensure the static IP is set on the adapter connected to the same network as the scanner devices. Use Ethernet for best reliability.</div>
+
+<h3>Scanner App Configuration</h3>
+
+<p>In the Scanner App setup wizard, enter the server URL as:</p>
+
+<pre>http://[static-ip]:8080</pre>
+
+<p>Example: <code>http://192.168.2.10:8080</code></p>
+
+<p>All scanner devices on the same LAN will connect to this address.</p>
 
 <hr style="margin-top: 3rem;">
 <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 1rem;">
