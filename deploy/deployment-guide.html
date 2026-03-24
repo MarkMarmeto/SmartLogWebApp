@@ -219,7 +219,7 @@ cd SmartLogWebApp</code></pre>
 <div class="danger"><strong>Save the HMAC key!</strong> You will need to enter the same key in the SmartLog Scanner App. This key is shown only once during setup.</div>
 
 <div class="step-title"><span class="step-number">5</span>Network Configuration</div>
-<p>Prompts for HTTP and HTTPS ports (defaults: 8080 and 8081). Detects the machine's IP address for LAN access.</p>
+<p>Prompts for the HTTP port (default: 8080). Detects the machine's IP address for LAN access.</p>
 
 <div class="step-title"><span class="step-number">6</span>Set Environment Variables</div>
 <p>Sets system-wide environment variables for the database connection, HMAC key, admin password, and ASP.NET Core URLs.</p>
@@ -228,7 +228,7 @@ cd SmartLogWebApp</code></pre>
 <p>Runs <code>dotnet publish</code> in Release mode, outputting to <code>C:\SmartLog</code>.</p>
 
 <div class="step-title"><span class="step-number">8</span>Configure Firewall</div>
-<p>Creates inbound firewall rules for the HTTP and HTTPS ports on Domain and Private networks.</p>
+<p>Creates an inbound firewall rule for the HTTP port on Domain and Private networks.</p>
 
 <div class="step-title"><span class="step-number">9</span>Install Windows Service</div>
 <p>Registers SmartLog as a Windows Service with auto-start on boot and automatic restart on failure (5s, 10s, 30s intervals).</p>
