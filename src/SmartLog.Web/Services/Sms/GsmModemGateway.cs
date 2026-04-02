@@ -11,6 +11,7 @@ namespace SmartLog.Web.Services.Sms;
 public class GsmModemGateway : ISmsGateway, IDisposable
 {
     private readonly IConfiguration _configuration;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<GsmModemGateway> _logger;
     private SerialPort? _serialPort;
     private readonly SemaphoreSlim _portLock = new(1, 1);
@@ -26,9 +27,11 @@ public class GsmModemGateway : ISmsGateway, IDisposable
 
     public GsmModemGateway(
         IConfiguration configuration,
+        IServiceScopeFactory scopeFactory,
         ILogger<GsmModemGateway> logger)
     {
         _configuration = configuration;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -273,8 +276,27 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             return;
         }
 
-        var portName = _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3");
-        var baudRate = _configuration.GetValue<int>("Sms:GsmModem:BaudRate", 9600);
+        // Check database settings first (admin-configured), fall back to appsettings.json
+        string? dbPortName = null;
+        string? dbBaudRate = null;
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var settingsService = scope.ServiceProvider.GetRequiredService<ISmsSettingsService>();
+            dbPortName = settingsService.GetSettingAsync("Sms.GsmModem.PortName").GetAwaiter().GetResult();
+            dbBaudRate = settingsService.GetSettingAsync("Sms.GsmModem.BaudRate").GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read SMS settings from database, using config defaults");
+        }
+
+        var portName = !string.IsNullOrWhiteSpace(dbPortName)
+            ? dbPortName
+            : _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3");
+        var baudRate = !string.IsNullOrWhiteSpace(dbBaudRate) && int.TryParse(dbBaudRate, out var parsedBaud)
+            ? parsedBaud
+            : _configuration.GetValue<int>("Sms:GsmModem:BaudRate", 9600);
 
         _serialPort = new SerialPort(portName, baudRate)
         {

@@ -79,9 +79,16 @@ public class SettingsModel : PageModel
         DefaultProvider = _configuration.GetValue<string>("Sms:DefaultProvider", "GSM_MODEM") ?? "GSM_MODEM";
         FallbackEnabled = _configuration.GetValue<bool>("Sms:FallbackEnabled", true);
 
-        GsmPortName = _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3") ?? "COM3";
-        GsmBaudRate = _configuration.GetValue<int>("Sms:GsmModem:BaudRate", 9600);
-        GsmSendDelay = _configuration.GetValue<int>("Sms:GsmModem:SendDelayMs", 3000);
+        GsmPortName = await _settingsService.GetSettingAsync("Sms.GsmModem.PortName")
+            ?? _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3") ?? "COM3";
+        var dbBaudRate = await _settingsService.GetSettingAsync("Sms.GsmModem.BaudRate");
+        GsmBaudRate = dbBaudRate != null && int.TryParse(dbBaudRate, out var parsedBaud)
+            ? parsedBaud
+            : _configuration.GetValue<int>("Sms:GsmModem:BaudRate", 9600);
+        var dbSendDelay = await _settingsService.GetSettingAsync("Sms.GsmModem.SendDelayMs");
+        GsmSendDelay = dbSendDelay != null && int.TryParse(dbSendDelay, out var parsedDelay)
+            ? parsedDelay
+            : _configuration.GetValue<int>("Sms:GsmModem:SendDelayMs", 3000);
 
         SemaphoreApiKey = _configuration.GetValue<string>("Sms:Semaphore:ApiKey", "") ?? "";
         SemaphoreSenderName = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
