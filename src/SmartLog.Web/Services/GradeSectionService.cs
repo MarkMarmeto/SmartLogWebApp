@@ -36,7 +36,7 @@ public class GradeSectionService : IGradeSectionService
             .ToListAsync();
     }
 
-    public async Task<GradeLevel?> GetGradeLevelByIdAsync(int id)
+    public async Task<GradeLevel?> GetGradeLevelByIdAsync(Guid id)
     {
         return await _context.GradeLevels
             .Include(gl => gl.Sections)
@@ -82,7 +82,7 @@ public class GradeSectionService : IGradeSectionService
         _logger.LogInformation("Updated grade level: {Code} (ID: {Id})", gradeLevel.Code, gradeLevel.Id);
     }
 
-    public async Task DeactivateGradeLevelAsync(int id)
+    public async Task DeactivateGradeLevelAsync(Guid id)
     {
         var gradeLevel = await GetGradeLevelByIdAsync(id);
         if (gradeLevel == null)
@@ -118,7 +118,7 @@ public class GradeSectionService : IGradeSectionService
             .ToListAsync();
     }
 
-    public async Task<List<Section>> GetSectionsByGradeAsync(int gradeLevelId, bool activeOnly = true)
+    public async Task<List<Section>> GetSectionsByGradeAsync(Guid gradeLevelId, bool activeOnly = true)
     {
         var query = _context.Sections
             .Include(s => s.GradeLevel)
@@ -135,7 +135,7 @@ public class GradeSectionService : IGradeSectionService
             .ToListAsync();
     }
 
-    public async Task<Section?> GetSectionByIdAsync(int id)
+    public async Task<Section?> GetSectionByIdAsync(Guid id)
     {
         return await _context.Sections
             .Include(s => s.GradeLevel)
@@ -143,7 +143,7 @@ public class GradeSectionService : IGradeSectionService
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
-    public async Task<Section> CreateSectionAsync(int gradeLevelId, string name, int? adviserId = null, int capacity = 40)
+    public async Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid? adviserId = null, int capacity = 40)
     {
         var gradeLevel = await _context.GradeLevels.FindAsync(gradeLevelId);
         if (gradeLevel == null)
@@ -187,7 +187,7 @@ public class GradeSectionService : IGradeSectionService
         _logger.LogInformation("Updated section: {Section} (ID: {Id})", section.Name, section.Id);
     }
 
-    public async Task DeactivateSectionAsync(int id)
+    public async Task DeactivateSectionAsync(Guid id)
     {
         var section = await GetSectionByIdAsync(id);
         if (section == null)
@@ -205,7 +205,7 @@ public class GradeSectionService : IGradeSectionService
 
     #region Student Enrollment Operations
 
-    public async Task<StudentEnrollment> EnrollStudentAsync(int studentId, int sectionId, int academicYearId)
+    public async Task<StudentEnrollment> EnrollStudentAsync(Guid studentId, Guid sectionId, Guid academicYearId)
     {
         var student = await _context.Students.FindAsync(studentId);
         if (student == null)
@@ -267,7 +267,7 @@ public class GradeSectionService : IGradeSectionService
         return enrollment;
     }
 
-    public async Task<StudentEnrollment> TransferStudentAsync(int studentId, int newSectionId, int academicYearId)
+    public async Task<StudentEnrollment> TransferStudentAsync(Guid studentId, Guid newSectionId, Guid academicYearId)
     {
         var currentEnrollment = await _context.StudentEnrollments
             .FirstOrDefaultAsync(e => e.StudentId == studentId
@@ -321,7 +321,7 @@ public class GradeSectionService : IGradeSectionService
         return newEnrollment;
     }
 
-    public async Task<List<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId)
+    public async Task<List<StudentEnrollment>> GetStudentEnrollmentsAsync(Guid studentId)
     {
         return await _context.StudentEnrollments
             .Include(e => e.Section)
@@ -332,7 +332,7 @@ public class GradeSectionService : IGradeSectionService
             .ToListAsync();
     }
 
-    public async Task<StudentEnrollment?> GetCurrentEnrollmentAsync(int studentId, int academicYearId)
+    public async Task<StudentEnrollment?> GetCurrentEnrollmentAsync(Guid studentId, Guid academicYearId)
     {
         return await _context.StudentEnrollments
             .Include(e => e.Section)
@@ -343,7 +343,7 @@ public class GradeSectionService : IGradeSectionService
                 && e.IsActive);
     }
 
-    public async Task<List<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId, int academicYearId, bool activeOnly = true)
+    public async Task<List<StudentEnrollment>> GetSectionEnrollmentsAsync(Guid sectionId, Guid academicYearId, bool activeOnly = true)
     {
         var query = _context.StudentEnrollments
             .Include(e => e.Student)
@@ -361,7 +361,7 @@ public class GradeSectionService : IGradeSectionService
             .ToListAsync();
     }
 
-    public async Task WithdrawStudentAsync(int enrollmentId)
+    public async Task WithdrawStudentAsync(Guid enrollmentId)
     {
         var enrollment = await _context.StudentEnrollments.FindAsync(enrollmentId);
         if (enrollment == null)

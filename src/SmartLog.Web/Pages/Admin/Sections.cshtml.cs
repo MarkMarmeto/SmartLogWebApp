@@ -20,7 +20,7 @@ public class SectionsModel : PageModel
     public List<GradeLevel> GradeLevels { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
-    public int? GradeId { get; set; }
+    public Guid? GradeId { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public int PageNumber { get; set; } = 1;

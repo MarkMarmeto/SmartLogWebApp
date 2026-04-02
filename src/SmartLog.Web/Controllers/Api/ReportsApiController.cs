@@ -150,7 +150,7 @@ public class ReportsApiController : ControllerBase
     /// </summary>
     [HttpGet("student/{studentId}/export")]
     public async Task<IActionResult> ExportStudentHistory(
-        int studentId,
+        Guid studentId,
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate,
         [FromQuery] string format = "csv")

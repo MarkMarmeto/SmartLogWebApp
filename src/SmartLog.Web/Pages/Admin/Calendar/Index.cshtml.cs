@@ -21,14 +21,14 @@ public class IndexModel : PageModel
     public List<CalendarEvent> Events { get; set; } = new();
     public int CurrentYear { get; set; }
     public int CurrentMonth { get; set; }
-    public int? AcademicYearId { get; set; }
+    public Guid? AcademicYearId { get; set; }
     public AcademicYear? CurrentAcademicYear { get; set; }
     public List<AcademicYear> AcademicYears { get; set; } = new();
 
     [TempData]
     public string? StatusMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int? year, int? month, int? academicYearId)
+    public async Task<IActionResult> OnGetAsync(int? year, int? month, Guid? academicYearId)
     {
         // Get current academic year
         CurrentAcademicYear = await _academicYearService.GetCurrentAcademicYearAsync();
@@ -48,13 +48,13 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public IActionResult OnPostPreviousMonth(int year, int month, int? academicYearId)
+    public IActionResult OnPostPreviousMonth(int year, int month, Guid? academicYearId)
     {
         var date = new DateTime(year, month, 1).AddMonths(-1);
         return RedirectToPage(new { year = date.Year, month = date.Month, academicYearId });
     }
 
-    public IActionResult OnPostNextMonth(int year, int month, int? academicYearId)
+    public IActionResult OnPostNextMonth(int year, int month, Guid? academicYearId)
     {
         var date = new DateTime(year, month, 1).AddMonths(1);
         return RedirectToPage(new { year = date.Year, month = date.Month, academicYearId });

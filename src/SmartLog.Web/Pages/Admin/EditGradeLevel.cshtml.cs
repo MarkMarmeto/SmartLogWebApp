@@ -28,7 +28,7 @@ public class EditGradeLevelModel : PageModel
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [StringLength(10)]
@@ -47,7 +47,7 @@ public class EditGradeLevelModel : PageModel
         public bool IsActive { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var gradeLevel = await _gradeSectionService.GetGradeLevelByIdAsync(id);
         if (gradeLevel == null)

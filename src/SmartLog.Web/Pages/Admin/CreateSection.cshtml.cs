@@ -39,14 +39,14 @@ public class CreateSectionModel : PageModel
     {
         [Required]
         [Display(Name = "Grade Level")]
-        public int GradeLevelId { get; set; }
+        public Guid GradeLevelId { get; set; }
 
         [Required]
         [StringLength(50)]
         public string Name { get; set; } = string.Empty;
 
         [Display(Name = "Adviser")]
-        public int? AdviserId { get; set; }
+        public Guid? AdviserId { get; set; }
 
         [Required]
         [Range(1, 100)]

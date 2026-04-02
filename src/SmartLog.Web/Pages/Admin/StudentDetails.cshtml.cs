@@ -49,7 +49,7 @@ public class StudentDetailsModel : PageModel
     [TempData]
     public string? StatusMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var student = await _context.Students
             .Include(s => s.QrCode)
@@ -70,7 +70,7 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0020: Regenerate QR code (invalidates old code).
     /// </summary>
-    public async Task<IActionResult> OnPostRegenerateQrAsync(int studentId)
+    public async Task<IActionResult> OnPostRegenerateQrAsync(Guid studentId)
     {
         var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
         if (!authResult.Succeeded)
@@ -122,7 +122,7 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0017-AC1: Deactivate student.
     /// </summary>
-    public async Task<IActionResult> OnPostDeactivateAsync(int studentId)
+    public async Task<IActionResult> OnPostDeactivateAsync(Guid studentId)
     {
         var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
         if (!authResult.Succeeded)
@@ -161,7 +161,7 @@ public class StudentDetailsModel : PageModel
     /// <summary>
     /// US0017-AC3: Reactivate student.
     /// </summary>
-    public async Task<IActionResult> OnPostReactivateAsync(int studentId)
+    public async Task<IActionResult> OnPostReactivateAsync(Guid studentId)
     {
         var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
         if (!authResult.Succeeded)

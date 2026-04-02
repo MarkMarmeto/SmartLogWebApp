@@ -48,7 +48,7 @@ public class SmsLog
     /// <summary>
     /// Optional reference to student
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     [StringLength(500)]
     public string? ErrorMessage { get; set; }

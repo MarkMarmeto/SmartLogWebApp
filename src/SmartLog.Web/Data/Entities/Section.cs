@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class Section
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Section name: A, B, Sampaguita, etc.
@@ -20,12 +20,12 @@ public class Section
     /// <summary>
     /// Foreign key to GradeLevel
     /// </summary>
-    public int GradeLevelId { get; set; }
+    public Guid GradeLevelId { get; set; }
 
     /// <summary>
     /// Foreign key to Faculty (adviser), nullable
     /// </summary>
-    public int? AdviserId { get; set; }
+    public Guid? AdviserId { get; set; }
 
     /// <summary>
     /// Maximum number of students in this section

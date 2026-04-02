@@ -39,12 +39,12 @@ public interface IReportExportService
     /// <summary>
     /// Export student attendance history to Excel.
     /// </summary>
-    Task<byte[]> ExportStudentHistoryToExcelAsync(int studentId, DateTime startDate, DateTime endDate);
+    Task<byte[]> ExportStudentHistoryToExcelAsync(Guid studentId, DateTime startDate, DateTime endDate);
 
     /// <summary>
     /// Export student attendance history to PDF.
     /// </summary>
-    Task<byte[]> ExportStudentHistoryToPdfAsync(int studentId, DateTime startDate, DateTime endDate);
+    Task<byte[]> ExportStudentHistoryToPdfAsync(Guid studentId, DateTime startDate, DateTime endDate);
 
     /// <summary>
     /// Export audit logs to Excel.

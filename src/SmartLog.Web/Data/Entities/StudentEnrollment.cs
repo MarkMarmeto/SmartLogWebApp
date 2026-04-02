@@ -6,22 +6,22 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class StudentEnrollment
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Foreign key to Student
     /// </summary>
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Foreign key to Section
     /// </summary>
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     /// <summary>
     /// Foreign key to AcademicYear
     /// </summary>
-    public int AcademicYearId { get; set; }
+    public Guid AcademicYearId { get; set; }
 
     /// <summary>
     /// Date when the student was enrolled in this section

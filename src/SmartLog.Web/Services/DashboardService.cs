@@ -136,7 +136,7 @@ public class DashboardService : IDashboardService
             .Distinct()
             .ToListAsync();
 
-        var presentSet = new HashSet<int>(presentStudentIds);
+        var presentSet = new HashSet<Guid>(presentStudentIds);
 
         foreach (var group in gradeGroups.OrderBy(g => GetGradeSortOrder(g.GradeLevel)))
         {

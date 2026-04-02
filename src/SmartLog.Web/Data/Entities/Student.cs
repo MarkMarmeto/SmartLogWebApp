@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class Student
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Student ID format: YYYY-GG-NNNN
@@ -97,7 +97,7 @@ public class Student
     /// Quick reference to the student's current enrollment.
     /// Nullable - will be null if student has no active enrollment.
     /// </summary>
-    public int? CurrentEnrollmentId { get; set; }
+    public Guid? CurrentEnrollmentId { get; set; }
 
     // Navigation properties
     public virtual QrCode? QrCode { get; set; }

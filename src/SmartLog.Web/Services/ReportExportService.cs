@@ -172,7 +172,7 @@ public class ReportExportService : IReportExportService
         return Encoding.UTF8.GetBytes(html.ToString());
     }
 
-    public async Task<byte[]> ExportStudentHistoryToExcelAsync(int studentId, DateTime startDate, DateTime endDate)
+    public async Task<byte[]> ExportStudentHistoryToExcelAsync(Guid studentId, DateTime startDate, DateTime endDate)
     {
         var student = await _context.Students.FindAsync(studentId);
         if (student == null) throw new InvalidOperationException("Student not found");
@@ -208,7 +208,7 @@ public class ReportExportService : IReportExportService
         return Encoding.UTF8.GetBytes(csv.ToString());
     }
 
-    public async Task<byte[]> ExportStudentHistoryToPdfAsync(int studentId, DateTime startDate, DateTime endDate)
+    public async Task<byte[]> ExportStudentHistoryToPdfAsync(Guid studentId, DateTime startDate, DateTime endDate)
     {
         var student = await _context.Students.FindAsync(studentId);
         if (student == null) throw new InvalidOperationException("Student not found");

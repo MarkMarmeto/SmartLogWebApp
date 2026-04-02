@@ -83,11 +83,11 @@ public class CreateStudentModel : PageModel
 
         [Required(ErrorMessage = "Grade level is required")]
         [Display(Name = "Grade Level")]
-        public int GradeLevelId { get; set; }
+        public Guid GradeLevelId { get; set; }
 
         [Required(ErrorMessage = "Section is required")]
         [Display(Name = "Section")]
-        public int SectionId { get; set; }
+        public Guid SectionId { get; set; }
 
         [Required(ErrorMessage = "Parent/Guardian name is required")]
         [StringLength(200)]

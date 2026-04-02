@@ -120,6 +120,6 @@ public class GradeSectionServiceTests
         var service = CreateService(context);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.EnrollStudentAsync(9999, section.Id, year.Id));
+            () => service.EnrollStudentAsync(Guid.NewGuid(), section.Id, year.Id));
     }
 }

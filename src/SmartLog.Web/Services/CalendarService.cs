@@ -28,7 +28,7 @@ public class CalendarService : ICalendarService
         _logger = logger;
     }
 
-    public async Task<List<CalendarEvent>> GetEventsForMonthAsync(int year, int month, int? academicYearId = null)
+    public async Task<List<CalendarEvent>> GetEventsForMonthAsync(int year, int month, Guid? academicYearId = null)
     {
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
@@ -36,7 +36,7 @@ public class CalendarService : ICalendarService
         return await GetEventsForDateRangeAsync(startDate, endDate, academicYearId);
     }
 
-    public async Task<List<CalendarEvent>> GetEventsForDateRangeAsync(DateTime start, DateTime end, int? academicYearId = null)
+    public async Task<List<CalendarEvent>> GetEventsForDateRangeAsync(DateTime start, DateTime end, Guid? academicYearId = null)
     {
         var query = _context.CalendarEvents
             .Include(e => e.AcademicYear)
@@ -58,7 +58,7 @@ public class CalendarService : ICalendarService
         return await query.OrderBy(e => e.StartDate).ToListAsync();
     }
 
-    public async Task<List<CalendarEvent>> GetUpcomingEventsAsync(int count = 5, int? academicYearId = null)
+    public async Task<List<CalendarEvent>> GetUpcomingEventsAsync(int count = 5, Guid? academicYearId = null)
     {
         var today = DateTime.UtcNow.Date;
 
@@ -78,7 +78,7 @@ public class CalendarService : ICalendarService
             .ToListAsync();
     }
 
-    public async Task<CalendarEvent?> GetEventByIdAsync(int id)
+    public async Task<CalendarEvent?> GetEventByIdAsync(Guid id)
     {
         return await _context.CalendarEvents
             .Include(e => e.AcademicYear)
@@ -242,7 +242,7 @@ public class CalendarService : ICalendarService
         return existing;
     }
 
-    public async Task DeleteEventAsync(int id)
+    public async Task DeleteEventAsync(Guid id)
     {
         var calendarEvent = await _context.CalendarEvents.FindAsync(id);
         if (calendarEvent == null)
@@ -285,7 +285,7 @@ public class CalendarService : ICalendarService
         return schoolDays;
     }
 
-    public async Task<Dictionary<string, int>> GetEventStatisticsAsync(int academicYearId)
+    public async Task<Dictionary<string, int>> GetEventStatisticsAsync(Guid academicYearId)
     {
         var events = await _context.CalendarEvents
             .Where(e => e.AcademicYearId == academicYearId && e.IsActive)

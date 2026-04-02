@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class AcademicYear
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Academic year name: 2025-2026, 2026-2027, etc.

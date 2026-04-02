@@ -60,7 +60,7 @@ public class AcademicYearsModel : PageModel
             .ToList();
     }
 
-    public async Task<IActionResult> OnPostSetCurrentAsync(int id)
+    public async Task<IActionResult> OnPostSetCurrentAsync(Guid id)
     {
         try
         {
@@ -84,7 +84,7 @@ public class AcademicYearsModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeactivateAsync(int id)
+    public async Task<IActionResult> OnPostDeactivateAsync(Guid id)
     {
         try
         {

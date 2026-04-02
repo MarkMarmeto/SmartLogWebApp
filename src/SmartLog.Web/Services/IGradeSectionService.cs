@@ -9,25 +9,25 @@ public interface IGradeSectionService
 {
     // Grade Level Operations
     Task<List<GradeLevel>> GetAllGradeLevelsAsync(bool activeOnly = true);
-    Task<GradeLevel?> GetGradeLevelByIdAsync(int id);
+    Task<GradeLevel?> GetGradeLevelByIdAsync(Guid id);
     Task<GradeLevel?> GetGradeLevelByCodeAsync(string code);
     Task<GradeLevel> CreateGradeLevelAsync(string code, string name, int sortOrder);
     Task UpdateGradeLevelAsync(GradeLevel gradeLevel);
-    Task DeactivateGradeLevelAsync(int id);
+    Task DeactivateGradeLevelAsync(Guid id);
 
     // Section Operations
     Task<List<Section>> GetAllSectionsAsync(bool activeOnly = true);
-    Task<List<Section>> GetSectionsByGradeAsync(int gradeLevelId, bool activeOnly = true);
-    Task<Section?> GetSectionByIdAsync(int id);
-    Task<Section> CreateSectionAsync(int gradeLevelId, string name, int? adviserId = null, int capacity = 40);
+    Task<List<Section>> GetSectionsByGradeAsync(Guid gradeLevelId, bool activeOnly = true);
+    Task<Section?> GetSectionByIdAsync(Guid id);
+    Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid? adviserId = null, int capacity = 40);
     Task UpdateSectionAsync(Section section);
-    Task DeactivateSectionAsync(int id);
+    Task DeactivateSectionAsync(Guid id);
 
     // Student Enrollment Operations
-    Task<StudentEnrollment> EnrollStudentAsync(int studentId, int sectionId, int academicYearId);
-    Task<StudentEnrollment> TransferStudentAsync(int studentId, int newSectionId, int academicYearId);
-    Task<List<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId);
-    Task<StudentEnrollment?> GetCurrentEnrollmentAsync(int studentId, int academicYearId);
-    Task<List<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId, int academicYearId, bool activeOnly = true);
-    Task WithdrawStudentAsync(int enrollmentId);
+    Task<StudentEnrollment> EnrollStudentAsync(Guid studentId, Guid sectionId, Guid academicYearId);
+    Task<StudentEnrollment> TransferStudentAsync(Guid studentId, Guid newSectionId, Guid academicYearId);
+    Task<List<StudentEnrollment>> GetStudentEnrollmentsAsync(Guid studentId);
+    Task<StudentEnrollment?> GetCurrentEnrollmentAsync(Guid studentId, Guid academicYearId);
+    Task<List<StudentEnrollment>> GetSectionEnrollmentsAsync(Guid sectionId, Guid academicYearId, bool activeOnly = true);
+    Task WithdrawStudentAsync(Guid enrollmentId);
 }

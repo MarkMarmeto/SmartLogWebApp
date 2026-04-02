@@ -24,7 +24,7 @@ public class PrintQrCodeModel : PageModel
     public Student Student { get; set; } = null!;
     public QrCode QrCode { get; set; } = null!;
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var student = await _context.Students
             .Include(s => s.QrCode)

@@ -51,7 +51,7 @@ public class EditFacultyModel : PageModel
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [StringLength(100)]
@@ -94,7 +94,7 @@ public class EditFacultyModel : PageModel
         public IFormFile? ProfilePicture { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var faculty = await _context.Faculties
             .Include(f => f.User)
@@ -230,7 +230,7 @@ public class EditFacultyModel : PageModel
         return RedirectToPage("/Admin/FacultyDetails", new { id = faculty.Id });
     }
 
-    private async Task LoadLookupsAsync(int facultyId, string? currentUserId)
+    private async Task LoadLookupsAsync(Guid facultyId, string? currentUserId)
     {
         // Predefined departments
         Departments = new List<string>

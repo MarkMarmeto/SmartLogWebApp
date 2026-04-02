@@ -81,16 +81,16 @@ public class CreateEventModel : PageModel
 
         [Required]
         [Display(Name = "Academic Year")]
-        public int AcademicYearId { get; set; }
+        public Guid AcademicYearId { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int? academicYearId)
+    public async Task<IActionResult> OnGetAsync(Guid? academicYearId)
     {
         await PopulateDropdownsAsync();
 
         // Set default academic year
         var currentAcademicYear = await _academicYearService.GetCurrentAcademicYearAsync();
-        Input.AcademicYearId = academicYearId ?? currentAcademicYear?.Id ?? 0;
+        Input.AcademicYearId = academicYearId ?? currentAcademicYear?.Id ?? Guid.Empty;
         Input.EventType = EventType.Holiday;
         Input.Category = "National";
 

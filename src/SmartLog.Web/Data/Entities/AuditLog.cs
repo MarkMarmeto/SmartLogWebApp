@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class AuditLog
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(50)]

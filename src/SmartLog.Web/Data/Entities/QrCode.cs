@@ -8,12 +8,12 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class QrCode
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Foreign key to Student
     /// </summary>
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Full QR code payload

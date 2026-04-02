@@ -44,7 +44,7 @@ public class AttendanceDashboardModel : PageModel
     public DateTime? SelectedDate { get; set; }
 
     [BindProperty(SupportsGet = true)]
-    public int? AcademicYearId { get; set; }
+    public Guid? AcademicYearId { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public string? GradeFilter { get; set; }

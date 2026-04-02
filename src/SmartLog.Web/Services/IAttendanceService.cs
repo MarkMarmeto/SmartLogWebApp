@@ -51,7 +51,7 @@ public class AttendanceSummary
 /// </summary>
 public class StudentAttendanceRecord
 {
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentIdNumber { get; set; } = string.Empty;
     public string? LRN { get; set; }
     public string FullName { get; set; } = string.Empty;

@@ -2,8 +2,8 @@ namespace SmartLog.Web.Services;
 
 public interface IBatchReenrollmentService
 {
-    Task<ReenrollmentPreview> GeneratePreviewAsync(int sourceYearId, int targetYearId);
-    Task<ReenrollmentResult> ExecuteReenrollmentAsync(int sourceYearId, int targetYearId, List<StudentPromotionAssignment> assignments, string userId);
+    Task<ReenrollmentPreview> GeneratePreviewAsync(Guid sourceYearId, Guid targetYearId);
+    Task<ReenrollmentResult> ExecuteReenrollmentAsync(Guid sourceYearId, Guid targetYearId, List<StudentPromotionAssignment> assignments, string userId);
 }
 
 public enum PromotionAction
@@ -15,7 +15,7 @@ public enum PromotionAction
 
 public class StudentPromotionItem
 {
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentDisplayId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string CurrentGradeCode { get; set; } = string.Empty;
@@ -23,7 +23,7 @@ public class StudentPromotionItem
     public string CurrentSection { get; set; } = string.Empty;
     public string TargetGradeCode { get; set; } = string.Empty;
     public string TargetGradeName { get; set; } = string.Empty;
-    public int? AssignedSectionId { get; set; }
+    public Guid? AssignedSectionId { get; set; }
     public string AssignedSectionName { get; set; } = string.Empty;
     public PromotionAction Action { get; set; }
     public string SkipReason { get; set; } = string.Empty;
@@ -31,16 +31,16 @@ public class StudentPromotionItem
 
 public class StudentPromotionAssignment
 {
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public PromotionAction Action { get; set; }
-    public int? SectionId { get; set; }
+    public Guid? SectionId { get; set; }
 }
 
 public class SectionCapacityInfo
 {
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
     public string SectionName { get; set; } = string.Empty;
-    public int GradeLevelId { get; set; }
+    public Guid GradeLevelId { get; set; }
     public string GradeCode { get; set; } = string.Empty;
     public int Capacity { get; set; }
     public int CurrentCount { get; set; }
@@ -68,7 +68,7 @@ public class ReenrollmentResult
 
 public class ReenrollmentError
 {
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }

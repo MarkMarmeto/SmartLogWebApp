@@ -84,7 +84,7 @@ public class ProfilePictureApiController : ControllerBase
     /// </summary>
     [HttpPost("student/{id}")]
     [Authorize(Policy = "CanManageStudents")]
-    public async Task<IActionResult> UploadStudentProfilePicture(int id, IFormFile file)
+    public async Task<IActionResult> UploadStudentProfilePicture(Guid id, IFormFile file)
     {
         try
         {
@@ -128,7 +128,7 @@ public class ProfilePictureApiController : ControllerBase
     /// </summary>
     [HttpPost("faculty/{id}")]
     [Authorize(Policy = "CanManageFaculty")]
-    public async Task<IActionResult> UploadFacultyProfilePicture(int id, IFormFile file)
+    public async Task<IActionResult> UploadFacultyProfilePicture(Guid id, IFormFile file)
     {
         try
         {
@@ -205,7 +205,7 @@ public class ProfilePictureApiController : ControllerBase
     /// </summary>
     [HttpDelete("student/{id}")]
     [Authorize(Policy = "CanManageStudents")]
-    public async Task<IActionResult> DeleteStudentProfilePicture(int id)
+    public async Task<IActionResult> DeleteStudentProfilePicture(Guid id)
     {
         try
         {
@@ -239,7 +239,7 @@ public class ProfilePictureApiController : ControllerBase
     /// </summary>
     [HttpDelete("faculty/{id}")]
     [Authorize(Policy = "CanManageFaculty")]
-    public async Task<IActionResult> DeleteFacultyProfilePicture(int id)
+    public async Task<IActionResult> DeleteFacultyProfilePicture(Guid id)
     {
         try
         {

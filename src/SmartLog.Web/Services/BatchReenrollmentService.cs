@@ -21,7 +21,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
         _logger = logger;
     }
 
-    public async Task<ReenrollmentPreview> GeneratePreviewAsync(int sourceYearId, int targetYearId)
+    public async Task<ReenrollmentPreview> GeneratePreviewAsync(Guid sourceYearId, Guid targetYearId)
     {
         if (sourceYearId == targetYearId)
             throw new InvalidOperationException("Source and target academic years must be different.");
@@ -95,7 +95,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
         preview.SectionsByGrade = sectionsByGrade;
 
         // Track assigned counts for even distribution during preview
-        var previewAssignedCounts = new Dictionary<int, int>();
+        var previewAssignedCounts = new Dictionary<Guid, int>();
 
         // Group students by target grade for even section distribution
         var studentsByTargetGrade = new Dictionary<string, List<(StudentEnrollment enrollment, PromotionAction action, string targetGradeCode, string targetGradeName)>>();
@@ -244,7 +244,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
     }
 
     public async Task<ReenrollmentResult> ExecuteReenrollmentAsync(
-        int sourceYearId, int targetYearId,
+        Guid sourceYearId, Guid targetYearId,
         List<StudentPromotionAssignment> assignments, string userId)
     {
         if (sourceYearId == targetYearId)
@@ -396,7 +396,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
             _logger.LogError(ex, "Batch re-enrollment failed");
             result.Errors.Add(new ReenrollmentError
             {
-                StudentId = 0,
+                StudentId = Guid.Empty,
                 StudentName = "System",
                 Message = "Re-enrollment failed: " + ex.Message
             });

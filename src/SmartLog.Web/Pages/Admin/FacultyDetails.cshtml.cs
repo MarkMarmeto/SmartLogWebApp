@@ -39,7 +39,7 @@ public class FacultyDetailsModel : PageModel
     [TempData]
     public string? StatusMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var faculty = await _context.Faculties
             .Include(f => f.User)
@@ -55,7 +55,7 @@ public class FacultyDetailsModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostDeactivateAsync(int id)
+    public async Task<IActionResult> OnPostDeactivateAsync(Guid id)
     {
         var faculty = await _context.Faculties
             .FirstOrDefaultAsync(f => f.Id == id);
@@ -87,7 +87,7 @@ public class FacultyDetailsModel : PageModel
         return RedirectToPage(new { id });
     }
 
-    public async Task<IActionResult> OnPostReactivateAsync(int id)
+    public async Task<IActionResult> OnPostReactivateAsync(Guid id)
     {
         var faculty = await _context.Faculties
             .FirstOrDefaultAsync(f => f.Id == id);
@@ -119,7 +119,7 @@ public class FacultyDetailsModel : PageModel
         return RedirectToPage(new { id });
     }
 
-    public async Task<IActionResult> OnPostUnlinkUserAsync(int id)
+    public async Task<IActionResult> OnPostUnlinkUserAsync(Guid id)
     {
         var faculty = await _context.Faculties
             .Include(f => f.User)

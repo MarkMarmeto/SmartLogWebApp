@@ -54,7 +54,7 @@ public class TemplatesModel : PageModel
     }
 
     public async Task<IActionResult> OnPostAsync(
-        int templateId,
+        Guid templateId,
         string name,
         string templateEn,
         string templateFil,

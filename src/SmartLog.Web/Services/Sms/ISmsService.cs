@@ -10,12 +10,12 @@ public interface ISmsService
     /// <summary>
     /// Queue attendance notification (entry/exit)
     /// </summary>
-    Task QueueAttendanceNotificationAsync(int studentId, string scanType, DateTime scanTime);
+    Task QueueAttendanceNotificationAsync(Guid studentId, string scanType, DateTime scanTime);
 
     /// <summary>
     /// Queue calendar event notifications (holiday/suspension)
     /// </summary>
-    Task QueueCalendarEventNotificationsAsync(int calendarEventId);
+    Task QueueCalendarEventNotificationsAsync(Guid calendarEventId);
 
     /// <summary>
     /// Queue emergency announcement to all or filtered by grade

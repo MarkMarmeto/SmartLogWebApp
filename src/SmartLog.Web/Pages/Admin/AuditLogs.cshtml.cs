@@ -134,7 +134,7 @@ public class AuditLogsModel : PageModel
 
     public class AuditLogEntry
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public DateTime Timestamp { get; set; }
         public string Action { get; set; } = string.Empty;
         public string? UserId { get; set; }

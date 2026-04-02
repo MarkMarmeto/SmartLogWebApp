@@ -34,14 +34,14 @@ public class EditAcademicYearModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public int AcademicYearId { get; set; }
+    public Guid AcademicYearId { get; set; }
 
     [TempData]
     public string? StatusMessage { get; set; }
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [StringLength(20, ErrorMessage = "Name must be 20 characters or less")]
@@ -63,7 +63,7 @@ public class EditAcademicYearModel : PageModel
         public bool IsActive { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var academicYear = await _context.AcademicYears.FindAsync(id);
 

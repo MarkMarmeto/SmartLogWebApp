@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class CalendarEvent
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(200)]
@@ -60,7 +60,7 @@ public class CalendarEvent
 
     // Organization
     [Required]
-    public int AcademicYearId { get; set; }
+    public Guid AcademicYearId { get; set; }
 
     public string? OrganizerId { get; set; }
 

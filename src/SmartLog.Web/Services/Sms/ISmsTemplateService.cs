@@ -25,7 +25,7 @@ public interface ISmsTemplateService
     /// <summary>
     /// Get template by ID
     /// </summary>
-    Task<SmsTemplate?> GetTemplateByIdAsync(int id);
+    Task<SmsTemplate?> GetTemplateByIdAsync(Guid id);
 
     /// <summary>
     /// Create new template
@@ -40,5 +40,5 @@ public interface ISmsTemplateService
     /// <summary>
     /// Delete template (only non-system templates)
     /// </summary>
-    Task<bool> DeleteTemplateAsync(int id);
+    Task<bool> DeleteTemplateAsync(Guid id);
 }

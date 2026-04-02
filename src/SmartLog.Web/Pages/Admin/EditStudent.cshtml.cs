@@ -46,7 +46,7 @@ public class EditStudentModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentIdDisplay { get; set; } = string.Empty;
     public string? CurrentProfilePicturePath { get; set; }
     public List<Section> Sections { get; set; } = new();
@@ -84,7 +84,7 @@ public class EditStudentModel : PageModel
 
         [Required(ErrorMessage = "Section is required")]
         [Display(Name = "Section")]
-        public int SectionId { get; set; }
+        public Guid SectionId { get; set; }
 
         [Required(ErrorMessage = "Parent/Guardian name is required")]
         [StringLength(200)]
@@ -106,7 +106,7 @@ public class EditStudentModel : PageModel
         public IFormFile? ProfilePicture { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var student = await _context.Students
             .Include(s => s.CurrentEnrollment)
@@ -147,7 +147,7 @@ public class EditStudentModel : PageModel
             FirstName = student.FirstName,
             MiddleName = student.MiddleName,
             LastName = student.LastName,
-            SectionId = student.CurrentEnrollment?.SectionId ?? 0,
+            SectionId = student.CurrentEnrollment?.SectionId ?? Guid.Empty,
             ParentGuardianName = student.ParentGuardianName,
             GuardianRelationship = student.GuardianRelationship,
             ParentPhone = student.ParentPhone
@@ -156,7 +156,7 @@ public class EditStudentModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(int id)
+    public async Task<IActionResult> OnPostAsync(Guid id)
     {
         StudentId = id;
 

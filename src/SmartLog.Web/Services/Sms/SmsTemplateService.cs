@@ -84,7 +84,7 @@ public class SmsTemplateService : ISmsTemplateService
         }
     }
 
-    public async Task<SmsTemplate?> GetTemplateByIdAsync(int id)
+    public async Task<SmsTemplate?> GetTemplateByIdAsync(Guid id)
     {
         try
         {
@@ -147,7 +147,7 @@ public class SmsTemplateService : ISmsTemplateService
         }
     }
 
-    public async Task<bool> DeleteTemplateAsync(int id)
+    public async Task<bool> DeleteTemplateAsync(Guid id)
     {
         try
         {

@@ -268,7 +268,7 @@ public class ScansApiController : ControllerBase
         return await _context.Devices.FirstOrDefaultAsync(d => d.ApiKeyHash == keyHash);
     }
 
-    private async Task<Scan?> CheckDuplicateScanAsync(Guid deviceId, int studentId, string scanType, DateTime scannedAt)
+    private async Task<Scan?> CheckDuplicateScanAsync(Guid deviceId, Guid studentId, string scanType, DateTime scannedAt)
     {
         // US0032-AC1: Check for scan within configurable window
         var windowMinutes = await _appSettingsService.GetAsync("QRCode.DuplicateScanWindowMinutes", 5);
@@ -286,13 +286,13 @@ public class ScansApiController : ControllerBase
             .FirstOrDefaultAsync();
     }
 
-    private async Task LogRejectedScanAsync(Guid deviceId, int? studentId, ScanSubmissionRequest request, string status)
+    private async Task LogRejectedScanAsync(Guid deviceId, Guid? studentId, ScanSubmissionRequest request, string status)
     {
         var scan = new Scan
         {
             Id = Guid.NewGuid(),
             DeviceId = deviceId,
-            StudentId = studentId ?? 0, // Use 0 for invalid student IDs
+            StudentId = studentId ?? Guid.Empty, // Use Guid.Empty for invalid student IDs
             QrPayload = request.QrPayload,
             ScannedAt = request.ScannedAt,
             ReceivedAt = DateTime.UtcNow,

@@ -28,10 +28,10 @@ public class BatchReenrollmentModel : PageModel
     public List<SelectListItem> AcademicYears { get; set; } = new();
 
     [BindProperty]
-    public int SourceYearId { get; set; }
+    public Guid SourceYearId { get; set; }
 
     [BindProperty]
-    public int TargetYearId { get; set; }
+    public Guid TargetYearId { get; set; }
 
     public string CurrentStep { get; set; } = "select";
     public ReenrollmentPreview? Preview { get; set; }
@@ -85,8 +85,8 @@ public class BatchReenrollmentModel : PageModel
     {
         await LoadAcademicYearsAsync();
 
-        var sourceId = TempData["PreviewSourceYearId"] as int? ?? SourceYearId;
-        var targetId = TempData["PreviewTargetYearId"] as int? ?? TargetYearId;
+        var sourceId = TempData["PreviewSourceYearId"] is Guid srcGuid ? srcGuid : SourceYearId;
+        var targetId = TempData["PreviewTargetYearId"] is Guid tgtGuid ? tgtGuid : TargetYearId;
         var assignmentsJson = TempData["PreviewAssignments"] as string;
 
         if (string.IsNullOrEmpty(assignmentsJson))
@@ -107,7 +107,7 @@ public class BatchReenrollmentModel : PageModel
         {
             var formKey = $"SectionOverride_{assignment.StudentId}";
             if (Request.Form.TryGetValue(formKey, out var sectionValue) &&
-                int.TryParse(sectionValue, out var sectionId))
+                Guid.TryParse(sectionValue, out var sectionId))
             {
                 assignment.SectionId = sectionId;
             }

@@ -26,7 +26,7 @@ public class SmsService : ISmsService
         _logger = logger;
     }
 
-    public async Task QueueAttendanceNotificationAsync(int studentId, string scanType, DateTime scanTime)
+    public async Task QueueAttendanceNotificationAsync(Guid studentId, string scanType, DateTime scanTime)
     {
         try
         {
@@ -101,7 +101,7 @@ public class SmsService : ISmsService
         }
     }
 
-    public async Task QueueCalendarEventNotificationsAsync(int calendarEventId)
+    public async Task QueueCalendarEventNotificationsAsync(Guid calendarEventId)
     {
         try
         {

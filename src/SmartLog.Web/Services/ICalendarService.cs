@@ -11,22 +11,22 @@ public interface ICalendarService
     /// <summary>
     /// Gets all events for a specific month.
     /// </summary>
-    Task<List<CalendarEvent>> GetEventsForMonthAsync(int year, int month, int? academicYearId = null);
+    Task<List<CalendarEvent>> GetEventsForMonthAsync(int year, int month, Guid? academicYearId = null);
 
     /// <summary>
     /// Gets all events within a date range.
     /// </summary>
-    Task<List<CalendarEvent>> GetEventsForDateRangeAsync(DateTime start, DateTime end, int? academicYearId = null);
+    Task<List<CalendarEvent>> GetEventsForDateRangeAsync(DateTime start, DateTime end, Guid? academicYearId = null);
 
     /// <summary>
     /// Gets upcoming events (next N events from today).
     /// </summary>
-    Task<List<CalendarEvent>> GetUpcomingEventsAsync(int count = 5, int? academicYearId = null);
+    Task<List<CalendarEvent>> GetUpcomingEventsAsync(int count = 5, Guid? academicYearId = null);
 
     /// <summary>
     /// Gets a specific event by ID.
     /// </summary>
-    Task<CalendarEvent?> GetEventByIdAsync(int id);
+    Task<CalendarEvent?> GetEventByIdAsync(Guid id);
 
     // Date checking methods
     /// <summary>
@@ -60,7 +60,7 @@ public interface ICalendarService
     /// <summary>
     /// Deletes a calendar event by ID.
     /// </summary>
-    Task DeleteEventAsync(int id);
+    Task DeleteEventAsync(Guid id);
 
     // Attendance integration methods
     /// <summary>
@@ -80,5 +80,5 @@ public interface ICalendarService
     /// <summary>
     /// Gets statistics about events for an academic year (holiday count, event count, etc.).
     /// </summary>
-    Task<Dictionary<string, int>> GetEventStatisticsAsync(int academicYearId);
+    Task<Dictionary<string, int>> GetEventStatisticsAsync(Guid academicYearId);
 }

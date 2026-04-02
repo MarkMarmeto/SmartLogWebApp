@@ -22,7 +22,7 @@ public class StudentAttendanceHistoryModel : PageModel
     }
 
     [BindProperty(SupportsGet = true)]
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public DateTime? StartDate { get; set; }
@@ -65,7 +65,7 @@ public class StudentAttendanceHistoryModel : PageModel
         }
     }
 
-    private async Task LoadAttendanceHistoryAsync(int studentId, DateTime startDate, DateTime endDate)
+    private async Task LoadAttendanceHistoryAsync(Guid studentId, DateTime startDate, DateTime endDate)
     {
         var history = new List<DailyAttendanceRecord>();
 

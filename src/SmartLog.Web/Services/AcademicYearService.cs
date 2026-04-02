@@ -39,7 +39,7 @@ public class AcademicYearService : IAcademicYearService
             .ToListAsync();
     }
 
-    public async Task<AcademicYear?> GetAcademicYearByIdAsync(int id)
+    public async Task<AcademicYear?> GetAcademicYearByIdAsync(Guid id)
     {
         return await _context.AcademicYears
             .FirstOrDefaultAsync(ay => ay.Id == id);
@@ -81,7 +81,7 @@ public class AcademicYearService : IAcademicYearService
         return academicYear;
     }
 
-    public async Task SetCurrentAcademicYearAsync(int academicYearId)
+    public async Task SetCurrentAcademicYearAsync(Guid academicYearId)
     {
         var academicYear = await _context.AcademicYears
             .FirstOrDefaultAsync(ay => ay.Id == academicYearId);
@@ -114,7 +114,7 @@ public class AcademicYearService : IAcademicYearService
         _logger.LogInformation("Updated academic year: {Name} (ID: {Id})", academicYear.Name, academicYear.Id);
     }
 
-    public async Task DeactivateAcademicYearAsync(int academicYearId)
+    public async Task DeactivateAcademicYearAsync(Guid academicYearId)
     {
         var academicYear = await _context.AcademicYears
             .FirstOrDefaultAsync(ay => ay.Id == academicYearId);

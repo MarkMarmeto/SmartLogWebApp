@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class SmsTemplate
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Template code: ENTRY, EXIT, HOLIDAY, SUSPENSION, EMERGENCY

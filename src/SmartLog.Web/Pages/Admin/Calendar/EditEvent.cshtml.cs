@@ -40,7 +40,7 @@ public class EditEventModel : PageModel
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [Display(Name = "Title")]
@@ -82,13 +82,13 @@ public class EditEventModel : PageModel
 
         [Required]
         [Display(Name = "Academic Year")]
-        public int AcademicYearId { get; set; }
+        public Guid AcademicYearId { get; set; }
 
         [Display(Name = "Active")]
         public bool IsActive { get; set; } = true;
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var calendarEvent = await _calendarService.GetEventByIdAsync(id);
         if (calendarEvent == null)
@@ -177,7 +177,7 @@ public class EditEventModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         try
         {

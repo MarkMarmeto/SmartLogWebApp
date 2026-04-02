@@ -12,7 +12,7 @@ public class Scan
 
     public Guid DeviceId { get; set; }
 
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     [Required]
     [StringLength(500)]
@@ -46,7 +46,7 @@ public class Scan
     /// Optional reference to the academic year this scan belongs to.
     /// Used for historical reporting and filtering.
     /// </summary>
-    public int? AcademicYearId { get; set; }
+    public Guid? AcademicYearId { get; set; }
 
     // Navigation properties
     public virtual Device Device { get; set; } = null!;

@@ -4,7 +4,7 @@ namespace SmartLog.Web.Data.Entities;
 
 public class AppSettings
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(100)]

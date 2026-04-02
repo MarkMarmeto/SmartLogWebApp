@@ -20,7 +20,7 @@ public interface IAcademicYearService
     /// <summary>
     /// Gets a specific academic year by ID.
     /// </summary>
-    Task<AcademicYear?> GetAcademicYearByIdAsync(int id);
+    Task<AcademicYear?> GetAcademicYearByIdAsync(Guid id);
 
     /// <summary>
     /// Creates a new academic year.
@@ -31,7 +31,7 @@ public interface IAcademicYearService
     /// Sets a specific academic year as the current one.
     /// Ensures only one academic year is current at a time.
     /// </summary>
-    Task SetCurrentAcademicYearAsync(int academicYearId);
+    Task SetCurrentAcademicYearAsync(Guid academicYearId);
 
     /// <summary>
     /// Updates an existing academic year.
@@ -41,5 +41,5 @@ public interface IAcademicYearService
     /// <summary>
     /// Deactivates an academic year (soft delete).
     /// </summary>
-    Task DeactivateAcademicYearAsync(int academicYearId);
+    Task DeactivateAcademicYearAsync(Guid academicYearId);
 }

@@ -37,14 +37,14 @@ public class EditSectionModel : PageModel
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
         [StringLength(50)]
         public string Name { get; set; } = string.Empty;
 
         [Display(Name = "Adviser")]
-        public int? AdviserId { get; set; }
+        public Guid? AdviserId { get; set; }
 
         [Required]
         [Range(1, 100)]
@@ -54,7 +54,7 @@ public class EditSectionModel : PageModel
         public bool IsActive { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var section = await _gradeSectionService.GetSectionByIdAsync(id);
         if (section == null)

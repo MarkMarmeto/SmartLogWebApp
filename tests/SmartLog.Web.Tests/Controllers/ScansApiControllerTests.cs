@@ -270,7 +270,7 @@ public class ScansApiControllerTests
                     StartDate = DateTime.UtcNow,
                     EndDate = DateTime.UtcNow,
                     CreatedBy = "admin",
-                    AcademicYearId = 1
+                    AcademicYearId = Guid.NewGuid()
                 }
             });
 

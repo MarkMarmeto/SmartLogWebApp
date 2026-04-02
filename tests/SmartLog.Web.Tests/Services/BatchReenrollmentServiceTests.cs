@@ -22,8 +22,9 @@ public class BatchReenrollmentServiceTests
         using var context = TestDbContextFactory.Create();
         var service = CreateService(context);
 
+        var sameId = Guid.NewGuid();
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.GeneratePreviewAsync(1, 1));
+            () => service.GeneratePreviewAsync(sameId, sameId));
     }
 
     [Fact]
@@ -266,7 +267,8 @@ public class BatchReenrollmentServiceTests
         using var context = TestDbContextFactory.Create();
         var service = CreateService(context);
 
+        var sameId = Guid.NewGuid();
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.ExecuteReenrollmentAsync(1, 1, new List<StudentPromotionAssignment>(), "user"));
+            () => service.ExecuteReenrollmentAsync(sameId, sameId, new List<StudentPromotionAssignment>(), "user"));
     }
 }

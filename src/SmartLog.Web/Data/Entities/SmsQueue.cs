@@ -36,7 +36,7 @@ public class SmsQueue
     /// <summary>
     /// Optional reference to student if attendance/parent notification
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     public int RetryCount { get; set; } = 0;
 

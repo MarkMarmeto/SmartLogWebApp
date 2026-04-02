@@ -29,7 +29,7 @@ public class TestSendModel : PageModel
     public string PhoneNumber { get; set; } = string.Empty;
 
     [BindProperty]
-    public int? SelectedTemplateId { get; set; }
+    public Guid? SelectedTemplateId { get; set; }
 
     [BindProperty]
     public Dictionary<string, string> Placeholders { get; set; } = new();
@@ -45,7 +45,7 @@ public class TestSendModel : PageModel
         Templates = await _templateService.GetAllTemplatesAsync();
     }
 
-    public async Task<IActionResult> OnGetPreviewAsync(int templateId, [FromQuery] Dictionary<string, string>? placeholders)
+    public async Task<IActionResult> OnGetPreviewAsync(Guid templateId, [FromQuery] Dictionary<string, string>? placeholders)
     {
         var template = await _templateService.GetTemplateByIdAsync(templateId);
         if (template == null)

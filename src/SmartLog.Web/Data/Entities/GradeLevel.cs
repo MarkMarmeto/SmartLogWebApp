@@ -8,7 +8,7 @@ namespace SmartLog.Web.Data.Entities;
 /// </summary>
 public class GradeLevel
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Grade code: K, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
