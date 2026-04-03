@@ -188,6 +188,7 @@ public class AppSettingsService : IAppSettingsService
             ("System.ApplicationVersion", "1.0.0", "System", false, "Application version"),
             ("System.SchoolName", "SmartLog School", "System", false, "School name for display"),
             ("System.SchoolCode", "SL", "System", false, "School code used in Student ID generation (e.g., MNHS, SJA)"),
+            ("System.SchoolPhone", "", "System", false, "School contact number shown in SMS notifications (e.g., 09171234567)"),
             ("System.SchoolTimezone", "Asia/Manila", "System", false, "Default timezone"),
         };
 

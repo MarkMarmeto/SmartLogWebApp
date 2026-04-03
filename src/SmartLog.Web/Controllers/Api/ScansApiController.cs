@@ -241,7 +241,8 @@ public class ScansApiController : ControllerBase
                 await _smsService.QueueAttendanceNotificationAsync(
                     student.Id,
                     request.ScanType,
-                    request.ScannedAt);
+                    request.ScannedAt,
+                    scan.Id);
             }
             catch (Exception ex)
             {

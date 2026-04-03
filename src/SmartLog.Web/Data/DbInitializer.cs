@@ -800,21 +800,18 @@ public static class DbInitializer
 
     private static async Task SeedSmsTemplatesAsync(ApplicationDbContext context, ILogger logger)
     {
-        if (await context.SmsTemplates.AnyAsync())
-        {
-            logger.LogInformation("SMS templates already exist, skipping seeding");
-            return;
-        }
-
-        var templates = new List<SmsTemplate>
+        // System templates are always upserted so template text stays in sync
+        // with the application version. Admins may edit non-system templates freely.
+        var systemTemplates = new List<SmsTemplate>
         {
             new()
             {
                 Code = "ENTRY",
                 Name = "Student Entry Notification",
-                TemplateEn = "[SmartLog] {StudentName} ({Grade}-{Section}) entered school at {Time}.",
-                TemplateFil = "[SmartLog] Si {StudentName} ({Grade}-{Section}) ay pumasok sa eskwelahan ng {Time}.",
-                AvailablePlaceholders = "{StudentName},{Grade},{Section},{Time}",
+                // RA 10173 compliant: first name only, no grade/section, scan reference for verification
+                TemplateEn = "{StudentFirstName} has arrived at school on {Date} at {Time}. For concerns, call {SchoolPhone}. Ref#{ScanRef}",
+                TemplateFil = "Si {StudentFirstName} ay ligtas na dumating sa paaralan noong {Date} ng {Time}. Para sa katanungan, tumawag sa {SchoolPhone}. Ref#{ScanRef}",
+                AvailablePlaceholders = "{StudentFirstName},{Date},{Time},{SchoolPhone},{ScanRef}",
                 IsActive = true,
                 IsSystem = true
             },
@@ -822,9 +819,9 @@ public static class DbInitializer
             {
                 Code = "EXIT",
                 Name = "Student Exit Notification",
-                TemplateEn = "[SmartLog] {StudentName} ({Grade}-{Section}) left school at {Time}.",
-                TemplateFil = "[SmartLog] Si {StudentName} ({Grade}-{Section}) ay umalis sa eskwelahan ng {Time}.",
-                AvailablePlaceholders = "{StudentName},{Grade},{Section},{Time}",
+                TemplateEn = "{StudentFirstName} has left school on {Date} at {Time}. For concerns, call {SchoolPhone}. Ref#{ScanRef}",
+                TemplateFil = "Si {StudentFirstName} ay umalis na sa paaralan noong {Date} ng {Time}. Para sa katanungan, tumawag sa {SchoolPhone}. Ref#{ScanRef}",
+                AvailablePlaceholders = "{StudentFirstName},{Date},{Time},{SchoolPhone},{ScanRef}",
                 IsActive = true,
                 IsSystem = true
             },
@@ -832,9 +829,9 @@ public static class DbInitializer
             {
                 Code = "HOLIDAY",
                 Name = "Holiday Announcement",
-                TemplateEn = "[SmartLog] Reminder: No classes on {Date} - {EventTitle}.",
-                TemplateFil = "[SmartLog] Paalala: Walang pasok sa {Date} - {EventTitle}.",
-                AvailablePlaceholders = "{Date},{EventTitle}",
+                TemplateEn = "Reminder: No classes on {Date} - {EventTitle}. For concerns, call {SchoolPhone}.",
+                TemplateFil = "Paalala: Walang pasok sa {Date} - {EventTitle}. Para sa katanungan, tumawag sa {SchoolPhone}.",
+                AvailablePlaceholders = "{Date},{EventTitle},{SchoolPhone}",
                 IsActive = true,
                 IsSystem = true
             },
@@ -842,9 +839,9 @@ public static class DbInitializer
             {
                 Code = "SUSPENSION",
                 Name = "Class Suspension Notice",
-                TemplateEn = "[SmartLog] Classes suspended on {Date}: {EventTitle}.",
-                TemplateFil = "[SmartLog] Suspendido ang klase sa {Date}: {EventTitle}.",
-                AvailablePlaceholders = "{Date},{EventTitle}",
+                TemplateEn = "Classes suspended on {Date}: {EventTitle}. For concerns, call {SchoolPhone}.",
+                TemplateFil = "Suspendido ang klase sa {Date}: {EventTitle}. Para sa katanungan, tumawag sa {SchoolPhone}.",
+                AvailablePlaceholders = "{Date},{EventTitle},{SchoolPhone}",
                 IsActive = true,
                 IsSystem = true
             },
@@ -852,17 +849,38 @@ public static class DbInitializer
             {
                 Code = "EMERGENCY",
                 Name = "Emergency Alert",
-                TemplateEn = "[SmartLog ALERT] {Message}",
-                TemplateFil = "[SmartLog ALERTO] {Message}",
-                AvailablePlaceholders = "{Message}",
+                TemplateEn = "[ALERT] {Message} For concerns, call {SchoolPhone}.",
+                TemplateFil = "[ALERTO] {Message} Para sa katanungan, tumawag sa {SchoolPhone}.",
+                AvailablePlaceholders = "{Message},{SchoolPhone}",
                 IsActive = true,
                 IsSystem = true
             }
         };
 
-        context.SmsTemplates.AddRange(templates);
-        await context.SaveChangesAsync();
+        int added = 0, updated = 0;
+        foreach (var template in systemTemplates)
+        {
+            var existing = await context.SmsTemplates
+                .FirstOrDefaultAsync(t => t.Code == template.Code);
 
-        logger.LogInformation("Seeded {Count} SMS templates (ENTRY, EXIT, HOLIDAY, SUSPENSION, EMERGENCY)", templates.Count);
+            if (existing == null)
+            {
+                context.SmsTemplates.Add(template);
+                added++;
+            }
+            else
+            {
+                // Always sync system template text and placeholders
+                existing.Name = template.Name;
+                existing.TemplateEn = template.TemplateEn;
+                existing.TemplateFil = template.TemplateFil;
+                existing.AvailablePlaceholders = template.AvailablePlaceholders;
+                existing.IsSystem = true;
+                updated++;
+            }
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("SMS templates: {Added} added, {Updated} updated", added, updated);
     }
 }

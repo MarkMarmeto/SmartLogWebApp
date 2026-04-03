@@ -398,7 +398,8 @@ public class ScansApiControllerTests
             s => s.QueueAttendanceNotificationAsync(
                 _activeStudent.Id,
                 "ENTRY",
-                It.IsAny<DateTime>()),
+                It.IsAny<DateTime>(),
+                It.IsAny<Guid>()),
             Times.Once);
     }
 }

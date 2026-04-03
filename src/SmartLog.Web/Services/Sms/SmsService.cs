@@ -12,21 +12,24 @@ public class SmsService : ISmsService
     private readonly ApplicationDbContext _context;
     private readonly ISmsTemplateService _templateService;
     private readonly ISmsSettingsService _settingsService;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly ILogger<SmsService> _logger;
 
     public SmsService(
         ApplicationDbContext context,
         ISmsTemplateService templateService,
         ISmsSettingsService settingsService,
+        IAppSettingsService appSettingsService,
         ILogger<SmsService> logger)
     {
         _context = context;
         _templateService = templateService;
         _settingsService = settingsService;
+        _appSettingsService = appSettingsService;
         _logger = logger;
     }
 
-    public async Task QueueAttendanceNotificationAsync(Guid studentId, string scanType, DateTime scanTime)
+    public async Task QueueAttendanceNotificationAsync(Guid studentId, string scanType, DateTime scanTime, Guid scanId)
     {
         try
         {
@@ -37,7 +40,7 @@ public class SmsService : ISmsService
                 return;
             }
 
-            // Get student with navigation properties
+            // Get student
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
 
@@ -57,13 +60,21 @@ public class SmsService : ISmsService
             // Determine template code based on scan type
             var templateCode = scanType.ToUpperInvariant() == "ENTRY" ? "ENTRY" : "EXIT";
 
-            // Prepare placeholders
+            // Fetch school phone — data-minimized: first name only, no grade/section
+            var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
+            var localTime = scanTime.ToLocalTime();
+
+            // Compliant placeholders (RA 10173 / data minimization):
+            // - First name only (not full name)
+            // - No grade/section (unnecessary for the notification purpose)
+            // - ScanRef: first 8 chars of scan Guid for parent verification
             var placeholders = new Dictionary<string, string>
             {
-                { "StudentName", student.FullName },
-                { "Grade", student.GradeLevel },
-                { "Section", student.Section },
-                { "Time", scanTime.ToLocalTime().ToString("h:mm tt") }
+                { "StudentFirstName", student.FirstName },
+                { "Date", localTime.ToString("MMM d, yyyy") },
+                { "Time", localTime.ToString("h:mm tt") },
+                { "SchoolPhone", schoolPhone },
+                { "ScanRef", scanId.ToString("N")[..8].ToUpperInvariant() }
             };
 
             // Render template
@@ -146,10 +157,12 @@ public class SmsService : ISmsService
             _logger.LogInformation("Sending calendar notification to {Count} students", students.Count);
 
             // Prepare placeholders
+            var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var placeholders = new Dictionary<string, string>
             {
-                { "Date", calendarEvent.StartDate.ToString("MMM dd, yyyy") },
-                { "EventTitle", calendarEvent.Title }
+                { "Date", calendarEvent.StartDate.ToString("MMM d, yyyy") },
+                { "EventTitle", calendarEvent.Title },
+                { "SchoolPhone", schoolPhone }
             };
 
             // Queue SMS for each student
@@ -206,9 +219,11 @@ public class SmsService : ISmsService
             _logger.LogInformation("Sending emergency announcement to {Count} students", students.Count);
 
             // Use EMERGENCY template
+            var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var placeholders = new Dictionary<string, string>
             {
-                { "Message", message }
+                { "Message", message },
+                { "SchoolPhone", schoolPhone }
             };
 
             // Queue SMS for each student
