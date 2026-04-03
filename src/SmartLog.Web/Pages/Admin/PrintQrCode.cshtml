@@ -55,11 +55,8 @@
 
         /* ── Card grid ── */
         .card-grid {
-            max-width: 860px;
+            max-width: 420px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
         }
 
         /* ── ID Card ── */
@@ -138,11 +135,10 @@
         /* Profile picture */
         .profile-pic {
             flex-shrink: 0;
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
+            width: 96px;
+            height: 96px;
             overflow: hidden;
-            border: 3px solid #e8f5f4;
+            border: 2px solid #dce9e9;
             background: #e8f5f4;
             display: flex;
             align-items: center;
@@ -269,11 +265,6 @@
 
             .controls { display: none; }
 
-            .card-grid {
-                max-width: 100%;
-                gap: 8mm;
-            }
-
             .id-card {
                 box-shadow: none;
                 border: 1px solid #ddd;
@@ -295,9 +286,7 @@
 
     <div class="card-grid">
         <!-- The card is rendered once; duplicate it for cut-sheet printing -->
-        @for (int i = 0; i < 4; i++)
-        {
-            <div class="id-card">
+        <div class="id-card">
 
                 <!-- Header -->
                 <div class="card-header">
@@ -368,8 +357,7 @@
                 </div>
 
                 <div class="card-footer"></div>
-            </div>
-        }
+        </div>
     </div>
 
 </body>
