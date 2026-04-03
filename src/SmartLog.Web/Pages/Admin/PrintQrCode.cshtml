@@ -21,129 +21,120 @@
 
         /* ── Screen controls ── */
         .controls {
-            max-width: 860px;
-            margin: 0 auto 24px;
+            max-width: 420px;
+            margin: 0 auto 20px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .controls h1 {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 600;
             color: #333;
             flex: 1;
         }
 
         .btn {
-            padding: 9px 20px;
+            padding: 8px 18px;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             border: none;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
         .btn-primary   { background: #2C5F5D; color: #fff; }
         .btn-secondary { background: #fff; color: #555; border: 1px solid #ccc; }
         .btn:hover     { opacity: .85; }
 
-        /* ── Card grid ── */
-        .card-grid {
-            max-width: 420px;
+        /* ── Card wrapper ── */
+        .card-wrap {
+            max-width: 380px;
             margin: 0 auto;
         }
 
         /* ── ID Card ── */
         .id-card {
             background: #fff;
-            border-radius: 0;
             overflow: hidden;
-            box-shadow: 0 2px 12px rgba(0,0,0,.15);
-            width: 100%;
-            page-break-inside: avoid;
+            box-shadow: 0 2px 14px rgba(0,0,0,.18);
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
-        /* Header */
+        /* ── Header ── */
         .card-header {
             background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%) !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             color: #fff;
-            padding: 14px 18px;
+            padding: 12px 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .card-header .logo-mark {
-            width: 36px;
-            height: 36px;
+        .logo-mark {
+            width: 32px;
+            height: 32px;
             background: rgba(255,255,255,.2);
-            border-radius: 8px;
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
 
-        .card-header .logo-mark svg {
-            width: 22px;
-            height: 22px;
-        }
+        .logo-mark svg { width: 20px; height: 20px; }
 
-        .card-header .school-info {
-            overflow: hidden;
-        }
+        .school-info { overflow: hidden; flex: 1; }
 
-        .card-header .school-name {
+        .school-name {
             font-size: 13px;
             font-weight: 700;
-            letter-spacing: .3px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .card-header .card-label {
-            font-size: 10px;
+        .card-label {
+            font-size: 9px;
             opacity: .8;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-top: 1px;
         }
 
-        .card-header .academic-year {
-            margin-left: auto;
+        .academic-year {
             font-size: 11px;
             opacity: .85;
             white-space: nowrap;
             flex-shrink: 0;
         }
 
-        /* Body */
-        .card-body {
-            padding: 16px 18px;
+        /* ── Student info row ── */
+        .student-row {
             display: flex;
-            gap: 16px;
-            align-items: flex-start;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px 12px;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        /* Profile picture */
         .profile-pic {
             flex-shrink: 0;
-            width: 96px;
-            height: 96px;
+            width: 72px;
+            height: 72px;
             overflow: hidden;
             border: 2px solid #dce9e9;
             background: #e8f5f4;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -156,129 +147,115 @@
         }
 
         .profile-pic .placeholder {
-            font-size: 28px;
+            font-size: 24px;
             color: #2C5F5D;
             font-weight: 700;
-            line-height: 1;
         }
 
-        /* Student details */
-        .student-details {
-            flex: 1;
-            min-width: 0;
-        }
+        .student-details { flex: 1; min-width: 0; }
 
         .student-name {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 700;
             color: #1a1a1a;
             line-height: 1.2;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             word-break: break-word;
         }
 
         .badge-row {
             display: flex;
-            gap: 6px;
+            gap: 5px;
             flex-wrap: wrap;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .badge {
-            background: #e8f5f4;
+            background: #e8f5f4 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
             color: #2C5F5D;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
         }
 
         .detail-row {
             display: flex;
             gap: 6px;
             align-items: baseline;
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         .detail-label {
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
-            color: #999;
+            color: #aaa;
             letter-spacing: .5px;
-            width: 36px;
+            width: 30px;
             flex-shrink: 0;
         }
 
         .detail-value {
-            font-size: 12px;
+            font-size: 11px;
             color: #333;
             font-family: 'Courier New', monospace;
+            font-weight: 700;
+        }
+
+        /* ── QR section — centered, dominant ── */
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 18px 16px 14px;
+            gap: 10px;
+        }
+
+        .qr-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #aaa;
             font-weight: 600;
         }
 
-        /* Divider */
-        .card-divider {
-            height: 1px;
-            background: #f0f0f0;
-            margin: 0 18px;
-        }
-
-        /* QR section */
-        .qr-section {
-            padding: 14px 18px 18px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
         .qr-section img {
-            width: 110px;
-            height: 110px;
-            flex-shrink: 0;
+            width: 200px;
+            height: 200px;
+            display: block;
         }
 
-        .qr-info {
-            flex: 1;
+        .qr-note {
+            font-size: 9px;
+            color: #bbb;
+            text-align: center;
+            line-height: 1.4;
         }
 
-        .qr-info p {
-            font-size: 11px;
-            color: #666;
-            line-height: 1.5;
-            margin-bottom: 6px;
-        }
-
-        .qr-info .note {
-            font-size: 10px;
-            color: #999;
-            font-style: italic;
-        }
-
-        /* Footer stripe */
+        /* ── Footer ── */
         .card-footer {
             background: #2C5F5D !important;
-            height: 5px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            height: 6px;
         }
 
-        /* ── Print styles ── */
+        /* ── Print ── */
         @@media print {
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            body {
-                background: #fff;
-                padding: 8mm;
-            }
-
+            body { background: #fff; padding: 10mm; }
             .controls { display: none; }
 
             .id-card {
                 box-shadow: none;
-                border: 1px solid #ddd;
+                border: 1px solid #ccc;
+                max-width: 380px;
+                margin: 0 auto;
             }
         }
     </style>
@@ -286,88 +263,78 @@
 <body>
 
     <div class="controls">
-        <h1>Student ID Card — @Model.Student.FullName</h1>
-        <button class="btn btn-primary" onclick="window.print()">
-            &#x1F5A8; Print
-        </button>
-        <button class="btn btn-secondary" onclick="window.close()">
-            &#x2715; Close
-        </button>
+        <h1>@Model.Student.FullName</h1>
+        <button class="btn btn-primary" onclick="window.print()">&#x1F5A8; Print</button>
+        <button class="btn btn-secondary" onclick="window.close()">&#x2715; Close</button>
     </div>
 
-    <div class="card-grid">
-        <!-- The card is rendered once; duplicate it for cut-sheet printing -->
+    <div class="card-wrap">
         <div class="id-card">
 
-                <!-- Header -->
-                <div class="card-header">
-                    <div class="logo-mark">
-                        <!-- SmartLog icon mark (QR brackets + checkmark) -->
-                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="8" y="8" width="16" height="4" rx="1" fill="white"/>
-                            <rect x="8" y="8" width="4" height="16" rx="1" fill="white"/>
-                            <rect x="40" y="8" width="16" height="4" rx="1" fill="white"/>
-                            <rect x="52" y="8" width="4" height="16" rx="1" fill="white"/>
-                            <rect x="8" y="52" width="16" height="4" rx="1" fill="white"/>
-                            <rect x="8" y="40" width="4" height="16" rx="1" fill="white"/>
-                            <polyline points="22,34 29,41 42,26" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                        </svg>
-                    </div>
-                    <div class="school-info">
-                        <div class="school-name">@Model.SchoolName</div>
-                        <div class="card-label">Student ID Card</div>
-                    </div>
-                    @if (!string.IsNullOrEmpty(Model.AcademicYear))
+            <!-- Header -->
+            <div class="card-header">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="8" width="16" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="8" width="4" height="16" rx="1" fill="white"/>
+                        <rect x="40" y="8" width="16" height="4" rx="1" fill="white"/>
+                        <rect x="52" y="8" width="4" height="16" rx="1" fill="white"/>
+                        <rect x="8" y="52" width="16" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="40" width="4" height="16" rx="1" fill="white"/>
+                        <polyline points="22,34 29,41 42,26" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                </div>
+                <div class="school-info">
+                    <div class="school-name">@Model.SchoolName</div>
+                    <div class="card-label">Student ID Card</div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.AcademicYear))
+                {
+                    <div class="academic-year">S.Y. @Model.AcademicYear</div>
+                }
+            </div>
+
+            <!-- Student info -->
+            <div class="student-row">
+                <div class="profile-pic">
+                    @if (!string.IsNullOrEmpty(Model.Student.ProfilePicturePath))
                     {
-                        <div class="academic-year">S.Y. @Model.AcademicYear</div>
+                        <img src="@Model.Student.ProfilePicturePath" alt="@Model.Student.FullName" />
+                    }
+                    else
+                    {
+                        <span class="placeholder">@Model.Student.FirstName[0]@Model.Student.LastName[0]</span>
                     }
                 </div>
-
-                <!-- Body -->
-                <div class="card-body">
-                    <div class="profile-pic">
-                        @if (!string.IsNullOrEmpty(Model.Student.ProfilePicturePath))
-                        {
-                            <img src="@Model.Student.ProfilePicturePath" alt="@Model.Student.FullName" />
-                        }
-                        else
-                        {
-                            <span class="placeholder">@Model.Student.FirstName[0]@Model.Student.LastName[0]</span>
-                        }
+                <div class="student-details">
+                    <div class="student-name">@Model.Student.FullName</div>
+                    <div class="badge-row">
+                        <span class="badge">Grade @Model.Student.GradeLevel</span>
+                        <span class="badge">@Model.Student.Section</span>
                     </div>
-                    <div class="student-details">
-                        <div class="student-name">@Model.Student.FullName</div>
-                        <div class="badge-row">
-                            <span class="badge">Grade @Model.Student.GradeLevel</span>
-                            <span class="badge">@Model.Student.Section</span>
-                        </div>
+                    <div class="detail-row">
+                        <span class="detail-label">ID</span>
+                        <span class="detail-value">@Model.Student.StudentId</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Student.LRN))
+                    {
                         <div class="detail-row">
-                            <span class="detail-label">ID</span>
-                            <span class="detail-value">@Model.Student.StudentId</span>
+                            <span class="detail-label">LRN</span>
+                            <span class="detail-value">@Model.Student.LRN</span>
                         </div>
-                        @if (!string.IsNullOrEmpty(Model.Student.LRN))
-                        {
-                            <div class="detail-row">
-                                <span class="detail-label">LRN</span>
-                                <span class="detail-value">@Model.Student.LRN</span>
-                            </div>
-                        }
-                    </div>
+                    }
                 </div>
+            </div>
 
-                <div class="card-divider"></div>
+            <!-- QR Code — centered, prominent -->
+            <div class="qr-section">
+                <span class="qr-label">Scan for Attendance</span>
+                <img src="data:image/png;base64,@Model.QrCode.QrImageBase64"
+                     alt="QR Code for @Model.Student.FullName" />
+                <span class="qr-note">Present this card at entry and exit points.<br/>Keep safe — report lost cards to the school office.</span>
+            </div>
 
-                <!-- QR Section -->
-                <div class="qr-section">
-                    <img src="data:image/png;base64,@Model.QrCode.QrImageBase64"
-                         alt="QR Code for @Model.Student.FullName" />
-                    <div class="qr-info">
-                        <p>Scan at school entry and exit points for attendance tracking.</p>
-                        <p class="note">Keep this card safe. Report lost or damaged cards to the school office immediately.</p>
-                    </div>
-                </div>
-
-                <div class="card-footer"></div>
+            <div class="card-footer"></div>
         </div>
     </div>
 
