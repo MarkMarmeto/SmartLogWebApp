@@ -180,9 +180,9 @@ catch {
 }
 
 # ============================================================
-# Step 3: Backup Current Installation
+# Step 3: Backup Application & Database
 # ============================================================
-Write-StepHeader -Step 3 -Total $totalSteps -Title "Backing Up Current Installation"
+Write-StepHeader -Step 3 -Total $totalSteps -Title "Backing Up Application & Database"
 
 if ($SkipBackup) {
     Write-Detail "Backup skipped (--SkipBackup flag)"
@@ -195,20 +195,93 @@ else {
     $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
     $backupPath = Join-Path $Script:BackupDir "smartlog-backup-$timestamp"
 
-    Write-Detail "Creating backup at: $backupPath"
-
-    # Copy current installation (exclude logs to save space)
+    # -- Application Backup --
+    Write-Detail "Backing up application files..."
     New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
     Get-ChildItem $Script:InstallDir -Exclude "logs" | Copy-Item -Destination $backupPath -Recurse -Force
 
     $backupSize = [math]::Round((Get-ChildItem $backupPath -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
-    Write-Success "Backup created ($($backupSize) MB)"
+    Write-Success "Application backed up ($($backupSize) MB) → $backupPath"
 
-    # Clean up old backups (keep last 5)
-    $oldBackups = Get-ChildItem $Script:BackupDir -Directory | Sort-Object Name -Descending | Select-Object -Skip 5
+    # Clean up old app backups (keep last 5)
+    $oldBackups = Get-ChildItem $Script:BackupDir -Directory -Filter "smartlog-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5
     if ($oldBackups) {
         $oldBackups | Remove-Item -Recurse -Force
-        Write-Detail "Cleaned up $($oldBackups.Count) old backup(s)"
+        Write-Detail "Cleaned up $($oldBackups.Count) old app backup(s)"
+    }
+
+    # -- Database Backup --
+    Write-Detail "Backing up SQL Server database..."
+
+    # Resolve connection string: env var takes priority, then installed appsettings.json
+    $connStr = [System.Environment]::GetEnvironmentVariable("SMARTLOG_DB_CONNECTION", "Machine")
+    if (-not $connStr) {
+        $connStr = [System.Environment]::GetEnvironmentVariable("SMARTLOG_DB_CONNECTION", "User")
+    }
+    if (-not $connStr) {
+        $appSettingsPath = Join-Path $Script:InstallDir "appsettings.json"
+        if (Test-Path $appSettingsPath) {
+            try {
+                $appSettings = Get-Content $appSettingsPath -Raw | ConvertFrom-Json
+                $connStr = $appSettings.ConnectionStrings.DefaultConnection
+            }
+            catch { }
+        }
+    }
+
+    if ($connStr) {
+        # Parse connection string components
+        $dbServer = if ($connStr -match 'Server=([^;]+)')  { $Matches[1] } else { "localhost" }
+        $dbName   = if ($connStr -match 'Database=([^;]+)') { $Matches[1] } else { "SmartLog" }
+        $dbUser   = if ($connStr -match 'User Id=([^;]+)') { $Matches[1] } else { $null }
+        $dbPass   = if ($connStr -match 'Password=([^;]+)') { $Matches[1] } else { $null }
+
+        $dbBackupDir = Join-Path $Script:BackupDir "database"
+        if (-not (Test-Path $dbBackupDir)) {
+            New-Item -ItemType Directory -Path $dbBackupDir -Force | Out-Null
+        }
+
+        $dbBackupFile = Join-Path $dbBackupDir "smartlog-db-$timestamp.bak"
+        $backupSql = "BACKUP DATABASE [$dbName] TO DISK = N'$dbBackupFile' WITH NOFORMAT, NOINIT, NAME = N'SmartLog-Full-$timestamp', SKIP, NOREWIND, NOUNLOAD, STATS = 10"
+
+        try {
+            $prevEAP = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+
+            if ($dbUser -and $dbPass) {
+                sqlcmd -S $dbServer -U $dbUser -P $dbPass -Q $backupSql 2>&1 | Out-Null
+            }
+            else {
+                sqlcmd -S $dbServer -E -Q $backupSql 2>&1 | Out-Null
+            }
+
+            $ErrorActionPreference = $prevEAP
+
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $dbBackupFile)) {
+                $dbSize = [math]::Round((Get-Item $dbBackupFile).Length / 1MB, 1)
+                Write-Success "Database backed up ($($dbSize) MB) → $dbBackupFile"
+
+                # Keep last 5 database backups
+                $oldDbBackups = Get-ChildItem $dbBackupDir -Filter "*.bak" | Sort-Object Name -Descending | Select-Object -Skip 5
+                if ($oldDbBackups) {
+                    $oldDbBackups | Remove-Item -Force
+                    Write-Detail "Cleaned up $($oldDbBackups.Count) old DB backup(s)"
+                }
+            }
+            else {
+                Write-Warn "Database backup may have failed (exit code: $LASTEXITCODE)"
+                Write-Detail "Update will continue — check SQL Server logs if needed."
+            }
+        }
+        catch {
+            $ErrorActionPreference = $prevEAP
+            Write-Warn "Database backup failed: $_"
+            Write-Detail "Update will continue, but no DB backup was created."
+        }
+    }
+    else {
+        Write-Warn "Connection string not found — database backup skipped."
+        Write-Detail "Set the SMARTLOG_DB_CONNECTION machine environment variable to enable automatic DB backups."
     }
 }
 
@@ -340,6 +413,13 @@ if (-not $SkipBackup) {
     Write-Host "    sc.exe stop SmartLogWeb" -ForegroundColor DarkGray
     Write-Host "    Copy-Item '$backupPath\*' '$($Script:InstallDir)' -Recurse -Force" -ForegroundColor DarkGray
     Write-Host "    sc.exe start SmartLogWeb" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  DB Rollback (if needed):" -ForegroundColor Gray
+    $dbBackupDir = Join-Path $Script:BackupDir "database"
+    $dbBackupFile = Join-Path $dbBackupDir "smartlog-db-$timestamp.bak"
+    if (Test-Path $dbBackupFile) {
+        Write-Host "    sqlcmd -S <server> -U <user> -P <pass> -Q `"RESTORE DATABASE [SmartLog] FROM DISK = N'$dbBackupFile' WITH REPLACE`"" -ForegroundColor DarkGray
+    }
     Write-Host ""
 }
 
