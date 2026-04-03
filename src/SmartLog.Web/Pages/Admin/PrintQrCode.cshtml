@@ -62,16 +62,20 @@
         /* ── ID Card ── */
         .id-card {
             background: #fff;
-            border-radius: 14px;
+            border-radius: 0;
             overflow: hidden;
             box-shadow: 0 2px 12px rgba(0,0,0,.15);
             width: 100%;
             page-break-inside: avoid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         /* Header */
         .card-header {
-            background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%);
+            background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%) !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
             color: #fff;
             padding: 14px 18px;
             display: flex;
@@ -252,12 +256,19 @@
 
         /* Footer stripe */
         .card-footer {
-            background: #2C5F5D;
+            background: #2C5F5D !important;
             height: 5px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         /* ── Print styles ── */
         @@media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             body {
                 background: #fff;
                 padding: 8mm;
