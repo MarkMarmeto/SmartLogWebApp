@@ -248,7 +248,7 @@ public class SemaphoreGateway : ISmsGateway
     private class SemaphoreAccount
     {
         [JsonPropertyName("account_id")]
-        public string? AccountId { get; set; }
+        public long? AccountId { get; set; }
 
         [JsonPropertyName("account_name")]
         public string? AccountName { get; set; }
