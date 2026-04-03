@@ -166,29 +166,13 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>Semaphore Status:</strong>
-                    @if (Model.SemaphoreHealth.IsHealthy)
-                    {
-                        <span class="badge bg-success">Online</span>
-                        <span class="ms-2">@Model.SemaphoreHealth.Status</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">Offline</span>
-                        <span class="ms-2">@Model.SemaphoreHealth.Status</span>
-                    }
-                    @if (Model.SemaphoreHealth.Details.Any())
-                    {
-                        <ul class="mt-2 mb-0">
-                            @foreach (var detail in Model.SemaphoreHealth.Details)
-                            {
-                                <li>@detail.Key: <strong>@detail.Value</strong></li>
-                            }
-                        </ul>
-                    }
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="checkSemaphoreStatus(this)">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Check Semaphore Status
+                    </button>
+                    <small class="text-muted" id="semaphoreCheckedAt"></small>
                 </div>
+                <div id="semaphoreStatusResult" style="display:none;"></div>
             </div>
         </div>
 
@@ -256,6 +240,50 @@
 
 @section Scripts {
     <script>
+        function checkSemaphoreStatus(btn) {
+            const resultDiv = document.getElementById('semaphoreStatusResult');
+            const checkedAtEl = document.getElementById('semaphoreCheckedAt');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...';
+            resultDiv.style.display = 'none';
+
+            fetch('?handler=SemaphoreStatus')
+                .then(r => r.json())
+                .then(data => {
+                    const badgeClass = data.isHealthy ? 'bg-success' : 'bg-danger';
+                    const alertClass = data.isHealthy ? 'alert-success' : 'alert-danger';
+
+                    let detailsHtml = '';
+                    if (data.details && Object.keys(data.details).length > 0) {
+                        detailsHtml = '<ul class="mt-2 mb-0">';
+                        for (const [key, value] of Object.entries(data.details)) {
+                            detailsHtml += `<li>${key}: <strong>${value}</strong></li>`;
+                        }
+                        detailsHtml += '</ul>';
+                    }
+
+                    resultDiv.className = `alert ${alertClass}`;
+                    resultDiv.innerHTML = `
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Semaphore Status:</strong>
+                        <span class="badge ${badgeClass} ms-1">${data.isHealthy ? 'Online' : 'Offline'}</span>
+                        <span class="ms-2">${data.status}</span>
+                        ${detailsHtml}`;
+                    resultDiv.style.display = 'block';
+                    checkedAtEl.textContent = 'Last checked: ' + data.checkedAt;
+                })
+                .catch(() => {
+                    resultDiv.className = 'alert alert-danger';
+                    resultDiv.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Failed to reach server. Please try again.';
+                    resultDiv.style.display = 'block';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check Semaphore Status';
+                });
+        }
+
         function detectPorts() {
             var resultDiv = document.getElementById('portDetectionResult');
             resultDiv.style.display = 'block';

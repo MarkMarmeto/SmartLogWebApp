@@ -127,9 +127,39 @@ public class SettingsModel : PageModel
             AvailablePorts = Array.Empty<string>();
         }
 
-        // Get gateway health status
+        // GSM health is local (no rate limit) — check on every page load
         GsmHealth = await _gsmGateway.GetHealthStatusAsync();
-        SemaphoreHealth = await _semaphoreGateway.GetHealthStatusAsync();
+        // Semaphore health is on-demand via button (rate limited: 2 req/min)
+    }
+
+    /// <summary>
+    /// GET ?handler=SemaphoreStatus — called on demand by the Check Status button.
+    /// Returns GatewayHealthStatus as JSON. Rate limit: 2 req/min on Semaphore's side.
+    /// </summary>
+    public async Task<IActionResult> OnGetSemaphoreStatusAsync()
+    {
+        try
+        {
+            var health = await _semaphoreGateway.GetHealthStatusAsync();
+            return new JsonResult(new
+            {
+                isHealthy = health.IsHealthy,
+                status = health.Status,
+                details = health.Details,
+                checkedAt = DateTime.Now.ToString("MMM d, yyyy h:mm:ss tt")
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking Semaphore status");
+            return new JsonResult(new
+            {
+                isHealthy = false,
+                status = "Error",
+                details = new Dictionary<string, string> { { "Error", ex.Message } },
+                checkedAt = DateTime.Now.ToString("MMM d, yyyy h:mm:ss tt")
+            });
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()
