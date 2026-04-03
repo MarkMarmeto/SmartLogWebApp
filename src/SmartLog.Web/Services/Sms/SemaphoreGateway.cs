@@ -1,12 +1,13 @@
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SmartLog.Web.Services.Sms;
 
 /// <summary>
-/// Semaphore cloud SMS gateway
-/// Requires internet connection
+/// Semaphore cloud SMS gateway (https://semaphore.co/docs)
+/// POST /messages — send SMS (rate limited: 120 req/min)
+/// GET  /account  — account info and credit balance (rate limited: 2 req/min)
 /// </summary>
 public class SemaphoreGateway : ISmsGateway
 {
@@ -16,6 +17,11 @@ public class SemaphoreGateway : ISmsGateway
     private readonly HttpClient _httpClient;
 
     private const string BaseUrl = "https://api.semaphore.co/api/v4";
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public string ProviderName => "SEMAPHORE";
 
@@ -60,7 +66,6 @@ public class SemaphoreGateway : ISmsGateway
                 return false;
             }
 
-            // Test connectivity with account balance check
             var health = await GetHealthStatusAsync();
             return health.IsHealthy;
         }
@@ -79,16 +84,12 @@ public class SemaphoreGateway : ISmsGateway
         {
             var apiKey = await GetApiKeyAsync();
             if (string.IsNullOrWhiteSpace(apiKey))
-            {
                 throw new InvalidOperationException("Semaphore API key not configured");
-            }
 
             var senderName = await GetSenderNameAsync();
-
-            // Normalize phone number
             var normalizedPhone = NormalizePhoneNumber(phoneNumber);
 
-            // Prepare request
+            // POST /messages — form-encoded per Semaphore docs
             var requestData = new Dictionary<string, string>
             {
                 { "apikey", apiKey },
@@ -97,26 +98,28 @@ public class SemaphoreGateway : ISmsGateway
                 { "sendername", senderName }
             };
 
-            var content = new FormUrlEncodedContent(requestData);
+            var response = await _httpClient.PostAsync(
+                $"{BaseUrl}/messages",
+                new FormUrlEncodedContent(requestData));
 
-            // Send request
-            var response = await _httpClient.PostAsync($"{BaseUrl}/messages", content);
             var responseBody = await response.Content.ReadAsStringAsync();
-
             stopwatch.Stop();
 
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonSerializer.Deserialize<SemaphoreResponse>(responseBody);
+                // API returns a JSON array of message objects even for a single recipient
+                var results = JsonSerializer.Deserialize<SemaphoreMessage[]>(responseBody, JsonOptions);
+                var first = results?.FirstOrDefault();
                 var messageParts = CalculateMessageParts(message);
 
-                _logger.LogInformation("SMS sent via Semaphore to {Phone} in {Ms}ms",
-                    normalizedPhone, stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation(
+                    "SMS sent via Semaphore to {Phone}, messageId={MessageId}, status={Status}, in {Ms}ms",
+                    normalizedPhone, first?.MessageId, first?.Status, stopwatch.ElapsedMilliseconds);
 
                 return new SmsSendResult
                 {
                     Success = true,
-                    ProviderMessageId = result?.MessageId?.ToString(),
+                    ProviderMessageId = first?.MessageId?.ToString(),
                     ProcessingTimeMs = (int)stopwatch.ElapsedMilliseconds,
                     MessageParts = messageParts
                 };
@@ -129,7 +132,7 @@ public class SemaphoreGateway : ISmsGateway
                 return new SmsSendResult
                 {
                     Success = false,
-                    ErrorMessage = $"API error: {response.StatusCode} - {responseBody}",
+                    ErrorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}",
                     ProcessingTimeMs = (int)stopwatch.ElapsedMilliseconds
                 };
             }
@@ -166,29 +169,27 @@ public class SemaphoreGateway : ISmsGateway
                 return status;
             }
 
-            // Check account balance using POST to avoid API key in URL/logs
-            var formData = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("apikey", apiKey) });
-            var response = await _httpClient.PostAsync($"{BaseUrl}/account", formData);
+            // GET /account?apikey=... per Semaphore docs (rate limited: 2 req/min)
+            var response = await _httpClient.GetAsync($"{BaseUrl}/account?apikey={Uri.EscapeDataString(apiKey)}");
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
-                var accountInfo = JsonSerializer.Deserialize<SemaphoreAccountResponse>(responseBody);
+                var accountInfo = JsonSerializer.Deserialize<SemaphoreAccount>(responseBody, JsonOptions);
 
                 status.IsHealthy = true;
                 status.Status = "Online";
-                status.Details["Balance"] = accountInfo?.Balance.ToString("N2") ?? "Unknown";
+                status.Details["AccountName"] = accountInfo?.AccountName ?? "Unknown";
+                status.Details["Balance"] = accountInfo?.CreditBalance.ToString("N2") ?? "Unknown";
                 status.Details["SenderName"] = await GetSenderNameAsync();
 
-                if (accountInfo != null && accountInfo.Balance < 10)
-                {
-                    status.Details["Warning"] = "Low balance";
-                }
+                if (accountInfo != null && accountInfo.CreditBalance < 10)
+                    status.Details["Warning"] = "Low credit balance";
             }
             else
             {
-                status.Details["Error"] = $"API error: {response.StatusCode}";
-                status.Status = "API error";
+                status.Status = $"API error ({(int)response.StatusCode})";
+                status.Details["Error"] = responseBody;
             }
 
             return status;
@@ -201,44 +202,61 @@ public class SemaphoreGateway : ISmsGateway
         }
     }
 
-    private string NormalizePhoneNumber(string phoneNumber)
+    /// <summary>
+    /// Normalizes Philippine mobile numbers to international format (639XXXXXXXXX).
+    /// Semaphore accepts both local (09XXXXXXXXX) and international formats.
+    /// </summary>
+    private static string NormalizePhoneNumber(string phoneNumber)
     {
-        // Remove all non-digit characters
         var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
 
-        // Convert 09xxxxxxxxx to 639xxxxxxxxx (Semaphore doesn't use + prefix)
+        // 09XXXXXXXXX → 639XXXXXXXXX
         if (digits.StartsWith("09") && digits.Length == 11)
-        {
             return "63" + digits.Substring(1);
-        }
 
-        // Remove + if present
+        // +639XXXXXXXXX → 639XXXXXXXXX
         if (phoneNumber.StartsWith("+"))
-        {
             return digits;
-        }
 
         return digits;
     }
 
-    private int CalculateMessageParts(string message)
+    private static int CalculateMessageParts(string message)
     {
-        // Standard SMS is 160 chars, multipart is 153 chars per part
-        var length = message.Length;
-        if (length <= 160) return 1;
-        return (int)Math.Ceiling((double)length / 153);
+        // Standard SMS: 160 chars; multipart: 153 chars per segment
+        if (message.Length <= 160) return 1;
+        return (int)Math.Ceiling((double)message.Length / 153);
     }
 
-    private class SemaphoreResponse
+    // Response models matching Semaphore's actual JSON field names
+
+    private class SemaphoreMessage
     {
-        public int[]? MessageId { get; set; }
+        [JsonPropertyName("message_id")]
+        public long? MessageId { get; set; }
+
+        [JsonPropertyName("status")]
         public string? Status { get; set; }
+
+        [JsonPropertyName("recipient")]
+        public string? Recipient { get; set; }
+
+        [JsonPropertyName("network")]
+        public string? Network { get; set; }
     }
 
-    private class SemaphoreAccountResponse
+    private class SemaphoreAccount
     {
+        [JsonPropertyName("account_id")]
+        public string? AccountId { get; set; }
+
+        [JsonPropertyName("account_name")]
         public string? AccountName { get; set; }
-        public decimal Balance { get; set; }
+
+        [JsonPropertyName("credit_balance")]
+        public decimal CreditBalance { get; set; }
+
+        [JsonPropertyName("status")]
         public string? Status { get; set; }
     }
 }
