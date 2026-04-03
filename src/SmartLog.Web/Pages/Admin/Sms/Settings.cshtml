@@ -37,28 +37,30 @@
             <div class="card-body">
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="smsEnabled"
-                           name="SmsEnabled" value="true" checked="@Model.SmsEnabled" />
+                           name="SmsEnabled" value="true" checked="@(Model.SmsEnabled ? "checked" : null)" />
                     <label class="form-check-label" for="smsEnabled">
                         <strong>Enable SMS Notifications</strong>
                     </label>
+                    <input type="hidden" name="SmsEnabled" value="false" />
                     <div class="form-text">Turn SMS notifications on or off globally</div>
                 </div>
 
                 <div class="mb-3">
                     <label for="defaultProvider" class="form-label">Default Provider</label>
                     <select class="form-select" id="defaultProvider" name="DefaultProvider">
-                        <option value="GSM_MODEM" selected="@(Model.DefaultProvider == "GSM_MODEM")">GSM Modem (Offline)</option>
-                        <option value="SEMAPHORE" selected="@(Model.DefaultProvider == "SEMAPHORE")">Semaphore (Cloud)</option>
+                        <option value="GSM_MODEM" selected="@(Model.DefaultProvider == "GSM_MODEM" ? "selected" : null)">GSM Modem (Offline)</option>
+                        <option value="SEMAPHORE" selected="@(Model.DefaultProvider == "SEMAPHORE" ? "selected" : null)">Semaphore (Cloud)</option>
                     </select>
                     <div class="form-text">Primary SMS gateway to use</div>
                 </div>
 
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="fallbackEnabled"
-                           name="FallbackEnabled" value="true" checked="@Model.FallbackEnabled" />
+                           name="FallbackEnabled" value="true" checked="@(Model.FallbackEnabled ? "checked" : null)" />
                     <label class="form-check-label" for="fallbackEnabled">
                         Enable Fallback Provider
                     </label>
+                    <input type="hidden" name="FallbackEnabled" value="false" />
                     <div class="form-text">Automatically use alternate provider if primary fails</div>
                 </div>
             </div>
@@ -101,11 +103,11 @@
                     <div class="col-md-6 mb-3">
                         <label for="gsmBaudRate" class="form-label">Baud Rate</label>
                         <select class="form-select" id="gsmBaudRate" name="GsmBaudRate">
-                            <option value="9600" selected="@(Model.GsmBaudRate == 9600)">9600</option>
-                            <option value="19200" selected="@(Model.GsmBaudRate == 19200)">19200</option>
-                            <option value="38400" selected="@(Model.GsmBaudRate == 38400)">38400</option>
-                            <option value="57600" selected="@(Model.GsmBaudRate == 57600)">57600</option>
-                            <option value="115200" selected="@(Model.GsmBaudRate == 115200)">115200</option>
+                            <option value="9600" selected="@(Model.GsmBaudRate == 9600 ? "selected" : null)">9600</option>
+                            <option value="19200" selected="@(Model.GsmBaudRate == 19200 ? "selected" : null)">19200</option>
+                            <option value="38400" selected="@(Model.GsmBaudRate == 38400 ? "selected" : null)">38400</option>
+                            <option value="57600" selected="@(Model.GsmBaudRate == 57600 ? "selected" : null)">57600</option>
+                            <option value="115200" selected="@(Model.GsmBaudRate == 115200 ? "selected" : null)">115200</option>
                         </select>
                         <div class="form-text">Serial communication speed</div>
                     </div>

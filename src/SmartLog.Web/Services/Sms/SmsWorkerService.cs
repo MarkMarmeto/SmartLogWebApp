@@ -88,7 +88,7 @@ public class SmsWorkerService : BackgroundService
 
         var dbFallbackEnabled = await settingsService.GetSettingAsync("Sms.FallbackEnabled");
         var fallbackEnabled = dbFallbackEnabled != null
-            ? dbFallbackEnabled == "true" || dbFallbackEnabled == "True"
+            ? dbFallbackEnabled.Equals("true", StringComparison.OrdinalIgnoreCase) || dbFallbackEnabled == "1"
             : _configuration.GetValue<bool>("Sms:FallbackEnabled", true);
 
         foreach (var message in pendingMessages)

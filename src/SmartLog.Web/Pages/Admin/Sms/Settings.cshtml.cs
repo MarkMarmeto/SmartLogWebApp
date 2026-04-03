@@ -102,7 +102,7 @@ public class SettingsModel : PageModel
         var dbEnabled = await _settingsService.GetSettingAsync("Sms.Enabled");
         if (dbEnabled != null)
         {
-            SmsEnabled = dbEnabled == "true" || dbEnabled == "1";
+            SmsEnabled = dbEnabled.Equals("true", StringComparison.OrdinalIgnoreCase) || dbEnabled == "1";
         }
 
         var dbDefaultProvider = await _settingsService.GetSettingAsync("Sms.DefaultProvider");
@@ -114,7 +114,7 @@ public class SettingsModel : PageModel
         var dbFallbackEnabled = await _settingsService.GetSettingAsync("Sms.FallbackEnabled");
         if (dbFallbackEnabled != null)
         {
-            FallbackEnabled = dbFallbackEnabled == "true" || dbFallbackEnabled == "True";
+            FallbackEnabled = dbFallbackEnabled.Equals("true", StringComparison.OrdinalIgnoreCase) || dbFallbackEnabled == "1";
         }
 
         // Detect available serial ports
@@ -167,9 +167,9 @@ public class SettingsModel : PageModel
         try
         {
             // Save settings to database
-            await _settingsService.SetSettingAsync("Sms.Enabled", SmsEnabled.ToString(), "General");
+            await _settingsService.SetSettingAsync("Sms.Enabled", SmsEnabled.ToString().ToLower(), "General");
             await _settingsService.SetSettingAsync("Sms.DefaultProvider", DefaultProvider, "General");
-            await _settingsService.SetSettingAsync("Sms.FallbackEnabled", FallbackEnabled.ToString(), "General");
+            await _settingsService.SetSettingAsync("Sms.FallbackEnabled", FallbackEnabled.ToString().ToLower(), "General");
 
             await _settingsService.SetSettingAsync("Sms.GsmModem.PortName", GsmPortName, "GSM");
             await _settingsService.SetSettingAsync("Sms.GsmModem.BaudRate", GsmBaudRate.ToString(), "GSM");

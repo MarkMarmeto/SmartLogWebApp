@@ -98,7 +98,7 @@ public class SmsSettingsService : ISmsSettingsService
         try
         {
             var enabled = await GetSettingAsync("Sms.Enabled");
-            return enabled == "true" || enabled == "1";
+            return enabled != null && (enabled.Equals("true", StringComparison.OrdinalIgnoreCase) || enabled == "1");
         }
         catch (Exception ex)
         {
