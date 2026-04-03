@@ -81,8 +81,15 @@ public class SmsWorkerService : BackgroundService
         var gsmGateway = scope.ServiceProvider.GetService<GsmModemGateway>();
         var semaphoreGateway = scope.ServiceProvider.GetService<SemaphoreGateway>();
 
-        var defaultProvider = _configuration.GetValue<string>("Sms:DefaultProvider", "GSM_MODEM") ?? "GSM_MODEM";
-        var fallbackEnabled = _configuration.GetValue<bool>("Sms:FallbackEnabled", true);
+        var dbDefaultProvider = await settingsService.GetSettingAsync("Sms.DefaultProvider");
+        var defaultProvider = dbDefaultProvider
+            ?? _configuration.GetValue<string>("Sms:DefaultProvider", "SEMAPHORE")
+            ?? "SEMAPHORE";
+
+        var dbFallbackEnabled = await settingsService.GetSettingAsync("Sms.FallbackEnabled");
+        var fallbackEnabled = dbFallbackEnabled != null
+            ? dbFallbackEnabled == "true" || dbFallbackEnabled == "True"
+            : _configuration.GetValue<bool>("Sms:FallbackEnabled", true);
 
         foreach (var message in pendingMessages)
         {

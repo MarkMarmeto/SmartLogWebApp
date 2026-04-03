@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Provider Analysis - SmartLog</title>
+    <style>
+        :root {
+            --primary: #1a5276;
+            --primary-light: #2980b9;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --gray-50: #f8f9fa;
+            --gray-100: #ecf0f1;
+            --gray-200: #dce1e3;
+            --gray-600: #636e72;
+            --gray-800: #2d3436;
+            --gsm-color: #8e44ad;
+            --cloud-color: #2980b9;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--gray-800);
+            line-height: 1.6;
+            background: var(--gray-50);
+        }
+
+        /* Header */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 12px; }
+        .hero .subtitle { font-size: 1.15rem; opacity: 0.85; max-width: 700px; margin: 0 auto; }
+        .hero .meta { margin-top: 20px; font-size: 0.85rem; opacity: 0.6; }
+
+        /* Layout */
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        section { margin: 48px 0; }
+        h2 {
+            font-size: 1.6rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary-light);
+            display: inline-block;
+        }
+        h3 { font-size: 1.2rem; color: var(--primary); margin: 24px 0 12px; }
+        p { margin-bottom: 14px; color: var(--gray-800); }
+
+        /* Cards */
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-top: 4px solid var(--primary-light);
+        }
+        .card.gsm { border-top-color: var(--gsm-color); }
+        .card.cloud { border-top-color: var(--cloud-color); }
+        .card.recommended { border-top-color: var(--accent); box-shadow: 0 2px 20px rgba(39,174,96,0.15); }
+        .card h3 { margin-top: 0; }
+        .card .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-gsm { background: #f0e6f6; color: var(--gsm-color); }
+        .badge-cloud { background: #e8f4fd; color: var(--cloud-color); }
+        .badge-recommended { background: #e8f8f0; color: var(--accent); }
+        .badge-local { background: #fef9e7; color: #d4a017; }
+        .badge-intl { background: #fdebd0; color: #e67e22; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 24px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            font-size: 0.92rem;
+        }
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--gray-50); }
+        .cost-low { color: var(--accent); font-weight: 600; }
+        .cost-mid { color: var(--warning); font-weight: 600; }
+        .cost-high { color: var(--danger); font-weight: 600; }
+
+        /* Pros / Cons */
+        .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0; }
+        .pros, .cons {
+            background: white;
+            border-radius: 10px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .pros { border-left: 4px solid var(--accent); }
+        .cons { border-left: 4px solid var(--danger); }
+        .pros h4 { color: var(--accent); margin-bottom: 12px; }
+        .cons h4 { color: var(--danger); margin-bottom: 12px; }
+        .pros li, .cons li { margin-bottom: 8px; padding-left: 4px; }
+        .pros li::marker { content: "\2713  "; color: var(--accent); }
+        .cons li::marker { content: "\2717  "; color: var(--danger); }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+
+        /* Cost Estimator */
+        .cost-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e8f4fd 100%);
+            border-radius: 12px;
+            padding: 28px;
+            margin: 20px 0;
+            border: 1px solid var(--gray-200);
+        }
+        .cost-box h4 { color: var(--primary); margin-bottom: 16px; font-size: 1.1rem; }
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--gray-200);
+        }
+        .cost-row:last-child { border-bottom: none; }
+        .cost-label { color: var(--gray-600); }
+        .cost-value { font-weight: 700; color: var(--primary); }
+        .cost-total {
+            font-size: 1.3rem;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid var(--primary-light);
+        }
+
+        /* Callout */
+        .callout {
+            background: #fef9e7;
+            border-left: 4px solid var(--warning);
+            padding: 20px 24px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+        .callout.info {
+            background: #e8f4fd;
+            border-left-color: var(--primary-light);
+        }
+        .callout.success {
+            background: #e8f8f0;
+            border-left-color: var(--accent);
+        }
+        .callout strong { display: block; margin-bottom: 6px; }
+
+        /* Verdict */
+        .verdict {
+            background: linear-gradient(135deg, var(--primary) 0%, #1a6e3e 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+            text-align: center;
+        }
+        .verdict h2 { color: white; border-bottom-color: rgba(255,255,255,0.3); }
+        .verdict p { color: rgba(255,255,255,0.9); }
+        .verdict .pick {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 16px 0;
+            color: #82e0aa;
+        }
+
+        /* Score bar */
+        .score-bar {
+            background: var(--gray-100);
+            border-radius: 10px;
+            height: 10px;
+            margin: 6px 0 14px;
+            overflow: hidden;
+        }
+        .score-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.4s;
+        }
+        .score-label { font-size: 0.82rem; color: var(--gray-600); display: flex; justify-content: space-between; }
+
+        /* TOC */
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            margin: 32px 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .toc h3 { margin-top: 0; }
+        .toc ol { padding-left: 20px; }
+        .toc li { margin-bottom: 8px; }
+        .toc a { color: var(--primary-light); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--gray-200);
+            margin-top: 48px;
+        }
+
+        /* Provider detail cards */
+        .provider-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary-light);
+        }
+        .provider-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+            color: var(--primary);
+        }
+        .provider-card .provider-meta {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 12px;
+        }
+        .provider-card .tag-row { margin-bottom: 12px; }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            margin-right: 4px;
+        }
+        .tag.green { background: #e8f8f0; color: var(--accent); }
+        .tag.blue { background: #e8f4fd; color: var(--primary-light); }
+        .tag.orange { background: #fdebd0; color: #e67e22; }
+
+        @media (max-width: 768px) {
+            .card-grid, .pros-cons { grid-template-columns: 1fr; }
+            .hero { padding: 40px 20px; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.82rem; }
+            th, td { padding: 10px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>SMS Delivery Analysis for SmartLog</h1>
+    <p class="subtitle">GSM SIM Module vs. Cloud SMS Providers &mdash; A comprehensive comparison for Philippine school attendance notification systems</p>
+    <p class="meta">Prepared for SmartLog Project &bull; April 2026</p>
+</div>
+
+<div class="container">
+
+    <nav class="toc">
+        <h3>Table of Contents</h3>
+        <ol>
+            <li><a href="#part1">Part 1: GSM SIM Module vs. Cloud SMS &mdash; Head-to-Head</a></li>
+            <li><a href="#part2">Part 2: Cloud SMS Provider Comparison (Philippines)</a></li>
+            <li><a href="#part3">Part 3: Detailed Provider Profiles</a></li>
+            <li><a href="#part4">Part 4: Cost Projections for SmartLog</a></li>
+            <li><a href="#part5">Part 5: Regulatory Considerations</a></li>
+            <li><a href="#verdict">Final Recommendation</a></li>
+        </ol>
+    </nav>
+
+    <!-- ============================================================ -->
+    <!-- PART 1: GSM vs Cloud -->
+    <!-- ============================================================ -->
+    <section id="part1">
+        <h2>Part 1: GSM SIM Module vs. Cloud SMS</h2>
+        <p>SmartLog currently supports a GSM modem gateway (serial port AT commands) for offline SMS delivery, with Semaphore as a cloud fallback. This section compares the two fundamental approaches.</p>
+
+        <div class="card-grid">
+            <div class="card gsm">
+                <span class="badge badge-gsm">On-Premise</span>
+                <h3>GSM SIM Module</h3>
+                <p>A hardware modem (SIM800L, SIM7600, Quectel EC25, or USB dongle) with a registered prepaid/postpaid SIM card, connected directly to the SmartLog server via serial port or USB.</p>
+                <p><strong>How it works:</strong> The server sends AT commands over serial to instruct the modem to send SMS via the cellular network. No internet required.</p>
+            </div>
+            <div class="card cloud">
+                <span class="badge badge-cloud">Cloud API</span>
+                <h3>Cloud SMS Provider</h3>
+                <p>A third-party service (Semaphore, Twilio, etc.) with a REST API. The SmartLog server sends HTTP requests to the provider's API, which routes the SMS through telco-grade infrastructure.</p>
+                <p><strong>How it works:</strong> The server calls the provider's API over the internet. The provider handles routing, delivery, and compliance.</p>
+            </div>
+        </div>
+
+        <h3>Side-by-Side Comparison</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Criteria</th>
+                    <th>GSM SIM Module</th>
+                    <th>Cloud SMS API</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Cost per SMS</strong></td>
+                    <td class="cost-low">~PHP 0.05&ndash;1.00</td>
+                    <td class="cost-mid">~PHP 0.25&ndash;0.50 (local)<br>~PHP 1.70&ndash;3.90 (international)</td>
+                </tr>
+                <tr>
+                    <td><strong>Upfront Cost</strong></td>
+                    <td>PHP 500&ndash;3,000 (module + SIM)</td>
+                    <td>None (API key signup)</td>
+                </tr>
+                <tr>
+                    <td><strong>Throughput</strong></td>
+                    <td class="cost-high">6&ndash;10 SMS/min per modem</td>
+                    <td class="cost-low">100&ndash;1,000+ SMS/min</td>
+                </tr>
+                <tr>
+                    <td><strong>Internet Required</strong></td>
+                    <td class="cost-low">No</td>
+                    <td class="cost-high">Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Delivery Reports</strong></td>
+                    <td class="cost-high">Unreliable / None</td>
+                    <td class="cost-low">Reliable (webhooks)</td>
+                </tr>
+                <tr>
+                    <td><strong>Network Coverage</strong></td>
+                    <td>SIM's home network + cross-net</td>
+                    <td class="cost-low">All PH networks (Globe, Smart, TNT, TM, Sun, DITO)</td>
+                </tr>
+                <tr>
+                    <td><strong>Sender ID</strong></td>
+                    <td>SIM phone number</td>
+                    <td class="cost-low">Custom (e.g., "SmartLog")</td>
+                </tr>
+                <tr>
+                    <td><strong>Reliability</strong></td>
+                    <td>Single point of failure</td>
+                    <td>99.5&ndash;99.9% SLA</td>
+                </tr>
+                <tr>
+                    <td><strong>Scalability</strong></td>
+                    <td class="cost-high">Requires additional hardware</td>
+                    <td class="cost-low">Instant, no changes needed</td>
+                </tr>
+                <tr>
+                    <td><strong>Maintenance</strong></td>
+                    <td class="cost-high">SIM top-up, module replacements, power supply</td>
+                    <td class="cost-low">None (provider-managed)</td>
+                </tr>
+                <tr>
+                    <td><strong>Compliance</strong></td>
+                    <td>School handles SIM registration, NTC rules</td>
+                    <td>Provider handles NTC compliance</td>
+                </tr>
+                <tr>
+                    <td><strong>2G Sunset Risk</strong></td>
+                    <td class="cost-high">High (SIM800L/SIM900 affected)</td>
+                    <td class="cost-low">None</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Detailed Pros &amp; Cons</h3>
+
+        <h4 style="color: var(--gsm-color); margin-top: 20px;">GSM SIM Module</h4>
+        <div class="pros-cons">
+            <div class="pros">
+                <h4>Advantages</h4>
+                <ul>
+                    <li>Works without internet &mdash; ideal for remote schools with unreliable connectivity</li>
+                    <li>Very low per-message cost when using prepaid promo packages</li>
+                    <li>No recurring API subscription fees</li>
+                    <li>Full control over the hardware and sending process</li>
+                    <li>No third-party dependency for core SMS delivery</li>
+                    <li>Data stays on-premise (no external API calls with student info)</li>
+                </ul>
+            </div>
+            <div class="cons">
+                <h4>Disadvantages</h4>
+                <ul>
+                    <li><strong>Throughput bottleneck:</strong> At ~7 SMS/min, a school with 500 students takes over an hour to send all notifications</li>
+                    <li><strong>2G sunset:</strong> SIM800L/SIM900 modules will stop working as Globe/Smart decommission 2G. Must invest in 4G modules (SIM7600/Quectel EC25)</li>
+                    <li><strong>SIM blocking risk:</strong> Using consumer prepaid promos for bulk SMS violates telco terms of service; SIM may be blocked</li>
+                    <li><strong>Hardware failures:</strong> Modem overheating, serial port issues, power supply problems</li>
+                    <li><strong>SIM management:</strong> Must keep SIM loaded with credits/promos, ensure SIM registration remains valid</li>
+                    <li><strong>No professional sender ID:</strong> Parents receive SMS from an unknown phone number</li>
+                    <li><strong>Cross-network cost:</strong> Globe SIM sending to Smart costs more than same-network</li>
+                    <li><strong>No delivery confirmation:</strong> Cannot reliably know if SMS was received</li>
+                </ul>
+            </div>
+        </div>
+
+        <h4 style="color: var(--cloud-color); margin-top: 20px;">Cloud SMS API</h4>
+        <div class="pros-cons">
+            <div class="pros">
+                <h4>Advantages</h4>
+                <ul>
+                    <li><strong>High throughput:</strong> Send hundreds of SMS per minute &mdash; all parents notified within seconds</li>
+                    <li><strong>All networks covered:</strong> Single API call reaches Globe, Smart, TNT, TM, Sun, DITO</li>
+                    <li><strong>Professional sender ID:</strong> Parents see "SmartLog" instead of random number</li>
+                    <li><strong>Reliable delivery reports:</strong> Know exactly which SMS was delivered, failed, or pending</li>
+                    <li><strong>Zero hardware maintenance:</strong> No modules, no SIMs, no serial ports</li>
+                    <li><strong>NTC compliance handled:</strong> Provider manages regulatory requirements</li>
+                    <li><strong>Easy to scale:</strong> 100 students to 10,000 students with no infrastructure changes</li>
+                    <li><strong>99.5&ndash;99.9% uptime SLAs:</strong> Enterprise-grade reliability</li>
+                </ul>
+            </div>
+            <div class="cons">
+                <h4>Disadvantages</h4>
+                <ul>
+                    <li><strong>Requires internet:</strong> If school internet goes down, SMS cannot be sent</li>
+                    <li><strong>Per-message cost:</strong> PHP 0.25&ndash;0.50 per SMS adds up at volume</li>
+                    <li><strong>Recurring expense:</strong> Must budget for monthly SMS costs</li>
+                    <li><strong>Third-party dependency:</strong> Provider outage = no SMS</li>
+                    <li><strong>Data leaves premises:</strong> Student names and parent phone numbers sent to provider's API</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="callout info">
+            <strong>SmartLog's Hybrid Approach</strong>
+            SmartLog currently supports both GSM modem (primary) and cloud API (fallback). This is a valid strategy: the GSM modem handles day-to-day offline sending, while the cloud API kicks in as a fallback when the modem fails or for high-volume bursts. However, as the school grows, transitioning fully to cloud SMS is recommended.
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PART 2: Provider Comparison -->
+    <!-- ============================================================ -->
+    <section id="part2">
+        <h2>Part 2: Cloud SMS Provider Comparison</h2>
+        <p>A comparison of SMS API providers available for Philippine deployments, evaluated on cost, features, and suitability for school use.</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Cost/SMS</th>
+                    <th>Currency</th>
+                    <th>PH Networks</th>
+                    <th>Local Presence</th>
+                    <th>Free Trial</th>
+                    <th>Delivery Reports</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Semaphore</strong></td>
+                    <td class="cost-low">PHP 0.35&ndash;0.50</td>
+                    <td>PHP</td>
+                    <td>All</td>
+                    <td>Yes (PH-based)</td>
+                    <td>50&ndash;100 SMS</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>M360</strong></td>
+                    <td class="cost-low">PHP 0.25&ndash;0.50</td>
+                    <td>PHP</td>
+                    <td>All</td>
+                    <td>Yes (PH-based)</td>
+                    <td>On request</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Engagespark</strong></td>
+                    <td class="cost-mid">PHP 0.40&ndash;0.75</td>
+                    <td>PHP</td>
+                    <td>All</td>
+                    <td>Yes (Cebu)</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Globe Labs</strong></td>
+                    <td class="cost-mid">PHP 0.35&ndash;1.00</td>
+                    <td>PHP</td>
+                    <td>Globe/TM only</td>
+                    <td>Yes</td>
+                    <td>Limited</td>
+                    <td>Limited</td>
+                </tr>
+                <tr>
+                    <td><strong>Infobip</strong></td>
+                    <td class="cost-mid">~PHP 1.10&ndash;2.80</td>
+                    <td>USD</td>
+                    <td>All</td>
+                    <td>Yes (Manila)</td>
+                    <td>On request</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Twilio</strong></td>
+                    <td class="cost-high">~PHP 2.20&ndash;3.40</td>
+                    <td>USD</td>
+                    <td>All</td>
+                    <td>No</td>
+                    <td>~USD 15</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Vonage</strong></td>
+                    <td class="cost-high">~PHP 2.20&ndash;3.90</td>
+                    <td>USD</td>
+                    <td>All</td>
+                    <td>No</td>
+                    <td>~EUR 2</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>MessageBird</strong></td>
+                    <td class="cost-high">~PHP 1.70&ndash;3.40</td>
+                    <td>USD</td>
+                    <td>All</td>
+                    <td>No</td>
+                    <td>Limited</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>ClickSend</strong></td>
+                    <td class="cost-high">~PHP 2.20&ndash;3.90</td>
+                    <td>USD</td>
+                    <td>All</td>
+                    <td>No</td>
+                    <td>Small credit</td>
+                    <td>Yes</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <strong>Note on International Provider Pricing</strong>
+            PHP amounts for USD-based providers are approximate conversions at ~PHP 56/USD. International providers route SMS through aggregators, which adds cost and latency compared to local providers with direct telco connections.
+        </div>
+
+        <h3>Feature Comparison Matrix</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Semaphore</th>
+                    <th>M360</th>
+                    <th>Engagespark</th>
+                    <th>Infobip</th>
+                    <th>Twilio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>REST API</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td>.NET SDK</td>
+                    <td>HTTP only</td>
+                    <td>HTTP only</td>
+                    <td>HTTP only</td>
+                    <td>Yes</td>
+                    <td>Yes (official)</td>
+                </tr>
+                <tr>
+                    <td>Custom Sender ID</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td>Delivery Webhooks</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td>Two-Way SMS</td>
+                    <td>No</td>
+                    <td>Limited</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td>Viber Integration</td>
+                    <td>No</td>
+                    <td>No</td>
+                    <td>No</td>
+                    <td>Yes</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>Scheduled Sending</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>
+                <tr>
+                    <td>PHP Peso Billing</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>No</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>Direct PH Telco Routes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>Local Support (PH)</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>No</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Suitability Scores for School Deployment</h3>
+
+        <div class="provider-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h4>Semaphore</h4>
+                <span class="badge badge-recommended">Recommended</span>
+            </div>
+            <div class="provider-meta">semaphore.co &bull; Philippine-based</div>
+            <div class="score-label"><span>Overall Score</span><span>9.0 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>Cost</span><span>9 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>Ease of Integration</span><span>9 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>Reliability</span><span>8 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:80%;background:var(--primary-light)"></div></div>
+            <div class="score-label"><span>PH Suitability</span><span>10 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent)"></div></div>
+        </div>
+
+        <div class="provider-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h4>M360</h4>
+                <span class="badge badge-local">Best Value</span>
+            </div>
+            <div class="provider-meta">m360.com.ph &bull; Philippine-based</div>
+            <div class="score-label"><span>Overall Score</span><span>8.5 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:85%;background:var(--primary-light)"></div></div>
+            <div class="score-label"><span>Cost</span><span>10 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>Ease of Integration</span><span>7 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:70%;background:var(--warning)"></div></div>
+            <div class="score-label"><span>Reliability</span><span>8 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:80%;background:var(--primary-light)"></div></div>
+            <div class="score-label"><span>PH Suitability</span><span>10 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent)"></div></div>
+        </div>
+
+        <div class="provider-card">
+            <h4>Infobip</h4>
+            <div class="provider-meta">infobip.com &bull; Manila office</div>
+            <div class="score-label"><span>Overall Score</span><span>7.5 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:75%;background:var(--primary-light)"></div></div>
+            <div class="score-label"><span>Cost</span><span>6 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:60%;background:var(--warning)"></div></div>
+            <div class="score-label"><span>Ease of Integration</span><span>8 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:80%;background:var(--primary-light)"></div></div>
+            <div class="score-label"><span>Reliability</span><span>9 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>PH Suitability</span><span>9 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:90%;background:var(--accent)"></div></div>
+        </div>
+
+        <div class="provider-card">
+            <h4>Twilio</h4>
+            <div class="provider-meta">twilio.com &bull; US-based</div>
+            <div class="score-label"><span>Overall Score</span><span>6.0 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:60%;background:var(--warning)"></div></div>
+            <div class="score-label"><span>Cost</span><span>3 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:30%;background:var(--danger)"></div></div>
+            <div class="score-label"><span>Ease of Integration</span><span>10 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>Reliability</span><span>10 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--accent)"></div></div>
+            <div class="score-label"><span>PH Suitability</span><span>5 / 10</span></div>
+            <div class="score-bar"><div class="score-fill" style="width:50%;background:var(--danger)"></div></div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PART 3: Detailed Provider Profiles -->
+    <!-- ============================================================ -->
+    <section id="part3">
+        <h2>Part 3: Detailed Provider Profiles</h2>
+
+        <h3>Local Providers (Recommended for PH Schools)</h3>
+
+        <div class="card" style="margin-bottom:20px; border-top-color: var(--accent);">
+            <div class="tag-row">
+                <span class="tag green">PHP Billing</span>
+                <span class="tag green">All PH Networks</span>
+                <span class="tag blue">REST API</span>
+                <span class="tag green">Direct Telco Routes</span>
+            </div>
+            <h3 style="margin-top:8px">Semaphore</h3>
+            <p>The most popular SMS API provider among Filipino developers. Simple, affordable, and purpose-built for the Philippine market.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~PHP 0.35&ndash;0.50/SMS, prepaid credits starting at ~PHP 500</li>
+                <li><strong>API:</strong> Simple REST API (HTTP GET/POST). Easy integration with any language including .NET HttpClient</li>
+                <li><strong>Sender ID:</strong> Custom alphanumeric sender ID (e.g., "SmartLog") with approval</li>
+                <li><strong>Delivery Reports:</strong> Supported via API polling or webhook callbacks</li>
+                <li><strong>Coverage:</strong> Globe, Smart, TNT, TM, Sun, DITO &mdash; all major networks</li>
+                <li><strong>Support:</strong> Email support, Filipino-language documentation, active developer community</li>
+                <li><strong>Best for:</strong> Philippine startups, schools, SMEs needing simple, affordable SMS</li>
+            </ul>
+        </div>
+
+        <div class="card" style="margin-bottom:20px; border-top-color: #d4a017;">
+            <div class="tag-row">
+                <span class="tag green">PHP Billing</span>
+                <span class="tag green">All PH Networks</span>
+                <span class="tag blue">REST + SMPP</span>
+                <span class="tag green">Lowest Cost</span>
+            </div>
+            <h3 style="margin-top:8px">M360</h3>
+            <p>A Philippine SMS aggregator with direct telco connections. Potentially the lowest per-SMS cost among local providers.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~PHP 0.25&ndash;0.50/SMS depending on volume tier</li>
+                <li><strong>API:</strong> REST API and SMPP (telco-grade protocol) support</li>
+                <li><strong>Sender ID:</strong> Custom sender ID available</li>
+                <li><strong>Coverage:</strong> All Philippine networks with direct Globe and Smart connections</li>
+                <li><strong>Best for:</strong> Cost-sensitive deployments, high-volume senders</li>
+            </ul>
+        </div>
+
+        <div class="card" style="margin-bottom:20px; border-top-color: var(--primary-light);">
+            <div class="tag-row">
+                <span class="tag green">PHP Billing</span>
+                <span class="tag green">All PH Networks</span>
+                <span class="tag blue">Voice + SMS</span>
+                <span class="tag orange">Cebu-based</span>
+            </div>
+            <h3 style="margin-top:8px">Engagespark</h3>
+            <p>Cebu-based platform focused on engagement campaigns. Offers both SMS and voice (IVR), popular with NGOs and educational institutions.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~PHP 0.40&ndash;0.75/SMS, voice calls also available</li>
+                <li><strong>API:</strong> REST API + no-code flow builder for engagement campaigns</li>
+                <li><strong>Unique:</strong> Airtime rewards, two-way SMS, IVR voice calls</li>
+                <li><strong>Best for:</strong> Schools wanting SMS + voice notification capabilities</li>
+            </ul>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="tag-row">
+                <span class="tag green">PHP Billing</span>
+                <span class="tag orange">Globe/TM Only</span>
+                <span class="tag blue">Official Telco API</span>
+            </div>
+            <h3 style="margin-top:8px">Globe Labs</h3>
+            <p>Globe Telecom's official developer API. Direct network access but limited to Globe and TM subscribers only.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~PHP 0.35&ndash;1.00/SMS</li>
+                <li><strong>Critical Limitation:</strong> Only reaches Globe and TM subscribers. Would need a second provider for Smart/TNT/Sun/DITO</li>
+                <li><strong>Best for:</strong> Scenarios where you know all recipients are Globe subscribers</li>
+            </ul>
+        </div>
+
+        <h3>International Providers</h3>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="tag-row">
+                <span class="tag orange">USD Billing</span>
+                <span class="tag green">All Networks</span>
+                <span class="tag blue">.NET SDK</span>
+                <span class="tag green">Manila Office</span>
+            </div>
+            <h3 style="margin-top:8px">Infobip</h3>
+            <p>Enterprise-grade international provider with a Manila office and direct Philippine telco connections. Offers omnichannel (SMS + Viber + WhatsApp).</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~USD 0.02&ndash;0.05/SMS (negotiable at volume)</li>
+                <li><strong>Unique:</strong> Viber Business Messages integration &mdash; Viber is extremely popular in the Philippines and messages are free to receive</li>
+                <li><strong>Best for:</strong> Larger schools wanting enterprise-grade reliability and Viber as a cost-saving channel</li>
+            </ul>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="tag-row">
+                <span class="tag orange">USD Billing</span>
+                <span class="tag green">All Networks</span>
+                <span class="tag blue">Official .NET SDK</span>
+                <span class="tag green">Best Documentation</span>
+            </div>
+            <h3 style="margin-top:8px">Twilio</h3>
+            <p>The global leader in cloud communications. Best-in-class API documentation and developer experience, but expensive for Philippine SMS.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~USD 0.04&ndash;0.06/SMS to PH (~PHP 2.20&ndash;3.40)</li>
+                <li><strong>Strengths:</strong> Unmatched documentation, official .NET SDK, Studio visual builder, global reliability</li>
+                <li><strong>Weakness:</strong> 5&ndash;7x more expensive than local providers for PH SMS</li>
+                <li><strong>Best for:</strong> Teams already on Twilio, or multi-country deployments</li>
+            </ul>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+            <div class="tag-row">
+                <span class="tag orange">USD Billing</span>
+                <span class="tag green">All Networks</span>
+                <span class="tag blue">REST API</span>
+            </div>
+            <h3 style="margin-top:8px">Vonage (Nexmo) / MessageBird (Bird) / ClickSend</h3>
+            <p>Other international providers with similar pricing and capabilities to Twilio. All route through international aggregators to reach Philippine networks.</p>
+            <ul>
+                <li><strong>Pricing:</strong> ~USD 0.03&ndash;0.07/SMS to PH (~PHP 1.70&ndash;3.90)</li>
+                <li><strong>Not recommended</strong> for PH school deployments due to cost and lack of local presence</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PART 4: Cost Projections -->
+    <!-- ============================================================ -->
+    <section id="part4">
+        <h2>Part 4: Cost Projections for SmartLog</h2>
+        <p>Monthly cost estimates based on typical school scenarios. Assumes 2 SMS per student per school day (entry + exit notification) and 22 school days per month.</p>
+
+        <h3>Small School (200 students)</h3>
+        <div class="cost-box">
+            <h4>Monthly SMS Volume: 8,800 messages</h4>
+            <div class="cost-row"><span class="cost-label">Calculation</span><span class="cost-value">200 students x 2 SMS/day x 22 days</span></div>
+            <div class="cost-row"><span class="cost-label">GSM Modem (PHP 1.00/SMS)</span><span class="cost-value cost-high">PHP 8,800/mo</span></div>
+            <div class="cost-row"><span class="cost-label">GSM Modem (unli promo, est.)</span><span class="cost-value cost-low">~PHP 300&ndash;500/mo</span></div>
+            <div class="cost-row"><span class="cost-label">M360 (PHP 0.35/SMS)</span><span class="cost-value">PHP 3,080/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Semaphore (PHP 0.40/SMS)</span><span class="cost-value">PHP 3,520/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Twilio (PHP 2.80/SMS)</span><span class="cost-value cost-high">PHP 24,640/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Time to send (GSM, 7 SMS/min)</span><span class="cost-value cost-high">~21 hours/mo (1 hr/day)</span></div>
+            <div class="cost-row"><span class="cost-label">Time to send (Cloud API)</span><span class="cost-value cost-low">~2 minutes/day</span></div>
+        </div>
+
+        <h3>Medium School (500 students)</h3>
+        <div class="cost-box">
+            <h4>Monthly SMS Volume: 22,000 messages</h4>
+            <div class="cost-row"><span class="cost-label">Calculation</span><span class="cost-value">500 students x 2 SMS/day x 22 days</span></div>
+            <div class="cost-row"><span class="cost-label">GSM Modem (PHP 1.00/SMS)</span><span class="cost-value cost-high">PHP 22,000/mo</span></div>
+            <div class="cost-row"><span class="cost-label">M360 (PHP 0.35/SMS)</span><span class="cost-value">PHP 7,700/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Semaphore (PHP 0.40/SMS)</span><span class="cost-value">PHP 8,800/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Twilio (PHP 2.80/SMS)</span><span class="cost-value cost-high">PHP 61,600/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Time to send (GSM, 7 SMS/min)</span><span class="cost-value cost-high">~52 hours/mo (2.4 hrs/day)</span></div>
+            <div class="cost-row"><span class="cost-label">Time to send (Cloud API)</span><span class="cost-value cost-low">~4 minutes/day</span></div>
+        </div>
+
+        <h3>Large School (1,500 students)</h3>
+        <div class="cost-box">
+            <h4>Monthly SMS Volume: 66,000 messages</h4>
+            <div class="cost-row"><span class="cost-label">Calculation</span><span class="cost-value">1,500 students x 2 SMS/day x 22 days</span></div>
+            <div class="cost-row"><span class="cost-label">GSM Modem (single)</span><span class="cost-value cost-high">INFEASIBLE &mdash; 157 hrs/mo needed</span></div>
+            <div class="cost-row"><span class="cost-label">M360 (PHP 0.35/SMS)</span><span class="cost-value">PHP 23,100/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Semaphore (PHP 0.40/SMS)</span><span class="cost-value">PHP 26,400/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Twilio (PHP 2.80/SMS)</span><span class="cost-value cost-high">PHP 184,800/mo</span></div>
+            <div class="cost-row"><span class="cost-label">Time to send (Cloud API)</span><span class="cost-value cost-low">~11 minutes/day</span></div>
+        </div>
+
+        <h3>Annual Cost Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>200 Students</th>
+                    <th>500 Students</th>
+                    <th>1,500 Students</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>GSM Modem</strong> (standard rate)</td>
+                    <td>PHP 105,600</td>
+                    <td>PHP 264,000</td>
+                    <td>N/A (infeasible)</td>
+                </tr>
+                <tr>
+                    <td><strong>M360</strong></td>
+                    <td class="cost-low">PHP 36,960</td>
+                    <td class="cost-low">PHP 92,400</td>
+                    <td class="cost-low">PHP 277,200</td>
+                </tr>
+                <tr>
+                    <td><strong>Semaphore</strong></td>
+                    <td>PHP 42,240</td>
+                    <td>PHP 105,600</td>
+                    <td>PHP 316,800</td>
+                </tr>
+                <tr>
+                    <td><strong>Infobip</strong></td>
+                    <td>~PHP 105,600</td>
+                    <td>~PHP 264,000</td>
+                    <td>~PHP 792,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Twilio</strong></td>
+                    <td class="cost-high">PHP 295,680</td>
+                    <td class="cost-high">PHP 739,200</td>
+                    <td class="cost-high">PHP 2,217,600</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size:0.85rem;color:var(--gray-600);">* Based on 12 months x monthly estimates. Actual costs may vary based on volume discounts and negotiated rates.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PART 5: Regulatory -->
+    <!-- ============================================================ -->
+    <section id="part5">
+        <h2>Part 5: Regulatory Considerations</h2>
+
+        <h3>SIM Registration Act (RA 11934)</h3>
+        <div class="callout">
+            <strong>Impact on GSM Modem Deployments</strong>
+            The SIM Registration Act (enacted 2022) requires all SIM cards to be registered with valid government IDs. For schools using GSM modems:
+            <ul style="margin-top:10px">
+                <li>SIM cards must be registered under the school's authorized representative</li>
+                <li>Unregistered SIMs are deactivated &mdash; your modem stops working</li>
+                <li>Using personal SIMs for institutional purposes may create compliance issues</li>
+                <li>Cloud SMS providers handle this entirely on their end</li>
+            </ul>
+        </div>
+
+        <h3>NTC Sender ID Registration</h3>
+        <p>The National Telecommunications Commission (NTC) requires bulk/commercial SMS senders to register their sender IDs. Key points:</p>
+        <ul>
+            <li>Unregistered alphanumeric sender IDs may be blocked or filtered by telcos</li>
+            <li>Cloud SMS providers like Semaphore and M360 handle NTC registration for you</li>
+            <li>GSM modems send from a regular phone number (no alphanumeric sender ID possible)</li>
+            <li>Parents are more likely to read SMS from "SmartLog" than from an unknown 09XX number</li>
+        </ul>
+
+        <h3>Data Privacy Act (RA 10173)</h3>
+        <p>When sending student and parent information to cloud SMS providers:</p>
+        <ul>
+            <li>Ensure the provider has appropriate data processing agreements</li>
+            <li>Only send the minimum necessary data (phone number + message text)</li>
+            <li>SmartLog already sends only phone number and pre-rendered message text &mdash; no raw student data</li>
+            <li>Local providers (Semaphore, M360) store data within Philippine jurisdiction</li>
+            <li>International providers may process data outside PH &mdash; check their DPA compliance</li>
+        </ul>
+
+        <h3>2G Network Sunset</h3>
+        <div class="callout" style="border-left-color: var(--danger); background: #fdedec;">
+            <strong>Critical Risk for GSM Modem Users</strong>
+            Globe and Smart are progressively decommissioning 2G (GSM) networks. The popular SIM800L and SIM900 modules are 2G-only and <strong>will stop working</strong> as 2G towers are shut down. If you continue using GSM modems, invest in 4G LTE modules:
+            <ul style="margin-top:10px">
+                <li><strong>SIM7600:</strong> ~PHP 1,500&ndash;3,000 (4G LTE, AT command compatible)</li>
+                <li><strong>Quectel EC25:</strong> ~PHP 1,500&ndash;2,500 (4G LTE, good Linux/USB support)</li>
+                <li>Avoid: SIM800L (~PHP 150&ndash;300) and SIM900 (~PHP 300&ndash;500) for new deployments</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- VERDICT -->
+    <!-- ============================================================ -->
+    <section id="verdict">
+        <div class="verdict">
+            <h2>Final Recommendation</h2>
+            <p>For SmartLog's school attendance notification system deployed in Philippine schools:</p>
+
+            <div class="pick">Primary: Semaphore</div>
+            <p>Best overall balance of cost, simplicity, reliability, and Philippine market fit.<br>PHP-peso billing, all networks, simple REST API, proven track record with Filipino developers.</p>
+
+            <div class="pick" style="font-size:1.2rem; color: rgba(255,255,255,0.7);">Alternative: M360 (lower cost) &bull; Infobip (enterprise + Viber)</div>
+            <p style="margin-top: 24px; font-size: 0.95rem;">
+                <strong>Keep the GSM modem as an offline fallback</strong> &mdash; SmartLog's hybrid architecture is sound.
+                Use cloud SMS as the primary delivery channel for reliability, throughput, and professional sender ID.
+                The GSM modem remains valuable for schools with unreliable internet, sending critical notifications when connectivity is down.
+            </p>
+        </div>
+
+        <div class="callout success">
+            <strong>SmartLog Already Supports This Architecture</strong>
+            SmartLog's SMS subsystem is already designed with a primary provider (GSM_MODEM) and fallback (SEMAPHORE). Switching the default to a cloud provider and keeping GSM as fallback requires only a configuration change in the admin SMS settings &mdash; no code changes needed.
+        </div>
+    </section>
+
+</div>
+
+<footer>
+    SmartLog SMS Provider Analysis &bull; April 2026 &bull; Prepared for internal planning use<br>
+    Pricing data based on publicly available information as of early 2026. Verify current rates with each provider before making procurement decisions.
+</footer>
+
+</body>
+</html>

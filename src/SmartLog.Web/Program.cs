@@ -188,6 +188,16 @@ try
             // Seed app settings defaults
             var appSettingsService = services.GetRequiredService<IAppSettingsService>();
             await appSettingsService.SeedDefaultsAsync();
+
+            // Seed SMS settings defaults (only if not already set)
+            var smsSettingsService = services.GetRequiredService<ISmsSettingsService>();
+            var existingProvider = await smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
+            if (existingProvider == null)
+            {
+                await smsSettingsService.SetSettingAsync("Sms.DefaultProvider", "SEMAPHORE", "General");
+                await smsSettingsService.SetSettingAsync("Sms.FallbackEnabled", "true", "General");
+                logger.LogInformation("Seeded SMS defaults: DefaultProvider=SEMAPHORE, FallbackEnabled=true");
+            }
         }
         catch (Exception ex)
         {

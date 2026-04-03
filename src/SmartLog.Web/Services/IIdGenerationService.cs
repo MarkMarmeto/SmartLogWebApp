@@ -6,11 +6,11 @@ namespace SmartLog.Web.Services;
 public interface IIdGenerationService
 {
     /// <summary>
-    /// Generates a unique Student ID in format YYYY-GG-NNNN.
-    /// Example: 2026-07-0001 for first Grade 7 student in 2026.
+    /// Generates a unique Student ID in format CODE-YYYY-NNNNN.
+    /// Example: MNHS-2026-00001.
+    /// School code is read from System.SchoolCode setting.
     /// </summary>
-    /// <param name="gradeCode">Grade code (e.g., 7-12)</param>
-    Task<string> GenerateStudentIdAsync(string gradeCode);
+    Task<string> GenerateStudentIdAsync();
 
     /// <summary>
     /// Generates a unique Employee ID in format EMP-YYYY-NNNN.

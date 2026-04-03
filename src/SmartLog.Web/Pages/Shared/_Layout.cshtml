@@ -65,23 +65,25 @@
             color: var(--sidebar-text);
         }
 
-        .sidebar-header .logo-icon {
-            font-size: 1.5rem;
-            color: #6EC5C0;
-            min-width: 38px;
-        }
-
-        .sidebar-header .logo-text {
-            font-size: 1.25rem;
-            font-weight: bold;
-            white-space: nowrap;
-            opacity: 1;
+        .sidebar-header .logo-full {
+            display: block;
+            height: 32px;
+            width: auto;
             transition: opacity 0.2s;
         }
 
-        .sidebar.collapsed .logo-text {
-            opacity: 0;
+        .sidebar-header .logo-icon-only {
             display: none;
+            width: 36px;
+            height: 36px;
+        }
+
+        .sidebar.collapsed .logo-full {
+            display: none;
+        }
+
+        .sidebar.collapsed .logo-icon-only {
+            display: block;
         }
 
         .sidebar-menu {
@@ -388,8 +390,8 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <i class="bi bi-qr-code logo-icon"></i>
-                <span class="logo-text">SmartLog</span>
+                <img src="~/images/smartlog-icon.svg" alt="SmartLog" class="logo-icon-only" />
+                <img src="~/images/smartlog-logo-white.svg" alt="SmartLog" class="logo-full" />
             </div>
 
             <nav class="sidebar-menu">

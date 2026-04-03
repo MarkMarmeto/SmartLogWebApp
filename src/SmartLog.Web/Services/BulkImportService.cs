@@ -210,7 +210,7 @@ public class BulkImportService : IBulkImportService
                     s.GradeLevelId == gradeLevel.Id &&
                     s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase));
 
-                var studentId = await _idGenerationService.GenerateStudentIdAsync(gradeLevel.Code);
+                var studentId = await _idGenerationService.GenerateStudentIdAsync();
 
                 var student = new Student
                 {

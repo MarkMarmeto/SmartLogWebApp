@@ -187,6 +187,7 @@ public class AppSettingsService : IAppSettingsService
             ("Attendance.EnforceSchoolDayValidation", "true", "Attendance", false, "Reject scans on non-school days"),
             ("System.ApplicationVersion", "1.0.0", "System", false, "Application version"),
             ("System.SchoolName", "SmartLog School", "System", false, "School name for display"),
+            ("System.SchoolCode", "SL", "System", false, "School code used in Student ID generation (e.g., MNHS, SJA)"),
             ("System.SchoolTimezone", "Asia/Manila", "System", false, "Default timezone"),
         };
 

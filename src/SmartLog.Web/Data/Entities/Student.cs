@@ -15,7 +15,7 @@ public class Student
     /// Example: 2026-05-0001 (First Grade 5 student enrolled in 2026)
     /// </summary>
     [Required]
-    [StringLength(13)]
+    [StringLength(20)]
     public string StudentId { get; set; } = string.Empty;
 
     /// <summary>

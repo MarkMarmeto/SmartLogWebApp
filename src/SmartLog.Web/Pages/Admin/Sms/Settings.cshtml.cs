@@ -76,7 +76,7 @@ public class SettingsModel : PageModel
     {
         // Load settings from configuration
         SmsEnabled = _configuration.GetValue<bool>("Sms:Enabled", true);
-        DefaultProvider = _configuration.GetValue<string>("Sms:DefaultProvider", "GSM_MODEM") ?? "GSM_MODEM";
+        DefaultProvider = _configuration.GetValue<string>("Sms:DefaultProvider", "SEMAPHORE") ?? "SEMAPHORE";
         FallbackEnabled = _configuration.GetValue<bool>("Sms:FallbackEnabled", true);
 
         GsmPortName = await _settingsService.GetSettingAsync("Sms.GsmModem.PortName")
@@ -101,6 +101,18 @@ public class SettingsModel : PageModel
         if (dbEnabled != null)
         {
             SmsEnabled = dbEnabled == "true" || dbEnabled == "1";
+        }
+
+        var dbDefaultProvider = await _settingsService.GetSettingAsync("Sms.DefaultProvider");
+        if (dbDefaultProvider != null)
+        {
+            DefaultProvider = dbDefaultProvider;
+        }
+
+        var dbFallbackEnabled = await _settingsService.GetSettingAsync("Sms.FallbackEnabled");
+        if (dbFallbackEnabled != null)
+        {
+            FallbackEnabled = dbFallbackEnabled == "true" || dbFallbackEnabled == "True";
         }
 
         // Detect available serial ports

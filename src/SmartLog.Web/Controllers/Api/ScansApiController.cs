@@ -202,6 +202,7 @@ public class ScansApiController : ControllerBase
             {
                 ScanId = duplicateScan.Id,
                 StudentId = studentIdStr,
+                Lrn = student.LRN,
                 StudentName = student.FullName,
                 Grade = student.GradeLevel,
                 Section = student.Section,
@@ -253,6 +254,7 @@ public class ScansApiController : ControllerBase
         {
             ScanId = scan.Id,
             StudentId = studentIdStr,
+            Lrn = student.LRN,
             StudentName = student.FullName,
             Grade = student.GradeLevel,
             Section = student.Section,
@@ -328,6 +330,7 @@ public class ScanResponse
 {
     public Guid ScanId { get; set; }
     public string StudentId { get; set; } = string.Empty;
+    public string? Lrn { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string Grade { get; set; } = string.Empty;
     public string Section { get; set; } = string.Empty;

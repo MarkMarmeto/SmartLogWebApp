@@ -9,21 +9,28 @@ namespace SmartLog.Web.Tests.Services;
 public class IdGenerationServiceTests
 {
     private readonly Mock<ILogger<IdGenerationService>> _logger = new();
+    private readonly Mock<IAppSettingsService> _appSettings = new();
+
+    public IdGenerationServiceTests()
+    {
+        _appSettings.Setup(s => s.GetAsync("System.SchoolCode"))
+            .ReturnsAsync("MNHS");
+    }
 
     [Fact]
     public async Task GenerateStudentIdAsync_ReturnsCorrectFormat()
     {
         using var context = TestDbContextFactory.Create();
-        var service = new IdGenerationService(context, _logger.Object);
+        var service = new IdGenerationService(context, _appSettings.Object, _logger.Object);
 
-        var id = await service.GenerateStudentIdAsync("7");
+        var id = await service.GenerateStudentIdAsync();
 
-        // Format: YYYY-GG-NNNN
+        // Format: CODE-YYYY-NNNNN
         var parts = id.Split('-');
         Assert.Equal(3, parts.Length);
-        Assert.Equal(DateTime.UtcNow.Year.ToString(), parts[0]);
-        Assert.Equal("07", parts[1]);
-        Assert.Equal("0001", parts[2]);
+        Assert.Equal("MNHS", parts[0]);
+        Assert.Equal(DateTime.UtcNow.Year.ToString(), parts[1]);
+        Assert.Equal("00001", parts[2]);
     }
 
     [Fact]
@@ -32,10 +39,10 @@ public class IdGenerationServiceTests
         using var context = TestDbContextFactory.Create();
         var year = DateTime.UtcNow.Year;
 
-        // Pre-seed an existing student with an ID in the same grade/year
+        // Pre-seed an existing student with an ID in the same code/year
         context.Students.Add(new Student
         {
-            StudentId = $"{year}-07-0003",
+            StudentId = $"MNHS-{year}-00003",
             FirstName = "Existing",
             LastName = "Student",
             GradeLevel = "7",
@@ -46,39 +53,31 @@ public class IdGenerationServiceTests
         });
         context.SaveChanges();
 
-        var service = new IdGenerationService(context, _logger.Object);
-        var id = await service.GenerateStudentIdAsync("7");
+        var service = new IdGenerationService(context, _appSettings.Object, _logger.Object);
+        var id = await service.GenerateStudentIdAsync();
 
-        Assert.Equal($"{year}-07-0004", id);
+        Assert.Equal($"MNHS-{year}-00004", id);
     }
 
     [Fact]
-    public async Task GenerateStudentIdAsync_ThrowsForInvalidGradeCode()
+    public async Task GenerateStudentIdAsync_UsesDefaultCodeWhenSettingMissing()
     {
         using var context = TestDbContextFactory.Create();
-        var service = new IdGenerationService(context, _logger.Object);
+        var emptySettings = new Mock<IAppSettingsService>();
+        emptySettings.Setup(s => s.GetAsync("System.SchoolCode"))
+            .ReturnsAsync((string?)null);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => service.GenerateStudentIdAsync("K"));
-    }
+        var service = new IdGenerationService(context, emptySettings.Object, _logger.Object);
+        var id = await service.GenerateStudentIdAsync();
 
-    [Fact]
-    public async Task GenerateStudentIdAsync_PadsGradeCodeToTwoDigits()
-    {
-        using var context = TestDbContextFactory.Create();
-        var service = new IdGenerationService(context, _logger.Object);
-
-        var id = await service.GenerateStudentIdAsync("12");
-
-        var parts = id.Split('-');
-        Assert.Equal("12", parts[1]);
+        Assert.StartsWith("SL-", id);
     }
 
     [Fact]
     public async Task GenerateEmployeeIdAsync_ReturnsCorrectFormat()
     {
         using var context = TestDbContextFactory.Create();
-        var service = new IdGenerationService(context, _logger.Object);
+        var service = new IdGenerationService(context, _appSettings.Object, _logger.Object);
 
         var id = await service.GenerateEmployeeIdAsync();
 

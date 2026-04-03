@@ -146,8 +146,8 @@ public class CreateStudentModel : PageModel
             return Page();
         }
 
-        // Auto-generate Student ID
-        var studentId = await _idGenerationService.GenerateStudentIdAsync(gradeLevel.Code);
+        // Auto-generate Student ID (CODE-YYYY-NNNNN)
+        var studentId = await _idGenerationService.GenerateStudentIdAsync();
 
         // Create student
         var student = new Student
