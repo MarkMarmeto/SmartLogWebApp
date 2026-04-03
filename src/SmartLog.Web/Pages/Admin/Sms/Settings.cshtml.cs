@@ -90,8 +90,10 @@ public class SettingsModel : PageModel
             ? parsedDelay
             : _configuration.GetValue<int>("Sms:GsmModem:SendDelayMs", 3000);
 
-        SemaphoreApiKey = _configuration.GetValue<string>("Sms:Semaphore:ApiKey", "") ?? "";
-        SemaphoreSenderName = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
+        SemaphoreApiKey = await _settingsService.GetSettingAsync("Sms.Semaphore.ApiKey")
+            ?? _configuration.GetValue<string>("Sms:Semaphore:ApiKey", "") ?? "";
+        SemaphoreSenderName = await _settingsService.GetSettingAsync("Sms.Semaphore.SenderName")
+            ?? _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
 
         MaxRetries = _configuration.GetValue<int>("Sms:Queue:MaxRetries", 3);
         PollingInterval = _configuration.GetValue<int>("Sms:Queue:PollingIntervalSeconds", 5);

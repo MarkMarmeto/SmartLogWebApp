@@ -11,6 +11,7 @@ namespace SmartLog.Web.Services.Sms;
 public class SemaphoreGateway : ISmsGateway
 {
     private readonly IConfiguration _configuration;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SemaphoreGateway> _logger;
     private readonly HttpClient _httpClient;
 
@@ -20,20 +21,39 @@ public class SemaphoreGateway : ISmsGateway
 
     public SemaphoreGateway(
         IConfiguration configuration,
+        IServiceScopeFactory scopeFactory,
         ILogger<SemaphoreGateway> logger,
         IHttpClientFactory httpClientFactory)
     {
         _configuration = configuration;
+        _scopeFactory = scopeFactory;
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
+    }
+
+    private async Task<string?> GetApiKeyAsync()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var smsSettings = scope.ServiceProvider.GetRequiredService<ISmsSettingsService>();
+        return await smsSettings.GetSettingAsync("Sms.Semaphore.ApiKey")
+               ?? _configuration.GetValue<string>("Sms:Semaphore:ApiKey");
+    }
+
+    private async Task<string> GetSenderNameAsync()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var smsSettings = scope.ServiceProvider.GetRequiredService<ISmsSettingsService>();
+        return await smsSettings.GetSettingAsync("Sms.Semaphore.SenderName")
+               ?? _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog")
+               ?? "SmartLog";
     }
 
     public async Task<bool> IsAvailableAsync()
     {
         try
         {
-            var apiKey = _configuration.GetValue<string>("Sms:Semaphore:ApiKey");
+            var apiKey = await GetApiKeyAsync();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 _logger.LogWarning("Semaphore API key not configured");
@@ -57,13 +77,13 @@ public class SemaphoreGateway : ISmsGateway
 
         try
         {
-            var apiKey = _configuration.GetValue<string>("Sms:Semaphore:ApiKey");
+            var apiKey = await GetApiKeyAsync();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 throw new InvalidOperationException("Semaphore API key not configured");
             }
 
-            var senderName = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
+            var senderName = await GetSenderNameAsync();
 
             // Normalize phone number
             var normalizedPhone = NormalizePhoneNumber(phoneNumber);
@@ -139,7 +159,7 @@ public class SemaphoreGateway : ISmsGateway
 
         try
         {
-            var apiKey = _configuration.GetValue<string>("Sms:Semaphore:ApiKey");
+            var apiKey = await GetApiKeyAsync();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 status.Details["Error"] = "API key not configured";
@@ -158,7 +178,7 @@ public class SemaphoreGateway : ISmsGateway
                 status.IsHealthy = true;
                 status.Status = "Online";
                 status.Details["Balance"] = accountInfo?.Balance.ToString("N2") ?? "Unknown";
-                status.Details["SenderName"] = _configuration.GetValue<string>("Sms:Semaphore:SenderName", "SmartLog") ?? "SmartLog";
+                status.Details["SenderName"] = await GetSenderNameAsync();
 
                 if (accountInfo != null && accountInfo.Balance < 10)
                 {
