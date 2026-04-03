@@ -104,6 +104,12 @@ public class EditStudentModel : PageModel
 
         [Display(Name = "Profile Picture")]
         public IFormFile? ProfilePicture { get; set; }
+
+        [Display(Name = "SMS Notifications Enabled")]
+        public bool SmsEnabled { get; set; } = true;
+
+        [Display(Name = "SMS Language")]
+        public string SmsLanguage { get; set; } = "EN";
     }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
@@ -150,7 +156,9 @@ public class EditStudentModel : PageModel
             SectionId = student.CurrentEnrollment?.SectionId ?? Guid.Empty,
             ParentGuardianName = student.ParentGuardianName,
             GuardianRelationship = student.GuardianRelationship,
-            ParentPhone = student.ParentPhone
+            ParentPhone = student.ParentPhone,
+            SmsEnabled = student.SmsEnabled,
+            SmsLanguage = student.SmsLanguage
         };
 
         return Page();
@@ -199,6 +207,8 @@ public class EditStudentModel : PageModel
         student.ParentGuardianName = Input.ParentGuardianName;
         student.GuardianRelationship = Input.GuardianRelationship;
         student.ParentPhone = Input.ParentPhone;
+        student.SmsEnabled = Input.SmsEnabled;
+        student.SmsLanguage = Input.SmsLanguage;
         student.UpdatedAt = DateTime.UtcNow;
 
         // Handle profile picture upload/replacement

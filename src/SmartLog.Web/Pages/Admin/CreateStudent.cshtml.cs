@@ -107,6 +107,12 @@ public class CreateStudentModel : PageModel
 
         [Display(Name = "Profile Picture")]
         public IFormFile? ProfilePicture { get; set; }
+
+        [Display(Name = "SMS Notifications Enabled")]
+        public bool SmsEnabled { get; set; } = true;
+
+        [Display(Name = "SMS Language")]
+        public string SmsLanguage { get; set; } = "EN";
     }
 
     public async Task OnGetAsync()
@@ -163,6 +169,8 @@ public class CreateStudentModel : PageModel
             GuardianRelationship = Input.GuardianRelationship,
             ParentPhone = Input.ParentPhone,
             IsActive = true,
+            SmsEnabled = Input.SmsEnabled,
+            SmsLanguage = Input.SmsLanguage,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
