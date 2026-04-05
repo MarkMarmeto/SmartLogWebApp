@@ -276,6 +276,16 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             return;
         }
 
+        // Dispose stale port object before recreating. Without this, if a previous
+        // Open() succeeded then the port later closed/errored, the old SerialPort
+        // still holds the OS handle, causing "Access denied" or "port in use" on retry.
+        if (_serialPort != null)
+        {
+            try { _serialPort.Close(); } catch { }
+            try { _serialPort.Dispose(); } catch { }
+            _serialPort = null;
+        }
+
         // Check database settings first (admin-configured), fall back to appsettings.json
         string? dbPortName = null;
         string? dbBaudRate = null;
@@ -306,7 +316,6 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             Handshake = Handshake.None,
             ReadTimeout = 5000,
             WriteTimeout = 5000,
-            NewLine = "\r\n",
             Encoding = Encoding.ASCII
         };
 
@@ -315,12 +324,15 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             _serialPort.Open();
             _logger.LogInformation("Opened serial port {Port} at {BaudRate} baud", portName, baudRate);
 
-            // Clear any pending data
+            // Clear any pending data from previous session
             _serialPort.DiscardInBuffer();
             _serialPort.DiscardOutBuffer();
         }
         catch (Exception ex)
         {
+            // Dispose the object we just created so the next call starts clean
+            try { _serialPort.Dispose(); } catch { }
+            _serialPort = null;
             _logger.LogError(ex, "Failed to open serial port {Port}", portName);
             throw;
         }
@@ -352,32 +364,34 @@ public class GsmModemGateway : ISmsGateway, IDisposable
 
         while ((DateTime.UtcNow - startTime).TotalMilliseconds < timeoutMs)
         {
-            try
+            if (_serialPort.BytesToRead > 0)
             {
-                if (_serialPort.BytesToRead > 0)
-                {
-                    var line = _serialPort.ReadLine();
-                    response.AppendLine(line);
-                    _logger.LogDebug("Received: {Line}", line);
+                // ReadExisting() reads whatever is currently in the buffer without blocking.
+                // ReadLine() was previously used here but it blocks waiting for \r\n, which
+                // causes the AT+CMGS "> " prompt (no trailing \r\n) to be missed and discarded
+                // after a 5-second ReadTimeout, breaking every send attempt.
+                var chunk = _serialPort.ReadExisting();
+                response.Append(chunk);
+                _logger.LogDebug("GSM recv: {Chunk}", chunk.Replace("\r", "\\r").Replace("\n", "\\n"));
 
-                    if (line.Contains("OK") || line.Contains("ERROR") || line.Contains("+CMGS"))
-                    {
-                        break;
-                    }
-                }
-                else
+                var current = response.ToString();
+                if (current.Contains("OK") || current.Contains("ERROR") ||
+                    current.Contains("+CMGS") || current.Contains("> "))
                 {
-                    await Task.Delay(100);
+                    break;
                 }
             }
-            catch (TimeoutException)
+            else
             {
-                // Continue waiting
-                await Task.Delay(100);
+                await Task.Delay(50);
             }
         }
 
-        return response.ToString();
+        var result = response.ToString();
+        _logger.LogDebug("GSM full response ({Ms}ms): {Response}",
+            (int)(DateTime.UtcNow - startTime).TotalMilliseconds,
+            result.Replace("\r", "\\r").Replace("\n", "\\n"));
+        return result;
     }
 
     private string NormalizePhoneNumber(string phoneNumber)
