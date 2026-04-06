@@ -12,7 +12,7 @@ namespace SmartLog.Web.Pages.Admin;
 /// Print QR code page for individual student.
 /// Implements US0021 (Print Individual QR Code).
 /// </summary>
-[Authorize(Policy = "CanManageStudents")]
+[Authorize(Policy = "CanViewStudents")]
 public class PrintQrCodeModel : PageModel
 {
     private readonly ApplicationDbContext _context;

@@ -1,0 +1,183 @@
+@page
+@model SmartLog.Web.Pages.Teacher.DashboardModel
+@{
+    ViewData["Title"] = "My Section Dashboard";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-clipboard-check me-2"></i>My Section Dashboard</h1>
+            <p class="text-muted mb-0">Attendance for @Model.DisplayDate.ToString("MMMM dd, yyyy")</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-info" id="autoRefreshStatus">Auto-refresh: ON (every 30s)</span>
+            <span class="text-muted small" id="lastUpdated">Last updated: @DateTime.Now.ToString("h:mm:ss tt")</span>
+            <button class="btn btn-outline-primary btn-sm" onclick="manualRefresh()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Now
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="toggleAutoRefresh()">
+                <i class="bi bi-pause-circle"></i> Pause
+            </button>
+        </div>
+    </div>
+
+    @if (Model.Faculty == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No Faculty Record Found</strong> — Your user account is not linked to a faculty record.
+            Please contact an administrator to link your account.
+        </div>
+    }
+    else if (Model.Section == null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>No Advisory Section Assigned</strong> — You do not have an advisory section assigned.
+            Please contact an administrator to assign you as a section adviser.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mb-4">
+            <i class="bi bi-bookmark-check me-2 text-primary"></i>
+            Advisory Section: <strong>@Model.Section.GradeLevel.Name — @Model.Section.Name</strong>
+            &nbsp;|&nbsp;
+            Capacity: <strong>@Model.Section.Capacity</strong>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Total Enrolled</h6>
+                        <h2 class="card-title mb-0" id="totalEnrolled">@Model.Summary.TotalEnrolled</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Present</h6>
+                        <h2 class="card-title mb-0 text-success" id="presentCount">@Model.Summary.Present</h2>
+                        <small class="text-muted" id="attendanceRate">@Model.Summary.AttendanceRate%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Absent</h6>
+                        <h2 class="card-title mb-0 text-danger" id="absentCount">@Model.Summary.Absent</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Departed</h6>
+                        <h2 class="card-title mb-0 text-secondary" id="departedCount">@Model.Summary.Departed</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Attendance List -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul me-2"></i>Student Attendance</span>
+                <a asp-page="/Teacher/Attendance" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-calendar3 me-1"></i>View by Date
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Students.Any())
+                {
+                    <div class="p-4 text-muted text-center">No records for today.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.Students)
+                                {
+                                    <tr>
+                                        <td><code>@s.StudentIdNumber</code></td>
+                                        <td>@s.FullName</td>
+                                        <td>
+                                            @switch (s.Status)
+                                            {
+                                                case "Present":
+                                                    <span class="badge bg-success">Present</span>
+                                                    break;
+                                                case "Departed":
+                                                    <span class="badge bg-secondary">Departed</span>
+                                                    break;
+                                                default:
+                                                    <span class="badge bg-danger">Absent</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td>@(s.EntryTime?.ToLocalTime().ToString("h:mm tt") ?? "—")</td>
+                                        <td>@(s.ExitTime?.ToLocalTime().ToString("h:mm tt") ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = true;
+
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(function () {
+                if (autoRefreshEnabled) {
+                    location.reload();
+                }
+            }, 30000);
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const statusBadge = document.getElementById('autoRefreshStatus');
+            const btn = event.currentTarget;
+            if (autoRefreshEnabled) {
+                statusBadge.textContent = 'Auto-refresh: ON (every 30s)';
+                statusBadge.className = 'badge bg-info';
+                btn.innerHTML = '<i class="bi bi-pause-circle"></i> Pause';
+            } else {
+                statusBadge.textContent = 'Auto-refresh: PAUSED';
+                statusBadge.className = 'badge bg-secondary';
+                btn.innerHTML = '<i class="bi bi-play-circle"></i> Resume';
+            }
+        }
+
+        function manualRefresh() {
+            document.getElementById('lastUpdated').textContent = 'Refreshing...';
+            location.reload();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            startAutoRefresh();
+        });
+    </script>
+}

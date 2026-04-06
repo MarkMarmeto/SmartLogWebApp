@@ -411,6 +411,24 @@
                     </a>
                 }
 
+                <!-- Teacher: My Section -->
+                @if (User.IsInRole("Teacher"))
+                {
+                    <div class="menu-section">My Section</div>
+                    <a asp-page="/Teacher/Dashboard" class="menu-item">
+                        <i class="bi bi-clipboard-check"></i>
+                        <span>My Dashboard</span>
+                    </a>
+                    <a asp-page="/Teacher/Attendance" class="menu-item">
+                        <i class="bi bi-calendar-check"></i>
+                        <span>Section Attendance</span>
+                    </a>
+                    <a asp-page="/Teacher/Students" class="menu-item">
+                        <i class="bi bi-people"></i>
+                        <span>My Students</span>
+                    </a>
+                }
+
                 <!-- Attendance -->
                 @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin") || User.IsInRole("Teacher") || User.IsInRole("Staff"))
                 {

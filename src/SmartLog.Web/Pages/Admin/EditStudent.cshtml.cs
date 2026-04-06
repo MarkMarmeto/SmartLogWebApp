@@ -102,6 +102,11 @@ public class EditStudentModel : PageModel
         [Display(Name = "Parent Phone")]
         public string ParentPhone { get; set; } = string.Empty;
 
+        [Phone(ErrorMessage = "Please enter a valid phone number")]
+        [StringLength(20)]
+        [Display(Name = "Alternate Phone")]
+        public string? AlternatePhone { get; set; }
+
         [Display(Name = "Profile Picture")]
         public IFormFile? ProfilePicture { get; set; }
 
@@ -157,6 +162,7 @@ public class EditStudentModel : PageModel
             ParentGuardianName = student.ParentGuardianName,
             GuardianRelationship = student.GuardianRelationship,
             ParentPhone = student.ParentPhone,
+            AlternatePhone = student.AlternatePhone,
             SmsEnabled = student.SmsEnabled,
             SmsLanguage = student.SmsLanguage
         };
@@ -207,6 +213,7 @@ public class EditStudentModel : PageModel
         student.ParentGuardianName = Input.ParentGuardianName;
         student.GuardianRelationship = Input.GuardianRelationship;
         student.ParentPhone = Input.ParentPhone;
+        student.AlternatePhone = string.IsNullOrWhiteSpace(Input.AlternatePhone) ? null : Input.AlternatePhone;
         student.SmsEnabled = Input.SmsEnabled;
         student.SmsLanguage = Input.SmsLanguage;
         student.UpdatedAt = DateTime.UtcNow;

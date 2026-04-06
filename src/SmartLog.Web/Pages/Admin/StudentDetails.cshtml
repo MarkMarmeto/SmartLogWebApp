@@ -82,6 +82,15 @@
                         <dd class="col-sm-8">
                             <a href="tel:@Model.Student.ParentPhone">@Model.Student.ParentPhone</a>
                         </dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Student.AlternatePhone))
+                        {
+                            <dt class="col-sm-4">Alternate Phone:</dt>
+                            <dd class="col-sm-8">
+                                <a href="tel:@Model.Student.AlternatePhone">@Model.Student.AlternatePhone</a>
+                                <small class="text-muted ms-1">(also receives SMS)</small>
+                            </dd>
+                        }
                     </dl>
                 </div>
             </div>
@@ -140,13 +149,13 @@
                             <span class="badge bg-danger mb-2">Invalid (Regenerated)</span>
                         }
 
-                        @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
-                        {
-                            <div class="d-grid gap-2 mt-3">
-                                <a asp-page="/Admin/PrintQrCode" asp-route-id="@Model.Student.Id"
-                                   class="btn btn-primary" target="_blank">
-                                    <i class="bi bi-printer me-1"></i>Print QR Code
-                                </a>
+                        <div class="d-grid gap-2 mt-3">
+                            <a asp-page="/Admin/PrintQrCode" asp-route-id="@Model.Student.Id"
+                               class="btn btn-primary" target="_blank">
+                                <i class="bi bi-printer me-1"></i>Print QR Code
+                            </a>
+                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                            {
                                 <form method="post" asp-page-handler="RegenerateQr"
                                       onsubmit="return confirm('This will invalidate the old QR code. Continue?');">
                                     <input type="hidden" name="studentId" value="@Model.Student.Id" />
@@ -154,8 +163,8 @@
                                         <i class="bi bi-arrow-clockwise me-1"></i>Regenerate QR Code
                                     </button>
                                 </form>
-                            </div>
-                        }
+                            }
+                        </div>
                     </div>
                 </div>
             }

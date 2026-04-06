@@ -104,6 +104,17 @@ public class SmsService : ISmsService
                 SmsPriority.Normal,
                 "ATTENDANCE");
 
+            // Also notify alternate phone if present
+            if (!string.IsNullOrWhiteSpace(student.AlternatePhone) &&
+                !await IsDuplicateAsync(student.AlternatePhone, message, 5))
+            {
+                await QueueCustomSmsAsync(
+                    student.AlternatePhone,
+                    message,
+                    SmsPriority.Normal,
+                    "ATTENDANCE");
+            }
+
             _logger.LogInformation("Queued attendance notification for student {StudentId}", studentId);
         }
         catch (Exception ex)
@@ -189,6 +200,16 @@ public class SmsService : ISmsService
                     message,
                     SmsPriority.High,
                     "CALENDAR");
+
+                if (!string.IsNullOrWhiteSpace(student.AlternatePhone) &&
+                    !await IsDuplicateAsync(student.AlternatePhone, message, 60))
+                {
+                    await QueueCustomSmsAsync(
+                        student.AlternatePhone,
+                        message,
+                        SmsPriority.High,
+                        "CALENDAR");
+                }
             }
 
             _logger.LogInformation("Queued calendar notifications for event {EventId}", calendarEventId);
@@ -247,6 +268,15 @@ public class SmsService : ISmsService
                     renderedMessage,
                     SmsPriority.Emergency,
                     "EMERGENCY");
+
+                if (!string.IsNullOrWhiteSpace(student.AlternatePhone))
+                {
+                    await QueueCustomSmsAsync(
+                        student.AlternatePhone,
+                        renderedMessage,
+                        SmsPriority.Emergency,
+                        "EMERGENCY");
+                }
             }
 
             _logger.LogInformation("Queued emergency announcements for {Count} students", students.Count);

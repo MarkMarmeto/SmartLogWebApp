@@ -1,0 +1,122 @@
+@page
+@model SmartLog.Web.Pages.Teacher.StudentsModel
+@{
+    ViewData["Title"] = "My Students";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-people me-2"></i>My Students</h1>
+        <a asp-page="/Teacher/Dashboard" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (Model.Faculty == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No faculty record linked to your account. Please contact an administrator.
+        </div>
+    }
+    else if (Model.Section == null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No advisory section assigned. Please contact an administrator.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mb-4">
+            <i class="bi bi-bookmark-check me-2 text-primary"></i>
+            Advisory Section: <strong>@Model.Section.GradeLevel.Name — @Model.Section.Name</strong>
+            &nbsp;|&nbsp;
+            <strong>@Model.Students.Count</strong> student(s)
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-6">
+                        <input type="text" name="search" class="form-control"
+                               placeholder="Search by name, student ID, or LRN"
+                               value="@Model.SearchTerm" />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search me-1"></i>Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                @if (!Model.Students.Any())
+                {
+                    <div class="p-4 text-center text-muted">No students found.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>LRN</th>
+                                    <th>Parent/Guardian</th>
+                                    <th>Parent Phone</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int row = 1; }
+                                @foreach (var student in Model.Students)
+                                {
+                                    <tr>
+                                        <td class="text-muted">@row</td>
+                                        <td><code>@student.StudentId</code></td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(student.ProfilePicturePath))
+                                            {
+                                                <img src="@student.ProfilePicturePath"
+                                                     style="width:28px;height:28px;border-radius:50%;object-fit:cover;margin-right:6px;" />
+                                            }
+                                            @student.FullName
+                                        </td>
+                                        <td>@(student.LRN ?? "—")</td>
+                                        <td>@student.ParentGuardianName <small class="text-muted">(@student.GuardianRelationship)</small></td>
+                                        <td>@student.ParentPhone</td>
+                                        <td>
+                                            @if (student.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a asp-page="/Admin/PrintQrCode" asp-route-id="@student.Id"
+                                               class="btn btn-sm btn-outline-secondary" target="_blank"
+                                               title="Print QR Code">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    row++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

@@ -131,6 +131,14 @@
                             <span asp-validation-for="Input.ParentPhone" class="text-danger"></span>
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="Input.AlternatePhone" class="form-label"></label>
+                            <input asp-for="Input.AlternatePhone" class="form-control" placeholder="Optional" />
+                            <span asp-validation-for="Input.AlternatePhone" class="text-danger"></span>
+                            <div class="form-text">SMS alerts will also be sent to this number</div>
+                        </div>
+                    </div>
                 </div>
 
                 <hr class="my-4" />

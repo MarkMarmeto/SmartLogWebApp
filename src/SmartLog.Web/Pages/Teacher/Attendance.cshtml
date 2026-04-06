@@ -1,0 +1,182 @@
+@page
+@model SmartLog.Web.Pages.Teacher.AttendanceModel
+@{
+    ViewData["Title"] = "Section Attendance";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-calendar-check me-2"></i>Section Attendance</h1>
+        <a asp-page="/Teacher/Dashboard" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    @if (Model.Faculty == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No faculty record linked to your account. Please contact an administrator.
+        </div>
+    }
+    else if (Model.Section == null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No advisory section assigned. Please contact an administrator.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mb-4">
+            <i class="bi bi-bookmark-check me-2 text-primary"></i>
+            Advisory Section: <strong>@Model.Section.GradeLevel.Name — @Model.Section.Name</strong>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="selectedDate" class="form-control"
+                               value="@Model.SelectedDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">All</option>
+                            <option value="Present" selected="@(Model.StatusFilter == "Present" ? "selected" : null)">Present</option>
+                            <option value="Absent" selected="@(Model.StatusFilter == "Absent" ? "selected" : null)">Absent</option>
+                            <option value="Departed" selected="@(Model.StatusFilter == "Departed" ? "selected" : null)">Departed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Search</label>
+                        <input type="text" name="search" class="form-control" placeholder="Student name or ID"
+                               value="@Model.SearchTerm" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search me-1"></i>Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Summary for selected date -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card border-primary text-center py-2">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Total Enrolled</h6>
+                        <h3 class="mb-0">@Model.Summary.TotalEnrolled</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-success text-center py-2">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Present</h6>
+                        <h3 class="mb-0 text-success">@Model.Summary.Present</h3>
+                        <small class="text-muted">@Model.Summary.AttendanceRate%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-danger text-center py-2">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Absent</h6>
+                        <h3 class="mb-0 text-danger">@Model.Summary.Absent</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-secondary text-center py-2">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Departed</h6>
+                        <h3 class="mb-0 text-secondary">@Model.Summary.Departed</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Table -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-ul me-2"></i>
+                @Model.SelectedDate.ToString("MMMM dd, yyyy")
+                <span class="badge bg-secondary ms-2">@Model.TotalCount students</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Students.Any())
+                {
+                    <div class="p-4 text-center text-muted">No records found for the selected criteria.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.Students)
+                                {
+                                    <tr>
+                                        <td><code>@s.StudentIdNumber</code></td>
+                                        <td>@s.FullName</td>
+                                        <td>
+                                            @switch (s.Status)
+                                            {
+                                                case "Present":
+                                                    <span class="badge bg-success">Present</span>
+                                                    break;
+                                                case "Departed":
+                                                    <span class="badge bg-secondary">Departed</span>
+                                                    break;
+                                                default:
+                                                    <span class="badge bg-danger">Absent</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td>@(s.EntryTime?.ToLocalTime().ToString("h:mm tt") ?? "—")</td>
+                                        <td>@(s.ExitTime?.ToLocalTime().ToString("h:mm tt") ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div class="p-3">
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0">
+                                    @for (var i = 1; i <= Model.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                            <a class="page-link"
+                                               asp-page="/Teacher/Attendance"
+                                               asp-route-selectedDate="@Model.SelectedDate.ToString("yyyy-MM-dd")"
+                                               asp-route-search="@Model.SearchTerm"
+                                               asp-route-status="@Model.StatusFilter"
+                                               asp-route-page="@i">@i</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
