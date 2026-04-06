@@ -214,6 +214,7 @@ try
     if (!app.Environment.IsDevelopment())
     {
         app.UseExceptionHandler("/Error");
+        app.UseStatusCodePagesWithReExecute("/errors/{0}");
         app.UseHsts();
     }
 

@@ -1,0 +1,23 @@
+@page "/errors/{statusCode:int}"
+@model SmartLog.Web.Pages.ErrorsModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <div style="font-size: 5rem; line-height: 1; color: #2C5F5D; font-weight: 800; opacity: .15;">
+                    @Model.HttpStatusCode
+                </div>
+                <i class="bi @Model.Icon display-3 mt-2" style="color: #2C5F5D;"></i>
+                <h2 class="mt-3 fw-bold">@Model.Title</h2>
+                <p class="text-muted mb-4">@Model.Description</p>
+                <a asp-page="/Index" class="btn btn-primary">
+                    <i class="bi bi-house me-2"></i>Return to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
