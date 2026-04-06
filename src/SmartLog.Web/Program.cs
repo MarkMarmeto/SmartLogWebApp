@@ -163,6 +163,29 @@ try
     builder.Services.AddHealthChecks()
         .AddDbContextCheck<ApplicationDbContext>();
 
+    // Configure HTTPS if a certificate is provisioned
+    // Set SMARTLOG_CERT_PATH and SMARTLOG_CERT_PASSWORD env vars via Setup-Https.ps1
+    var certPath = Environment.GetEnvironmentVariable("SMARTLOG_CERT_PATH")
+                   ?? Path.Combine("C:\\SmartLog", "smartlog.pfx");
+    var certPassword = Environment.GetEnvironmentVariable("SMARTLOG_CERT_PASSWORD");
+
+    if (File.Exists(certPath) && !string.IsNullOrEmpty(certPassword))
+    {
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ListenAnyIP(5050);  // HTTP — redirects to HTTPS
+            options.ListenAnyIP(5051, listenOptions =>
+            {
+                listenOptions.UseHttps(certPath, certPassword);
+            });
+        });
+        Log.Information("HTTPS enabled — certificate loaded from {CertPath}", certPath);
+    }
+    else
+    {
+        Log.Warning("HTTPS certificate not found — running HTTP only. Run deploy/Setup-Https.ps1 to enable HTTPS.");
+    }
+
     var app = builder.Build();
 
     // Apply migrations and seed data
