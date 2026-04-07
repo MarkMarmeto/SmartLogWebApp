@@ -173,6 +173,9 @@ public static class DbInitializer
         // Seed SMS templates
         await SeedSmsTemplatesAsync(context, logger);
 
+        // Reset any messages stuck in Processing status from a previous crash/restart
+        await ResetStuckProcessingMessagesAsync(context, logger);
+
         // Seed test students and attendance data
         await SeedStudentsAndScansAsync(context, logger);
 
@@ -854,6 +857,16 @@ public static class DbInitializer
                 AvailablePlaceholders = "{Message},{SchoolPhone}",
                 IsActive = true,
                 IsSystem = true
+            },
+            new()
+            {
+                Code = "ANNOUNCEMENT",
+                Name = "General Announcement",
+                TemplateEn = "{SchoolName}: {Message} For concerns, call {SchoolPhone}.",
+                TemplateFil = "{SchoolName}: {Message} Para sa katanungan, tumawag sa {SchoolPhone}.",
+                AvailablePlaceholders = "{SchoolName},{Message},{SchoolPhone}",
+                IsActive = true,
+                IsSystem = true
             }
         };
 
@@ -882,5 +895,23 @@ public static class DbInitializer
 
         await context.SaveChangesAsync();
         logger.LogInformation("SMS templates: {Added} added, {Updated} updated", added, updated);
+    }
+
+    private static async Task ResetStuckProcessingMessagesAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var stuck = await context.SmsQueues
+            .Where(q => q.Status == SmsStatus.Processing)
+            .ToListAsync();
+
+        if (stuck.Count == 0) return;
+
+        foreach (var msg in stuck)
+        {
+            msg.Status = SmsStatus.Pending;
+            msg.ErrorMessage = "Reset to Pending on startup — was stuck in Processing (app restart detected).";
+        }
+
+        await context.SaveChangesAsync();
+        logger.LogWarning("Reset {Count} SMS message(s) stuck in Processing status back to Pending", stuck.Count);
     }
 }

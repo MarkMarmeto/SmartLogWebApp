@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using SmartLog.Web.Validation;
 
 namespace SmartLog.Web.Pages.Admin;
 
@@ -100,13 +101,12 @@ public class CreateStudentModel : PageModel
         public string GuardianRelationship { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Parent phone is required")]
-        [Phone(ErrorMessage = "Please enter a valid phone number")]
+        [PhMobile]
         [StringLength(20)]
         [Display(Name = "Parent Phone")]
         public string ParentPhone { get; set; } = string.Empty;
 
-        [Phone(ErrorMessage = "Please enter a valid phone number")]
-        [StringLength(20)]
+        [PhMobile]
         [Display(Name = "Alternate Phone")]
         public string? AlternatePhone { get; set; }
 

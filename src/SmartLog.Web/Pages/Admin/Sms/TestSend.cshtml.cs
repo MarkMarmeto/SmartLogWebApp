@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services.Sms;
+using SmartLog.Web.Validation;
 
 namespace SmartLog.Web.Pages.Admin.Sms;
 
@@ -89,6 +90,12 @@ public class TestSendModel : PageModel
         if (string.IsNullOrWhiteSpace(PhoneNumber))
         {
             ErrorMessage = "Phone number is required.";
+            return RedirectToPage();
+        }
+
+        if (!PhMobileAttribute.IsValidPhMobile(PhoneNumber))
+        {
+            ErrorMessage = "Please enter a valid Philippine mobile number (e.g. 09171234567).";
             return RedirectToPage();
         }
 

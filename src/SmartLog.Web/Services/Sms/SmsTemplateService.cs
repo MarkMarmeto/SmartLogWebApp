@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
@@ -44,6 +45,17 @@ public class SmsTemplateService : ISmsTemplateService
             {
                 var key = $"{{{placeholder.Key}}}";
                 templateText = templateText.Replace(key, placeholder.Value);
+            }
+
+            // Detect unreplaced placeholders — sending "{SchoolPhone}" literally is worse than not sending
+            var unreplaced = Regex.Matches(templateText, @"\{[A-Za-z]+\}");
+            if (unreplaced.Count > 0)
+            {
+                var missing = string.Join(", ", unreplaced.Select(m => m.Value).Distinct());
+                _logger.LogError(
+                    "Template {Code} has unreplaced placeholders: {Missing}. Message will not be sent.",
+                    code, missing);
+                return string.Empty;
             }
 
             return templateText;

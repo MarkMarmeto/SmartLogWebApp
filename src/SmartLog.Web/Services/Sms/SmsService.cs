@@ -57,6 +57,13 @@ public class SmsService : ISmsService
                 return;
             }
 
+            // Guard: skip if parent phone is missing or invalid
+            if (string.IsNullOrWhiteSpace(student.ParentPhone))
+            {
+                _logger.LogWarning("Student {StudentId} has no parent phone — skipping SMS", studentId);
+                return;
+            }
+
             // Determine template code based on scan type
             var templateCode = scanType.ToUpperInvariant() == "ENTRY" ? "ENTRY" : "EXIT";
 
@@ -220,11 +227,14 @@ public class SmsService : ISmsService
         }
     }
 
-    public async Task QueueEmergencyAnnouncementAsync(
+    public async Task<Guid> QueueEmergencyAnnouncementAsync(
         string message,
         string? language = null,
-        List<string>? affectedGrades = null)
+        List<string>? affectedGrades = null,
+        string? createdByUserId = null,
+        string? createdByName = null)
     {
+        var broadcastId = Guid.NewGuid();
         try
         {
             // Get students filtered by grade if specified
@@ -239,6 +249,26 @@ public class SmsService : ISmsService
 
             _logger.LogInformation("Sending emergency announcement to {Count} students", students.Count);
 
+            // Create Broadcast record
+            var broadcast = new Data.Entities.Broadcast
+            {
+                Id = broadcastId,
+                Type = "EMERGENCY",
+                Message = message,
+                Language = language,
+                AffectedGrades = affectedGrades != null && affectedGrades.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedGrades)
+                    : null,
+                ScheduledAt = null,
+                Status = Data.Entities.BroadcastStatus.Sending,
+                CreatedByUserId = createdByUserId,
+                CreatedByName = createdByName,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Broadcasts.Add(broadcast);
+            await _context.SaveChangesAsync();
+
             // Use EMERGENCY template
             var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var placeholders = new Dictionary<string, string>
@@ -247,9 +277,13 @@ public class SmsService : ISmsService
                 { "SchoolPhone", schoolPhone }
             };
 
+            int recipientCount = 0;
+
             // Queue SMS for each student
             foreach (var student in students)
             {
+                if (string.IsNullOrWhiteSpace(student.ParentPhone)) continue;
+
                 // Use specified language or student's preference
                 var smsLanguage = language ?? student.SmsLanguage;
 
@@ -263,36 +297,169 @@ public class SmsService : ISmsService
                     continue;
                 }
 
-                await QueueCustomSmsAsync(
+                await QueueSmsInternalAsync(
                     student.ParentPhone,
                     renderedMessage,
                     SmsPriority.Emergency,
-                    "EMERGENCY");
+                    "EMERGENCY",
+                    scheduledAt: null,
+                    broadcastId: broadcastId);
+                recipientCount++;
 
                 if (!string.IsNullOrWhiteSpace(student.AlternatePhone))
                 {
-                    await QueueCustomSmsAsync(
+                    await QueueSmsInternalAsync(
                         student.AlternatePhone,
                         renderedMessage,
                         SmsPriority.Emergency,
-                        "EMERGENCY");
+                        "EMERGENCY",
+                        scheduledAt: null,
+                        broadcastId: broadcastId);
+                    recipientCount++;
                 }
             }
 
-            _logger.LogInformation("Queued emergency announcements for {Count} students", students.Count);
+            // Update broadcast with final count and status
+            broadcast.TotalRecipients = recipientCount;
+            broadcast.Status = Data.Entities.BroadcastStatus.Sending;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Queued emergency announcements for {Count} students ({Recipients} messages)",
+                students.Count, recipientCount);
+
+            return broadcastId;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error queuing emergency announcements");
+            return broadcastId;
         }
     }
 
-    public async Task<long> QueueCustomSmsAsync(
+    public async Task<Guid> QueueAnnouncementAsync(
+        string message,
+        string? language = null,
+        List<string>? affectedGrades = null,
+        DateTime? scheduledAt = null,
+        string? createdByUserId = null,
+        string? createdByName = null)
+    {
+        var broadcastId = Guid.NewGuid();
+        try
+        {
+            var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+
+            if (affectedGrades != null && affectedGrades.Any())
+                query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
+
+            var students = await query.ToListAsync();
+
+            _logger.LogInformation("Sending announcement to {Count} students", students.Count);
+
+            // Create Broadcast record
+            var isScheduled = scheduledAt.HasValue && scheduledAt.Value > DateTime.UtcNow;
+            var broadcast = new Data.Entities.Broadcast
+            {
+                Id = broadcastId,
+                Type = "ANNOUNCEMENT",
+                Message = message,
+                Language = language,
+                AffectedGrades = affectedGrades != null && affectedGrades.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedGrades)
+                    : null,
+                ScheduledAt = scheduledAt,
+                Status = isScheduled ? Data.Entities.BroadcastStatus.Scheduled : Data.Entities.BroadcastStatus.Sending,
+                CreatedByUserId = createdByUserId,
+                CreatedByName = createdByName,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Broadcasts.Add(broadcast);
+            await _context.SaveChangesAsync();
+
+            var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
+            var schoolName = await _appSettingsService.GetAsync("System.SchoolName") ?? "School";
+
+            var placeholders = new Dictionary<string, string>
+            {
+                { "SchoolName", schoolName },
+                { "Message", message },
+                { "SchoolPhone", schoolPhone }
+            };
+
+            int recipientCount = 0;
+
+            foreach (var student in students)
+            {
+                if (string.IsNullOrWhiteSpace(student.ParentPhone)) continue;
+
+                var smsLanguage = language ?? student.SmsLanguage;
+
+                var renderedMessage = await _templateService.RenderTemplateAsync(
+                    "ANNOUNCEMENT",
+                    smsLanguage,
+                    placeholders);
+
+                if (string.IsNullOrWhiteSpace(renderedMessage))
+                    continue;
+
+                if (await IsDuplicateAsync(student.ParentPhone, renderedMessage, 60))
+                    continue;
+
+                await QueueSmsInternalAsync(
+                    student.ParentPhone,
+                    renderedMessage,
+                    SmsPriority.High,
+                    "ANNOUNCEMENT",
+                    scheduledAt: scheduledAt,
+                    broadcastId: broadcastId);
+                recipientCount++;
+
+                if (!string.IsNullOrWhiteSpace(student.AlternatePhone) &&
+                    !await IsDuplicateAsync(student.AlternatePhone, renderedMessage, 60))
+                {
+                    await QueueSmsInternalAsync(
+                        student.AlternatePhone,
+                        renderedMessage,
+                        SmsPriority.High,
+                        "ANNOUNCEMENT",
+                        scheduledAt: scheduledAt,
+                        broadcastId: broadcastId);
+                    recipientCount++;
+                }
+            }
+
+            // Update broadcast with final count
+            broadcast.TotalRecipients = recipientCount;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Queued announcements for {Count} students ({Recipients} messages)",
+                students.Count, recipientCount);
+
+            return broadcastId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error queuing announcements");
+            return broadcastId;
+        }
+    }
+
+    public Task<long> QueueCustomSmsAsync(
         string phoneNumber,
         string message,
         SmsPriority priority = SmsPriority.Normal,
         string messageType = "CUSTOM",
         DateTime? scheduledAt = null)
+        => QueueSmsInternalAsync(phoneNumber, message, priority, messageType, scheduledAt, broadcastId: null);
+
+    private async Task<long> QueueSmsInternalAsync(
+        string phoneNumber,
+        string message,
+        SmsPriority priority,
+        string messageType,
+        DateTime? scheduledAt,
+        Guid? broadcastId)
     {
         try
         {
@@ -306,7 +473,8 @@ public class SmsService : ISmsService
                 RetryCount = 0,
                 MaxRetries = 3,
                 CreatedAt = DateTime.UtcNow,
-                ScheduledAt = scheduledAt
+                ScheduledAt = scheduledAt,
+                BroadcastId = broadcastId
             };
 
             _context.SmsQueues.Add(queueEntry);
@@ -320,6 +488,77 @@ public class SmsService : ISmsService
         {
             _logger.LogError(ex, "Error queuing custom SMS to {Phone}", phoneNumber);
             throw;
+        }
+    }
+
+    public async Task<int> CancelBroadcastAsync(Guid broadcastId)
+    {
+        try
+        {
+            var broadcast = await _context.Broadcasts
+                .FirstOrDefaultAsync(b => b.Id == broadcastId);
+
+            if (broadcast == null)
+            {
+                return 0;
+            }
+
+            // Cancel all pending messages in this broadcast
+            var pending = await _context.SmsQueues
+                .Where(q => q.BroadcastId == broadcastId &&
+                            (q.Status == SmsStatus.Pending || q.Status == SmsStatus.Failed))
+                .ToListAsync();
+
+            foreach (var msg in pending)
+            {
+                msg.Status = SmsStatus.Cancelled;
+            }
+
+            broadcast.Status = Data.Entities.BroadcastStatus.Cancelled;
+            broadcast.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Cancelled broadcast {BroadcastId} — {Count} message(s) cancelled",
+                broadcastId, pending.Count);
+
+            return pending.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling broadcast {BroadcastId}", broadcastId);
+            return 0;
+        }
+    }
+
+    public async Task<List<Data.Entities.Broadcast>> GetBroadcastsAsync(int page = 1, int pageSize = 20)
+    {
+        try
+        {
+            return await _context.Broadcasts
+                .OrderByDescending(b => b.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting broadcasts");
+            return new List<Data.Entities.Broadcast>();
+        }
+    }
+
+    public async Task<Data.Entities.Broadcast?> GetBroadcastAsync(Guid broadcastId)
+    {
+        try
+        {
+            return await _context.Broadcasts
+                .FirstOrDefaultAsync(b => b.Id == broadcastId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting broadcast {BroadcastId}", broadcastId);
+            return null;
         }
     }
 

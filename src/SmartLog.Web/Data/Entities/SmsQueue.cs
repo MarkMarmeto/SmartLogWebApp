@@ -73,8 +73,14 @@ public class SmsQueue
     /// </summary>
     public DateTime? ScheduledAt { get; set; }
 
+    /// <summary>
+    /// Links to a Broadcast batch; null for individual notifications (attendance, test)
+    /// </summary>
+    public Guid? BroadcastId { get; set; }
+
     // Navigation properties
     public virtual Student? Student { get; set; }
+    public virtual Broadcast? Broadcast { get; set; }
 }
 
 public enum SmsStatus

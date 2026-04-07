@@ -8,6 +8,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="bi bi-chat-dots me-2"></i>SMS Dashboard</h1>
         <div>
+            <a asp-page="/Admin/Sms/Announcement" class="btn btn-primary me-2">
+                <i class="bi bi-megaphone me-1"></i>Announcement
+            </a>
             <a asp-page="/Admin/Sms/Emergency" class="btn btn-danger">
                 <i class="bi bi-exclamation-triangle me-1"></i>Emergency Broadcast
             </a>
@@ -280,6 +283,11 @@
                         <div class="col-md-3">
                             <a asp-page="/Admin/Sms/ScheduledSend" class="btn btn-outline-primary w-100 mb-2">
                                 <i class="bi bi-clock me-1"></i>Schedule SMS
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a asp-page="/Admin/Sms/Announcement" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-megaphone me-1"></i>Announcement
                             </a>
                         </div>
                         <div class="col-md-3">

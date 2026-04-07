@@ -1,12 +1,12 @@
 @page
-@model SmartLog.Web.Pages.Admin.Sms.EmergencyModel
+@model SmartLog.Web.Pages.Admin.Sms.AnnouncementModel
 @{
-    ViewData["Title"] = "Emergency Broadcast";
+    ViewData["Title"] = "Announcement Broadcast";
 }
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-exclamation-triangle text-danger me-2"></i>Emergency Broadcast</h1>
+        <h1><i class="bi bi-megaphone text-primary me-2"></i>Announcement Broadcast</h1>
         <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
         </a>
@@ -28,24 +28,24 @@
         </div>
     }
 
-    <div class="alert alert-warning">
-        <i class="bi bi-exclamation-triangle me-2"></i>
-        <strong>Warning:</strong> This will send an SMS to all active students with SMS enabled.
-        Use this feature only for urgent announcements.
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Use this for general reminders and announcements — school events, upcoming activities, reminders, etc.
+        For urgent situations, use <a asp-page="/Admin/Sms/Emergency" class="alert-link">Emergency Broadcast</a> instead.
     </div>
 
-    <form method="post" onsubmit="return confirm('Are you sure you want to send this emergency broadcast to all students?');">
+    <form method="post" onsubmit="return confirmSubmit();">
         <div class="card mb-4">
-            <div class="card-header bg-danger text-white">
+            <div class="card-header bg-primary text-white">
                 <i class="bi bi-megaphone me-2"></i>Broadcast Message
             </div>
             <div class="card-body">
                 <div class="mb-3">
                     <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="message" name="Message" rows="4"
-                              required maxlength="200" placeholder="Enter emergency message..."></textarea>
+                              required maxlength="160" placeholder="Enter your announcement..."></textarea>
                     <div class="form-text">
-                        <span id="charCount">0</span> / 200 characters
+                        <span id="charCount">0</span> / 160 characters
                     </div>
                 </div>
 
@@ -57,6 +57,15 @@
                         <option value="FIL">Filipino only</option>
                     </select>
                     <div class="form-text">Choose a specific language or let students receive in their preferred language</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="scheduledAtLocal" class="form-label">
+                        <i class="bi bi-clock me-1"></i>Schedule Delivery (Optional)
+                    </label>
+                    <input type="datetime-local" class="form-control" id="scheduledAtLocal"
+                           name="ScheduledAtLocal" />
+                    <div class="form-text">Leave blank to send immediately. Time is in Philippine Standard Time (PHT, UTC+8).</div>
                 </div>
 
                 <div class="mb-3">
@@ -87,15 +96,15 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6>English Template</h6>
+                        <h6>English</h6>
                         <div class="bg-light p-3 rounded">
-                            <pre class="mb-0">@Model.TemplatePrefixEn <span id="previewEn">[Your message here]</span></pre>
+                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixEn<span id="previewEn">[Your message here]</span>@Model.TemplateSuffixEn</pre>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <h6>Filipino Template</h6>
+                        <h6>Filipino</h6>
                         <div class="bg-light p-3 rounded">
-                            <pre class="mb-0">@Model.TemplatePrefixFil <span id="previewFil">[Your message here]</span></pre>
+                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixFil<span id="previewFil">[Your message here]</span>@Model.TemplateSuffixFil</pre>
                         </div>
                     </div>
                 </div>
@@ -110,8 +119,8 @@
 
         <div class="d-flex justify-content-between">
             <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-danger btn-lg">
-                <i class="bi bi-send me-1"></i>Send Emergency Broadcast
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                <i class="bi bi-send me-1"></i>Send Announcement
             </button>
         </div>
     </form>
@@ -122,19 +131,33 @@
         const gradeCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StudentCountByGrade));
         const totalStudents = @Model.TotalActiveStudents;
 
-        // Character counter
-        document.getElementById('message').addEventListener('input', function() {
-            const count = this.value.length;
-            document.getElementById('charCount').textContent = count;
-
-            document.getElementById('previewEn').textContent = this.value || '[Your message here]';
-            document.getElementById('previewFil').textContent = this.value || '[Your message here]';
+        document.getElementById('message').addEventListener('input', function () {
+            document.getElementById('charCount').textContent = this.value.length;
+            const val = this.value || '[Your message here]';
+            document.getElementById('previewEn').textContent = val;
+            document.getElementById('previewFil').textContent = val;
         });
 
-        // Update recipient count when grades are selected
         document.querySelectorAll('.grade-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', updateRecipientCount);
         });
+
+        document.getElementById('scheduledAtLocal').addEventListener('change', function () {
+            const btn = document.getElementById('submitBtn');
+            if (this.value) {
+                btn.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Schedule Announcement';
+            } else {
+                btn.innerHTML = '<i class="bi bi-send me-1"></i>Send Announcement';
+            }
+        });
+
+        function confirmSubmit() {
+            const scheduled = document.getElementById('scheduledAtLocal').value;
+            if (scheduled) {
+                return confirm('Schedule this announcement for delivery at ' + scheduled + ' (PHT)?');
+            }
+            return confirm('Send this announcement now to all selected students?');
+        }
 
         function updateRecipientCount() {
             const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
@@ -147,9 +170,7 @@
                 count = totalStudents;
                 gradeText = '(All grades)';
             } else {
-                selectedGrades.forEach(grade => {
-                    count += gradeCounts[grade] || 0;
-                });
+                selectedGrades.forEach(grade => { count += gradeCounts[grade] || 0; });
                 gradeText = `(${selectedGrades.join(', ')})`;
             }
 

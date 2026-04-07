@@ -31,6 +31,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SmsLog> SmsLogs => Set<SmsLog>();
     public DbSet<SmsSettings> SmsSettings => Set<SmsSettings>();
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
+    public DbSet<Broadcast> Broadcasts => Set<Broadcast>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -285,6 +286,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasDefaultValueSql("GETUTCDATE()");
         });
 
+        // Configure Broadcast
+        builder.Entity<Broadcast>(entity =>
+        {
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.ScheduledAt);
+            entity.HasIndex(e => e.Type);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
         // Configure SmsQueue
         builder.Entity<SmsQueue>(entity =>
         {
@@ -292,12 +308,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.NextRetryAt);
             entity.HasIndex(e => e.StudentId);
             entity.HasIndex(e => e.MessageType);
-
             entity.HasIndex(e => e.ScheduledAt);
+            entity.HasIndex(e => e.BroadcastId);
 
             entity.HasOne(e => e.Student)
                 .WithMany()
                 .HasForeignKey(e => e.StudentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Broadcast)
+                .WithMany(b => b.Messages)
+                .HasForeignKey(e => e.BroadcastId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.Property(e => e.CreatedAt)
@@ -407,6 +428,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .Where(e => e.State == EntityState.Modified);
 
         foreach (var entry in smsSettingsEntries)
+        {
+            entry.Entity.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var broadcastEntries = ChangeTracker.Entries<Broadcast>()
+            .Where(e => e.State == EntityState.Modified);
+
+        foreach (var entry in broadcastEntries)
         {
             entry.Entity.UpdatedAt = DateTime.UtcNow;
         }

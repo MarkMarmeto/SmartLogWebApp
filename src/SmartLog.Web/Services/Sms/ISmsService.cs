@@ -18,9 +18,25 @@ public interface ISmsService
     Task QueueCalendarEventNotificationsAsync(Guid calendarEventId);
 
     /// <summary>
-    /// Queue emergency announcement to all or filtered by grade
+    /// Queue emergency announcement to all or filtered by grade. Returns the Broadcast Id.
     /// </summary>
-    Task QueueEmergencyAnnouncementAsync(string message, string? language = null, List<string>? affectedGrades = null);
+    Task<Guid> QueueEmergencyAnnouncementAsync(
+        string message,
+        string? language = null,
+        List<string>? affectedGrades = null,
+        string? createdByUserId = null,
+        string? createdByName = null);
+
+    /// <summary>
+    /// Queue general announcement to all or filtered by grade. Returns the Broadcast Id.
+    /// </summary>
+    Task<Guid> QueueAnnouncementAsync(
+        string message,
+        string? language = null,
+        List<string>? affectedGrades = null,
+        DateTime? scheduledAt = null,
+        string? createdByUserId = null,
+        string? createdByName = null);
 
     /// <summary>
     /// Queue custom SMS message
@@ -31,6 +47,22 @@ public interface ISmsService
     /// Cancel a queued SMS
     /// </summary>
     Task<bool> CancelSmsAsync(long queueId);
+
+    /// <summary>
+    /// Cancel all pending/scheduled messages belonging to a broadcast.
+    /// Returns number of messages cancelled.
+    /// </summary>
+    Task<int> CancelBroadcastAsync(Guid broadcastId);
+
+    /// <summary>
+    /// Get paginated list of broadcasts ordered by creation date desc
+    /// </summary>
+    Task<List<Broadcast>> GetBroadcastsAsync(int page = 1, int pageSize = 20);
+
+    /// <summary>
+    /// Get a single broadcast with summary stats
+    /// </summary>
+    Task<Broadcast?> GetBroadcastAsync(Guid broadcastId);
 
     /// <summary>
     /// Get SMS statistics

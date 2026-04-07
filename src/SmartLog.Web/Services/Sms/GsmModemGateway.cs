@@ -23,6 +23,11 @@ public class GsmModemGateway : ISmsGateway, IDisposable
     private const int CircuitBreakerThreshold = 3;
     private static readonly TimeSpan CircuitBreakerCooldown = TimeSpan.FromMinutes(5);
 
+    // Health status cache: avoids running 4 AT commands on every Settings page load
+    private GatewayHealthStatus? _cachedHealth;
+    private DateTime _healthCacheExpiry = DateTime.MinValue;
+    private static readonly TimeSpan HealthCacheDuration = TimeSpan.FromSeconds(10);
+
     public string ProviderName => "GSM_MODEM";
 
     public GsmModemGateway(
@@ -45,10 +50,13 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             return false;
         }
 
+        // Read port settings asynchronously BEFORE acquiring the lock to avoid sync-over-async deadlocks
+        var (portName, baudRate) = await GetPortSettingsAsync();
+
         await _portLock.WaitAsync();
         try
         {
-            EnsurePortOpen();
+            EnsurePortOpen(portName, baudRate);
             if (_serialPort == null || !_serialPort.IsOpen)
             {
                 RecordFailure();
@@ -96,6 +104,7 @@ public class GsmModemGateway : ISmsGateway, IDisposable
     public async Task<SmsSendResult> SendAsync(string phoneNumber, string message)
     {
         var stopwatch = Stopwatch.StartNew();
+        var (portName, baudRate) = await GetPortSettingsAsync();
         await _portLock.WaitAsync();
 
         try
@@ -109,7 +118,7 @@ public class GsmModemGateway : ISmsGateway, IDisposable
                 await Task.Delay(remainingDelay);
             }
 
-            EnsurePortOpen();
+            EnsurePortOpen(portName, baudRate);
             if (_serialPort == null || !_serialPort.IsOpen)
             {
                 throw new InvalidOperationException("Serial port is not open");
@@ -192,6 +201,10 @@ public class GsmModemGateway : ISmsGateway, IDisposable
 
     public async Task<GatewayHealthStatus> GetHealthStatusAsync()
     {
+        // Return cached result to avoid running 4 AT commands on every Settings page load
+        if (_cachedHealth != null && DateTime.UtcNow < _healthCacheExpiry)
+            return _cachedHealth;
+
         var status = new GatewayHealthStatus
         {
             IsHealthy = false,
@@ -199,10 +212,13 @@ public class GsmModemGateway : ISmsGateway, IDisposable
             Details = new Dictionary<string, string>()
         };
 
+        // Read port settings asynchronously BEFORE acquiring the lock
+        var (portName, baudRate) = await GetPortSettingsAsync();
+
         await _portLock.WaitAsync();
         try
         {
-            EnsurePortOpen();
+            EnsurePortOpen(portName, baudRate);
             if (_serialPort == null || !_serialPort.IsOpen)
             {
                 status.Details["Error"] = "Serial port not open";
@@ -255,6 +271,8 @@ public class GsmModemGateway : ISmsGateway, IDisposable
                 status.Status = "No network";
             }
 
+            _cachedHealth = status;
+            _healthCacheExpiry = DateTime.UtcNow.Add(HealthCacheDuration);
             return status;
         }
         catch (Exception ex)
@@ -269,32 +287,19 @@ public class GsmModemGateway : ISmsGateway, IDisposable
         }
     }
 
-    private void EnsurePortOpen()
+    /// <summary>
+    /// Reads port name and baud rate from DB (async-safe). Call this BEFORE acquiring _portLock.
+    /// </summary>
+    private async Task<(string portName, int baudRate)> GetPortSettingsAsync()
     {
-        if (_serialPort != null && _serialPort.IsOpen)
-        {
-            return;
-        }
-
-        // Dispose stale port object before recreating. Without this, if a previous
-        // Open() succeeded then the port later closed/errored, the old SerialPort
-        // still holds the OS handle, causing "Access denied" or "port in use" on retry.
-        if (_serialPort != null)
-        {
-            try { _serialPort.Close(); } catch { }
-            try { _serialPort.Dispose(); } catch { }
-            _serialPort = null;
-        }
-
-        // Check database settings first (admin-configured), fall back to appsettings.json
         string? dbPortName = null;
         string? dbBaudRate = null;
         try
         {
             using var scope = _scopeFactory.CreateScope();
             var settingsService = scope.ServiceProvider.GetRequiredService<ISmsSettingsService>();
-            dbPortName = settingsService.GetSettingAsync("Sms.GsmModem.PortName").GetAwaiter().GetResult();
-            dbBaudRate = settingsService.GetSettingAsync("Sms.GsmModem.BaudRate").GetAwaiter().GetResult();
+            dbPortName = await settingsService.GetSettingAsync("Sms.GsmModem.PortName");
+            dbBaudRate = await settingsService.GetSettingAsync("Sms.GsmModem.BaudRate");
         }
         catch (Exception ex)
         {
@@ -303,10 +308,37 @@ public class GsmModemGateway : ISmsGateway, IDisposable
 
         var portName = !string.IsNullOrWhiteSpace(dbPortName)
             ? dbPortName
-            : _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3");
-        var baudRate = !string.IsNullOrWhiteSpace(dbBaudRate) && int.TryParse(dbBaudRate, out var parsedBaud)
-            ? parsedBaud
+            : _configuration.GetValue<string>("Sms:GsmModem:PortName", "COM3") ?? "COM3";
+        var baudRate = !string.IsNullOrWhiteSpace(dbBaudRate) && int.TryParse(dbBaudRate, out var parsed)
+            ? parsed
             : _configuration.GetValue<int>("Sms:GsmModem:BaudRate", 9600);
+
+        return (portName, baudRate);
+    }
+
+    /// <summary>
+    /// Ensures the serial port is open on the correct port. Must be called inside _portLock.
+    /// Port settings are passed in (read asynchronously by the caller before acquiring the lock).
+    /// </summary>
+    private void EnsurePortOpen(string portName, int baudRate)
+    {
+        // If the port is already open on the correct port, nothing to do.
+        if (_serialPort != null && _serialPort.IsOpen && _serialPort.PortName == portName)
+        {
+            return;
+        }
+
+        // Port name changed or port is closed — dispose the stale handle before reopening.
+        // Without this, the old SerialPort holds the OS handle and causes "Access denied" or
+        // "port in use" errors on the next Open() attempt.
+        if (_serialPort != null)
+        {
+            if (_serialPort.IsOpen)
+                _logger.LogInformation("Port setting changed to {NewPort}, closing {OldPort}", portName, _serialPort.PortName);
+            try { _serialPort.Close(); } catch { }
+            try { _serialPort.Dispose(); } catch { }
+            _serialPort = null;
+        }
 
         _serialPort = new SerialPort(portName, baudRate)
         {
