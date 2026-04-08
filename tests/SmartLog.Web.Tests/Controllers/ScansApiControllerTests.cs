@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SmartLog.Web.Controllers.Api;
@@ -17,6 +18,9 @@ public class ScansApiControllerTests
     private readonly Mock<ICalendarService> _calendarService = new();
     private readonly Mock<ISmsService> _smsService = new();
     private readonly Mock<IAppSettingsService> _appSettingsService = new();
+    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
+    private readonly Mock<IServiceScope> _serviceScope = new();
+    private readonly Mock<IServiceProvider> _scopedServiceProvider = new();
     private readonly Mock<ILogger<ScansApiController>> _logger = new();
 
     private const string ValidApiKey = "sk_live_test123";
@@ -26,6 +30,13 @@ public class ScansApiControllerTests
 
     private ScansApiController CreateController(HttpContext? httpContext = null)
     {
+        // Wire up scope factory so background Task.Run resolves the same _smsService mock
+        _scopedServiceProvider
+            .Setup(p => p.GetService(typeof(ISmsService)))
+            .Returns(_smsService.Object);
+        _serviceScope.Setup(s => s.ServiceProvider).Returns(_scopedServiceProvider.Object);
+        _scopeFactory.Setup(f => f.CreateScope()).Returns(_serviceScope.Object);
+
         var controller = new ScansApiController(
             _context,
             _qrCodeService.Object,
@@ -33,6 +44,7 @@ public class ScansApiControllerTests
             _calendarService.Object,
             _smsService.Object,
             _appSettingsService.Object,
+            _scopeFactory.Object,
             _logger.Object);
 
         controller.ControllerContext = new ControllerContext
