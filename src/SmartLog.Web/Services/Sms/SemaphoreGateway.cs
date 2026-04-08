@@ -151,6 +151,97 @@ public class SemaphoreGateway : ISmsGateway
         }
     }
 
+    /// <summary>
+    /// Sends the same message to multiple recipients in a single API call.
+    /// Semaphore accepts up to 1,000 numbers per request (comma-separated).
+    /// </summary>
+    public async Task<BulkSendResult> SendBulkAsync(IReadOnlyList<string> phoneNumbers, string message)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var result = new BulkSendResult();
+
+        try
+        {
+            var apiKey = await GetApiKeyAsync();
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("Semaphore API key not configured");
+
+            var senderName = await GetSenderNameAsync();
+
+            // Semaphore accepts up to 1,000 numbers per request — chunk if needed
+            const int batchSize = 1000;
+            var batches = phoneNumbers
+                .Select(NormalizePhoneNumber)
+                .Select((phone, i) => (phone, i))
+                .GroupBy(x => x.i / batchSize)
+                .Select(g => g.Select(x => x.phone).ToList())
+                .ToList();
+
+            foreach (var batch in batches)
+            {
+                var numbers = string.Join(",", batch);
+                var requestData = new Dictionary<string, string>
+                {
+                    { "apikey", apiKey },
+                    { "number", numbers },
+                    { "message", message },
+                    { "sendername", senderName }
+                };
+
+                var response = await _httpClient.PostAsync(
+                    $"{BaseUrl}/messages",
+                    new FormUrlEncodedContent(requestData));
+
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var messages = JsonSerializer.Deserialize<SemaphoreMessage[]>(responseBody, JsonOptions)
+                                   ?? Array.Empty<SemaphoreMessage>();
+
+                    foreach (var msg in messages)
+                    {
+                        result.Results.Add(new BulkSendRecipientResult
+                        {
+                            PhoneNumber = msg.Recipient ?? string.Empty,
+                            Success = true,
+                            ProviderMessageId = msg.MessageId?.ToString()
+                        });
+                    }
+
+                    _logger.LogInformation(
+                        "Bulk SMS sent via Semaphore: {Count} recipients in batch, in {Ms}ms",
+                        batch.Count, stopwatch.ElapsedMilliseconds);
+                }
+                else
+                {
+                    _logger.LogError("Semaphore bulk API error: {StatusCode} - {Response}",
+                        response.StatusCode, responseBody);
+
+                    // Mark all in this batch as failed
+                    foreach (var phone in batch)
+                    {
+                        result.Results.Add(new BulkSendRecipientResult
+                        {
+                            PhoneNumber = phone,
+                            Success = false,
+                            ErrorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}"
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending bulk SMS via Semaphore");
+            result.ErrorMessage = ex.Message;
+        }
+
+        stopwatch.Stop();
+        result.ProcessingTimeMs = (int)stopwatch.ElapsedMilliseconds;
+        return result;
+    }
+
     public async Task<GatewayHealthStatus> GetHealthStatusAsync()
     {
         var status = new GatewayHealthStatus
@@ -226,6 +317,25 @@ public class SemaphoreGateway : ISmsGateway
         // Standard SMS: 160 chars; multipart: 153 chars per segment
         if (message.Length <= 160) return 1;
         return (int)Math.Ceiling((double)message.Length / 153);
+    }
+
+    // Bulk send result models
+
+    public class BulkSendResult
+    {
+        public List<BulkSendRecipientResult> Results { get; } = new();
+        public string? ErrorMessage { get; set; }
+        public int ProcessingTimeMs { get; set; }
+        public int SuccessCount => Results.Count(r => r.Success);
+        public int FailureCount => Results.Count(r => !r.Success);
+    }
+
+    public class BulkSendRecipientResult
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+        public bool Success { get; set; }
+        public string? ProviderMessageId { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 
     // Response models matching Semaphore's actual JSON field names
