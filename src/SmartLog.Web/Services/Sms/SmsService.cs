@@ -362,8 +362,11 @@ public class SmsService : ISmsService
     /// <summary>
     /// Core broadcast dispatch: uses Semaphore bulk API when available and the send is immediate;
     /// falls back to individual queue rows (GSM modem path or scheduled announcements).
-    /// Recipients are grouped by rendered message so that bilingual schools send each language
-    /// variant in its own bulk call.
+    ///
+    /// Scalability fixes for large schools (5,000+ students):
+    /// 1. Template is fetched ONCE per language variant, not per student.
+    /// 2. Duplicate check is a single batch query against all phones at once.
+    /// 3. DB inserts are batched — single SaveChangesAsync for all rows.
     /// </summary>
     private async Task<int> ExecuteBroadcastAsync(
         Data.Entities.Broadcast broadcast,
@@ -378,30 +381,52 @@ public class SmsService : ISmsService
         var messageType = broadcast.Type;
         var language = broadcast.Language;
 
-        // Bulk is only possible when: Semaphore is the active gateway AND the send is immediate
         var isScheduled = scheduledAt.HasValue && scheduledAt.Value > DateTime.UtcNow;
         var useBulk = !isScheduled && await CanUseBulkAsync();
 
-        // Collect recipients grouped by their rendered message (EN vs FIL may differ)
-        // Key = rendered message text, Value = list of phone numbers
-        var groups = new Dictionary<string, List<string>>();
+        // FIX 1: Render each language variant ONCE — cache by language code
+        var renderedByLanguage = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        int recipientCount = 0;
+        // FIX 2: Batch duplicate check — collect all candidate phones, query once
+        HashSet<string>? duplicatePhones = null;
+        if (checkDuplicates)
+        {
+            var allCandidatePhones = students
+                .SelectMany(s => GetPhonesForStudent(s))
+                .ToList();
+
+            var cutoff = DateTime.UtcNow.AddMinutes(-60);
+            duplicatePhones = (await _context.SmsQueues
+                .Where(q => allCandidatePhones.Contains(q.PhoneNumber) &&
+                            q.CreatedAt >= cutoff &&
+                            q.Status != SmsStatus.Cancelled)
+                .Select(q => q.PhoneNumber)
+                .Distinct()
+                .ToListAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        // Group recipients by their rendered message (EN vs FIL)
+        var groups = new Dictionary<string, List<string>>();
 
         foreach (var student in students)
         {
             if (string.IsNullOrWhiteSpace(student.ParentPhone)) continue;
 
             var smsLanguage = language ?? student.SmsLanguage;
-            var renderedMessage = await _templateService.RenderTemplateAsync(
-                templateCode, smsLanguage, placeholders);
+
+            if (!renderedByLanguage.TryGetValue(smsLanguage, out var renderedMessage))
+            {
+                renderedMessage = await _templateService.RenderTemplateAsync(
+                    templateCode, smsLanguage, placeholders);
+                renderedByLanguage[smsLanguage] = renderedMessage;
+            }
 
             if (string.IsNullOrWhiteSpace(renderedMessage)) continue;
 
             foreach (var phone in GetPhonesForStudent(student))
             {
-                if (checkDuplicates && await IsDuplicateAsync(phone, renderedMessage, 60))
-                    continue;
+                if (duplicatePhones != null && duplicatePhones.Contains(phone)) continue;
 
                 if (!groups.TryGetValue(renderedMessage, out var list))
                 {
@@ -412,23 +437,17 @@ public class SmsService : ISmsService
             }
         }
 
+        int recipientCount = 0;
+
         if (useBulk)
         {
-            // Semaphore bulk path — one API call per language variant
             recipientCount = await SendBulkGroupsAsync(groups, broadcastId, messageType, priority);
         }
         else
         {
-            // GSM modem path / scheduled path — individual queue rows
-            foreach (var (renderedMessage, phones) in groups)
-            {
-                foreach (var phone in phones)
-                {
-                    await QueueSmsInternalAsync(phone, renderedMessage, priority, messageType,
-                        scheduledAt, broadcastId);
-                    recipientCount++;
-                }
-            }
+            // FIX 3: Batch queue inserts for GSM modem / scheduled path
+            recipientCount = await QueueBroadcastBatchAsync(
+                groups, broadcastId, messageType, priority, scheduledAt);
         }
 
         return recipientCount;
@@ -456,8 +475,8 @@ public class SmsService : ISmsService
     }
 
     /// <summary>
-    /// Sends each message group via Semaphore bulk API, then writes SmsQueue + SmsLog rows
-    /// pre-marked as Sent so the worker does not re-process them.
+    /// Sends each message group via Semaphore bulk API, then writes all SmsQueue + SmsLog rows
+    /// in a single SaveChangesAsync call (batched, not per-recipient).
     /// </summary>
     private async Task<int> SendBulkGroupsAsync(
         Dictionary<string, List<string>> groups,
@@ -473,24 +492,22 @@ public class SmsService : ISmsService
             var messageParts = CalculateMessageParts(renderedMessage);
             var now = DateTime.UtcNow;
 
-            // Build a lookup of per-recipient outcome from the provider response
             var outcomeByPhone = bulkResult.Results
                 .ToDictionary(r => r.PhoneNumber, r => r, StringComparer.OrdinalIgnoreCase);
 
-            foreach (var phone in phones)
+            // FIX: collect all queue entries first, then save once
+            var queueEntries = phones.Select(phone =>
             {
                 outcomeByPhone.TryGetValue(phone, out var outcome);
                 var success = outcome?.Success ?? false;
-
-                // Write an already-processed SmsQueue row (won't be picked up by worker)
-                var queueEntry = new SmsQueue
+                return new SmsQueue
                 {
                     PhoneNumber = phone,
                     Message = renderedMessage,
                     Status = success ? SmsStatus.Sent : SmsStatus.Failed,
                     Priority = priority,
                     MessageType = messageType,
-                    RetryCount = success ? 0 : 3,   // exhausted retries if failed
+                    RetryCount = success ? 0 : 3,
                     MaxRetries = 3,
                     CreatedAt = now,
                     ProcessedAt = now,
@@ -500,28 +517,35 @@ public class SmsService : ISmsService
                     ErrorMessage = outcome?.ErrorMessage,
                     BroadcastId = broadcastId
                 };
-                _context.SmsQueues.Add(queueEntry);
-                await _context.SaveChangesAsync();
+            }).ToList();
 
-                // Write SmsLog
-                _context.SmsLogs.Add(new SmsLog
+            _context.SmsQueues.AddRange(queueEntries);
+            await _context.SaveChangesAsync(); // single save for all queue entries
+
+            // Now write SmsLog rows (need queue IDs, which are assigned after save)
+            var logEntries = queueEntries.Select(q =>
+            {
+                outcomeByPhone.TryGetValue(q.PhoneNumber, out var outcome);
+                return new SmsLog
                 {
-                    QueueId = queueEntry.Id,
-                    PhoneNumber = phone,
+                    QueueId = q.Id,
+                    PhoneNumber = q.PhoneNumber,
                     Message = renderedMessage,
-                    Status = success ? "SENT" : "FAILED",
+                    Status = q.Status == SmsStatus.Sent ? "SENT" : "FAILED",
                     Provider = "SEMAPHORE",
-                    ProviderMessageId = outcome?.ProviderMessageId,
-                    ErrorMessage = outcome?.ErrorMessage,
+                    ProviderMessageId = q.ProviderMessageId,
+                    ErrorMessage = q.ErrorMessage,
                     MessageParts = messageParts,
                     ProcessingTimeMs = bulkResult.ProcessingTimeMs,
                     CreatedAt = now,
-                    SentAt = success ? now : null
-                });
-                await _context.SaveChangesAsync();
+                    SentAt = q.SentAt
+                };
+            }).ToList();
 
-                if (success) total++;
-            }
+            _context.SmsLogs.AddRange(logEntries);
+            await _context.SaveChangesAsync(); // single save for all log entries
+
+            total += bulkResult.SuccessCount;
 
             _logger.LogInformation(
                 "Bulk broadcast group: {Success}/{Total} sent via Semaphore in {Ms}ms",
@@ -529,6 +553,39 @@ public class SmsService : ISmsService
         }
 
         return total;
+    }
+
+    /// <summary>
+    /// Inserts all broadcast queue rows in a single batch (GSM modem / scheduled path).
+    /// </summary>
+    private async Task<int> QueueBroadcastBatchAsync(
+        Dictionary<string, List<string>> groups,
+        Guid broadcastId,
+        string messageType,
+        SmsPriority priority,
+        DateTime? scheduledAt)
+    {
+        var now = DateTime.UtcNow;
+        var entries = groups
+            .SelectMany(kvp => kvp.Value.Select(phone => new SmsQueue
+            {
+                PhoneNumber = phone,
+                Message = kvp.Key,
+                Status = SmsStatus.Pending,
+                Priority = priority,
+                MessageType = messageType,
+                RetryCount = 0,
+                MaxRetries = 3,
+                CreatedAt = now,
+                ScheduledAt = scheduledAt,
+                BroadcastId = broadcastId
+            }))
+            .ToList();
+
+        _context.SmsQueues.AddRange(entries);
+        await _context.SaveChangesAsync();
+
+        return entries.Count;
     }
 
     private static int CalculateMessageParts(string message)
