@@ -196,6 +196,7 @@ public class SmsWorkerService : BackgroundService
                 });
 
                 await context.SaveChangesAsync();
+                await TryFinalizeBroadcastAsync(context, message.BroadcastId);
 
                 _logger.LogInformation("SMS {Id} sent successfully via {Provider} to {Phone}",
                     message.Id, provider, message.PhoneNumber);
@@ -241,6 +242,7 @@ public class SmsWorkerService : BackgroundService
                 }
 
                 await context.SaveChangesAsync();
+                await TryFinalizeBroadcastAsync(context, message.BroadcastId);
             }
         }
         catch (Exception ex)
@@ -263,6 +265,51 @@ public class SmsWorkerService : BackgroundService
             }
 
             await context.SaveChangesAsync();
+            await TryFinalizeBroadcastAsync(context, message.BroadcastId);
+        }
+    }
+
+    /// <summary>
+    /// After a message is processed, check if all messages in the broadcast are done
+    /// and update the Broadcast status accordingly.
+    /// </summary>
+    private async Task TryFinalizeBroadcastAsync(ApplicationDbContext context, Guid? broadcastId)
+    {
+        if (broadcastId == null) return;
+
+        try
+        {
+            var broadcast = await context.Broadcasts
+                .FirstOrDefaultAsync(b => b.Id == broadcastId);
+
+            if (broadcast == null || broadcast.Status == Data.Entities.BroadcastStatus.Cancelled)
+                return;
+
+            // Check if any messages are still active (Pending or Processing)
+            var stillActive = await context.SmsQueues
+                .AnyAsync(q => q.BroadcastId == broadcastId &&
+                               (q.Status == SmsStatus.Pending || q.Status == SmsStatus.Processing));
+
+            if (stillActive) return;
+
+            // All done — determine final status
+            var anyFailed = await context.SmsQueues
+                .AnyAsync(q => q.BroadcastId == broadcastId && q.Status == SmsStatus.Failed);
+
+            broadcast.Status = anyFailed
+                ? Data.Entities.BroadcastStatus.Sent   // partial failure still counts as Sent
+                : Data.Entities.BroadcastStatus.Sent;
+            broadcast.SentAt = DateTime.UtcNow;
+            broadcast.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Broadcast {BroadcastId} finalized with status {Status}",
+                broadcastId, broadcast.Status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finalizing broadcast {BroadcastId}", broadcastId);
         }
     }
 }
