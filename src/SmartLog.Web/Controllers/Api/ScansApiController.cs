@@ -25,6 +25,7 @@ public class ScansApiController : ControllerBase
     private readonly ICalendarService _calendarService;
     private readonly ISmsService _smsService;
     private readonly IAppSettingsService _appSettingsService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ScansApiController> _logger;
 
     public ScansApiController(
@@ -34,6 +35,7 @@ public class ScansApiController : ControllerBase
         ICalendarService calendarService,
         ISmsService smsService,
         IAppSettingsService appSettingsService,
+        IServiceScopeFactory scopeFactory,
         ILogger<ScansApiController> logger)
     {
         _context = context;
@@ -42,6 +44,7 @@ public class ScansApiController : ControllerBase
         _calendarService = calendarService;
         _smsService = smsService;
         _appSettingsService = appSettingsService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -233,16 +236,23 @@ public class ScansApiController : ControllerBase
         _logger.LogInformation("Scan accepted for student {StudentId} on device {DeviceId}",
             studentIdStr, device.Id);
 
-        // Queue SMS notification in background (don't await to avoid blocking API response)
+        // Queue SMS notification in background using a fresh scope — the request scope is
+        // disposed before Task.Run executes, so captured scoped services would be invalid.
+        var capturedStudentId = student.Id;
+        var capturedScanType = request.ScanType;
+        var capturedScannedAt = request.ScannedAt;
+        var capturedScanId = scan.Id;
         _ = Task.Run(async () =>
         {
             try
             {
-                await _smsService.QueueAttendanceNotificationAsync(
-                    student.Id,
-                    request.ScanType,
-                    request.ScannedAt,
-                    scan.Id);
+                using var scope = _scopeFactory.CreateScope();
+                var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
+                await smsService.QueueAttendanceNotificationAsync(
+                    capturedStudentId,
+                    capturedScanType,
+                    capturedScannedAt,
+                    capturedScanId);
             }
             catch (Exception ex)
             {

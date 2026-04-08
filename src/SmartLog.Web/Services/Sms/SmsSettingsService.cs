@@ -10,13 +10,16 @@ namespace SmartLog.Web.Services.Sms;
 public class SmsSettingsService : ISmsSettingsService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SmsSettingsService> _logger;
 
     public SmsSettingsService(
         ApplicationDbContext context,
+        IConfiguration configuration,
         ILogger<SmsSettingsService> logger)
     {
         _context = context;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -98,7 +101,11 @@ public class SmsSettingsService : ISmsSettingsService
         try
         {
             var enabled = await GetSettingAsync("Sms.Enabled");
-            return enabled != null && (enabled.Equals("true", StringComparison.OrdinalIgnoreCase) || enabled == "1");
+            if (enabled != null)
+                return enabled.Equals("true", StringComparison.OrdinalIgnoreCase) || enabled == "1";
+
+            // DB row not yet saved — fall back to appsettings.json (default: true)
+            return _configuration.GetValue<bool>("Sms:Enabled", true);
         }
         catch (Exception ex)
         {
