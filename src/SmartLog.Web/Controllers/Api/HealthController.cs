@@ -27,6 +27,16 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the server's current UTC time. Used by scanner devices for clock synchronization.
+    /// No authentication required — this is a lightweight, read-only endpoint.
+    /// </summary>
+    [HttpGet("time")]
+    public IActionResult GetServerTime()
+    {
+        return Ok(new { utc = DateTime.UtcNow.ToString("o") });
+    }
+
+    /// <summary>
     /// Basic health check endpoint (unauthenticated).
     /// Returns 200 OK if the service is healthy.
     /// </summary>
