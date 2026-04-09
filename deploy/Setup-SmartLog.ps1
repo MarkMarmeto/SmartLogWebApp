@@ -780,7 +780,8 @@ Write-Host "  2. Change default account passwords after first login" -Foreground
 Write-Host "  3. Set a static IP for this machine (see docs/DEPLOYMENT.md)" -ForegroundColor Yellow
 if ($Script:EnableHttps) {
 Write-Host "  4. Copy the TLS thumbprint into each Scanner App's HTTPS settings" -ForegroundColor Yellow
-Write-Host "     Scanner URL: https://$($currentIP ?? $env:COMPUTERNAME):$($Script:HttpsPort)" -ForegroundColor Cyan
+$_scannerHost = if ($currentIP) { $currentIP } else { $env:COMPUTERNAME }
+Write-Host "     Scanner URL: https://${_scannerHost}:$($Script:HttpsPort)" -ForegroundColor Cyan
 }
 Write-Host ""
 
