@@ -1,21 +1,21 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    SmartLog — HTTPS Setup Script (Self-Signed Certificate)
+    SmartLog -- HTTPS Setup Script (Self-Signed Certificate)
 
 .DESCRIPTION
     Generates a self-signed SSL certificate for on-premise LAN deployment,
     exports it to C:\SmartLog\smartlog.pfx, and configures the required
-    environment variables so SmartLog serves HTTPS on port 5051.
+    environment variables so SmartLog serves HTTPS on the specified port.
 
     After running this script, restart the SmartLog service:
       sc stop SmartLogWeb && sc start SmartLogWeb
 
     Scanner devices and browsers should then connect to:
-      https://<server-ip>:5051
+      https://<server-ip>:<HttpsPort>
 
     NOTE: Self-signed certificates will show a browser warning on first visit.
-    Click "Advanced → Proceed" to continue. The cert is trusted on this machine.
+    Click Advanced -> Proceed to continue. The cert is trusted on this machine.
 
 .PARAMETER Hostname
     The server hostname or IP address for the certificate (default: machine hostname).
@@ -25,13 +25,21 @@
 
 .PARAMETER ValidDays
     Certificate validity in days (default: 1095 = 3 years).
+
+.PARAMETER HttpsPort
+    Port for HTTPS (default: 5051).
+
+.PARAMETER HttpPort
+    Port for HTTP -- used only in the summary output to show the redirect URL (default: 5050).
 #>
 
 [CmdletBinding()]
 param(
-    [string]$Hostname    = $env:COMPUTERNAME,
+    [string]$Hostname     = $env:COMPUTERNAME,
     [string]$CertPassword = "",
-    [int]$ValidDays       = 1095
+    [int]$ValidDays       = 1095,
+    [int]$HttpsPort       = 5051,
+    [int]$HttpPort        = 5050
 )
 
 Set-StrictMode -Version Latest
@@ -48,18 +56,20 @@ function Write-Fail  { param([string]$m) Write-Host "  [XX] $m" -ForegroundColor
 Write-Host ""
 Write-Host "  SmartLog HTTPS Setup" -ForegroundColor Cyan
 Write-Host "  $('=' * 50)" -ForegroundColor DarkGray
-Write-Host "  Hostname : $Hostname"
-Write-Host "  Cert path: $CertPath"
-Write-Host "  Valid for: $ValidDays days"
+Write-Host "  Hostname  : $Hostname"
+Write-Host "  Cert path : $CertPath"
+Write-Host "  Valid for : $ValidDays days"
+Write-Host "  HTTPS port: $HttpsPort"
+Write-Host "  HTTP port : $HttpPort"
 
-# ── Auto-generate password if not provided ────────────────────
+# -- Auto-generate password if not provided --------------------------------
 if ([string]::IsNullOrEmpty($CertPassword)) {
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$'
     $CertPassword = -join ((1..24) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
-    Write-Warn "No password provided — auto-generated a secure password."
+    Write-Warn "No password provided -- auto-generated a secure password."
 }
 
-# ── Step 1: Generate self-signed certificate ──────────────────
+# -- Step 1: Generate self-signed certificate ------------------------------
 Write-Step "[1/4] Generating self-signed certificate..."
 
 # Build SAN list: hostname + localhost + local IP addresses
@@ -81,9 +91,9 @@ $cert = New-SelfSignedCertificate `
     -KeyUsage DigitalSignature, KeyEncipherment `
     -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.1") # ServerAuthentication EKU
 
-Write-Ok "Certificate generated — thumbprint: $($cert.Thumbprint)"
+Write-Ok "Certificate generated -- thumbprint: $($cert.Thumbprint)"
 
-# ── Step 2: Trust the certificate on this machine ─────────────
+# -- Step 2: Trust the certificate on this machine -------------------------
 Write-Step "[2/4] Trusting certificate on this machine..."
 
 $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
@@ -95,7 +105,7 @@ $rootStore.Close()
 
 Write-Ok "Certificate added to Trusted Root CA store"
 
-# ── Step 3: Export to PFX ─────────────────────────────────────
+# -- Step 3: Export to PFX -------------------------------------------------
 Write-Step "[3/4] Exporting certificate to PFX..."
 
 New-Item -ItemType Directory -Force -Path (Split-Path $CertPath) | Out-Null
@@ -103,18 +113,22 @@ New-Item -ItemType Directory -Force -Path (Split-Path $CertPath) | Out-Null
 $securePassword = ConvertTo-SecureString -String $CertPassword -Force -AsPlainText
 Export-PfxCertificate -Cert $cert -FilePath $CertPath -Password $securePassword | Out-Null
 
-Write-Ok "PFX exported → $CertPath"
+Write-Ok "PFX exported -> $CertPath"
 
-# ── Step 4: Set environment variables ────────────────────────
+# -- Step 4: Set environment variables -------------------------------------
 Write-Step "[4/4] Setting environment variables..."
 
-[System.Environment]::SetEnvironmentVariable("SMARTLOG_CERT_PATH",     $CertPath,     "Machine")
-[System.Environment]::SetEnvironmentVariable("SMARTLOG_CERT_PASSWORD", $CertPassword, "Machine")
+[System.Environment]::SetEnvironmentVariable("SMARTLOG_CERT_PATH",     $CertPath,              "Machine")
+[System.Environment]::SetEnvironmentVariable("SMARTLOG_CERT_PASSWORD", $CertPassword,          "Machine")
+[System.Environment]::SetEnvironmentVariable("SMARTLOG_HTTPS_PORT",    $HttpsPort.ToString(),  "Machine")
+[System.Environment]::SetEnvironmentVariable("SMARTLOG_HTTP_PORT",     $HttpPort.ToString(),   "Machine")
 
 Write-Ok "SMARTLOG_CERT_PATH     = $CertPath"
 Write-Ok "SMARTLOG_CERT_PASSWORD = (set, not shown)"
+Write-Ok "SMARTLOG_HTTPS_PORT    = $HttpsPort"
+Write-Ok "SMARTLOG_HTTP_PORT     = $HttpPort"
 
-# ── Restart service if running ────────────────────────────────
+# -- Restart service if running --------------------------------------------
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($svc -and $svc.Status -eq "Running") {
     Write-Step "Restarting $ServiceName service..."
@@ -122,18 +136,21 @@ if ($svc -and $svc.Status -eq "Running") {
     Write-Ok "Service restarted"
 }
 
-# ── Summary ───────────────────────────────────────────────────
+# -- Summary ---------------------------------------------------------------
 Write-Host ""
 Write-Host "  $('=' * 50)" -ForegroundColor DarkGray
 Write-Host "  HTTPS setup complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  SmartLog is now accessible at:"
-Write-Host "    https://$Hostname`:5051  (HTTPS)" -ForegroundColor Green
-Write-Host "    http://$Hostname`:5050   (HTTP — redirects to HTTPS)"
+Write-Host "    https://${Hostname}:${HttpsPort}  (HTTPS)" -ForegroundColor Green
+Write-Host "    http://${Hostname}:${HttpPort}   (HTTP -- redirects to HTTPS)"
 Write-Host ""
 Write-Host "  On first browser visit you may see a security warning." -ForegroundColor Yellow
-Write-Host "  Click Advanced → Proceed to accept the self-signed cert." -ForegroundColor Yellow
+Write-Host "  Click Advanced -> Proceed to accept the self-signed cert." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  To update scanner devices, set their server URL to:"
-Write-Host "    https://$Hostname`:5051" -ForegroundColor Cyan
+Write-Host "    https://${Hostname}:${HttpsPort}" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Certificate thumbprint (for scanner app pinning):"
+Write-Host "    $($cert.Thumbprint)" -ForegroundColor Cyan
 Write-Host ""
