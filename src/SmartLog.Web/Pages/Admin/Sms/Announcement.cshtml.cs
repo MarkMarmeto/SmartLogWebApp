@@ -112,6 +112,20 @@ public class AnnouncementModel : PageModel
             }
         }
 
+        // Server-side guard: count recipients before sending
+        var recipientQuery = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+        if (AffectedGrades.Any())
+            recipientQuery = recipientQuery.Where(s => AffectedGrades.Contains(s.GradeLevel));
+        var recipientCount = await recipientQuery.CountAsync();
+
+        if (recipientCount == 0)
+        {
+            ErrorMessage = AffectedGrades.Any()
+                ? $"No students with SMS enabled found in grades {string.Join(", ", AffectedGrades)}. Adjust the grade filter or check that students have SMS enabled."
+                : "No active students with SMS enabled were found. Enable SMS for students before sending a broadcast.";
+            return RedirectToPage();
+        }
+
         try
         {
             var user = await _userManager.GetUserAsync(User);

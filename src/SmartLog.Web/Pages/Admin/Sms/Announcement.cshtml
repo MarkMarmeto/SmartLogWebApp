@@ -109,10 +109,13 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info mt-3">
+                <div id="recipientAlert" class="alert alert-info mt-3">
                     <strong>Estimated Recipients:</strong>
                     <span id="recipientCount">@Model.TotalActiveStudents</span> students
                     <span id="gradeFilter" class="ms-2"></span>
+                    <span id="noRecipientsWarning" class="d-none ms-2 fw-bold text-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>No recipients — adjust grade filter or enable SMS for students.
+                    </span>
                 </div>
             </div>
         </div>
@@ -130,6 +133,7 @@
     <script>
         const gradeCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StudentCountByGrade));
         const totalStudents = @Model.TotalActiveStudents;
+        let currentRecipientCount = totalStudents;
 
         document.getElementById('message').addEventListener('input', function () {
             document.getElementById('charCount').textContent = this.value.length;
@@ -151,14 +155,6 @@
             }
         });
 
-        function confirmSubmit() {
-            const scheduled = document.getElementById('scheduledAtLocal').value;
-            if (scheduled) {
-                return confirm('Schedule this announcement for delivery at ' + scheduled + ' (PHT)?');
-            }
-            return confirm('Send this announcement now to all selected students?');
-        }
-
         function updateRecipientCount() {
             const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
                 .map(cb => cb.value);
@@ -174,8 +170,36 @@
                 gradeText = `(${selectedGrades.join(', ')})`;
             }
 
+            currentRecipientCount = count;
             document.getElementById('recipientCount').textContent = count;
             document.getElementById('gradeFilter').textContent = gradeText;
+
+            const alert = document.getElementById('recipientAlert');
+            const warning = document.getElementById('noRecipientsWarning');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (count === 0) {
+                alert.className = 'alert alert-danger mt-3';
+                warning.classList.remove('d-none');
+                submitBtn.disabled = true;
+            } else {
+                alert.className = 'alert alert-info mt-3';
+                warning.classList.add('d-none');
+                submitBtn.disabled = false;
+            }
+        }
+
+        function confirmSubmit() {
+            if (currentRecipientCount === 0) {
+                alert('Cannot send: no recipients match the selected grade filter.');
+                return false;
+            }
+            const gradeText = document.getElementById('gradeFilter').textContent;
+            const scheduled = document.getElementById('scheduledAtLocal').value;
+            if (scheduled) {
+                return confirm(`Schedule announcement for ${currentRecipientCount} student(s) ${gradeText} at ${scheduled} (PHT)?`);
+            }
+            return confirm(`Send announcement now to ${currentRecipientCount} student(s) ${gradeText}?`);
         }
     </script>
 }

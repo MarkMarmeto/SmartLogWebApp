@@ -630,6 +630,15 @@
             </button>
             <h1 class="topbar-title">@ViewData["Title"]</h1>
             <div class="topbar-actions">
+                <!-- Live clock -->
+                <div id="live-clock"
+                     style="font-size:0.813rem; font-weight:600; color:var(--primary-color);
+                            background:#EDF7F6; padding:0.4rem 0.875rem; border-radius:6px;
+                            letter-spacing:0.3px; white-space:nowrap;">
+                    <i class="bi bi-clock me-1"></i>
+                    <span id="live-clock-text">--:--:--</span>
+                </div>
+
                 @{
                     var currentAcademicYear = await AcademicYearService.GetCurrentAcademicYearAsync();
                 }
@@ -759,6 +768,29 @@
                 });
             }
         });
+
+        // Live clock
+        (function() {
+            function updateClock() {
+                const now = new Date();
+                const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const day = days[now.getDay()];
+                const month = months[now.getMonth()];
+                const date = String(now.getDate()).padStart(2, '0');
+                const year = now.getFullYear();
+                const hours24 = now.getHours();
+                const ampm = hours24 >= 12 ? 'PM' : 'AM';
+                const hours12 = hours24 % 12 || 12;
+                const hh = String(hours12).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                const el = document.getElementById('live-clock-text');
+                if (el) el.textContent = `${day}, ${month} ${date} ${year}  ${hh}:${mm}:${ss} ${ampm}`;
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        })();
 
         // Close sidebar on mobile when clicking outside
         document.addEventListener('click', function(event) {
