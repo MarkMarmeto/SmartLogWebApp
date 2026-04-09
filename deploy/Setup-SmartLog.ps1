@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    SmartLog Web App — Automated Setup Wizard for Windows
+    SmartLog Web App -- Automated Setup Wizard for Windows
 
 .DESCRIPTION
     Interactive setup script that automates the full installation of SmartLog Web App:
@@ -9,6 +9,7 @@
     - Creates the database and SQL login
     - Generates secure HMAC secret key
     - Sets system environment variables
+    - Optionally generates a self-signed TLS certificate and enables HTTPS
     - Builds and publishes the application
     - Configures firewall rules
     - Optionally registers as a Windows Service
@@ -36,6 +37,11 @@ $Script:InstallDir      = "C:\SmartLog"
 $Script:LogDir          = "C:\SmartLog\logs"
 $Script:BackupDir       = "C:\SmartLogBackups"
 $Script:HttpPort        = 8080
+$Script:HttpsPort       = 5051
+$Script:EnableHttps     = $false
+$Script:CertPath        = "C:\SmartLog\smartlog.pfx"
+$Script:CertPassword    = ""
+$Script:CertThumbprint  = ""
 $Script:DbName          = "SmartLogDb"
 $Script:DbUser          = "SmartLogUser"
 $Script:SqlInstance     = "localhost\SQLEXPRESS"
@@ -194,7 +200,7 @@ Clear-Host
 Write-Host ""
 Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Magenta
 Write-Host "  ║                                                  ║" -ForegroundColor Magenta
-Write-Host "  ║       SmartLog Web App — Setup Wizard            ║" -ForegroundColor Magenta
+Write-Host "  ║       SmartLog Web App -- Setup Wizard           ║" -ForegroundColor Magenta
 Write-Host "  ║       Windows Server Installation                ║" -ForegroundColor Magenta
 Write-Host "  ║                                                  ║" -ForegroundColor Magenta
 Write-Host "  ╚══════════════════════════════════════════════════╝" -ForegroundColor Magenta
@@ -203,7 +209,7 @@ Write-Host "  This wizard will set up SmartLog Web App on this machine." -Foregr
 Write-Host "  Make sure you are running PowerShell as Administrator." -ForegroundColor Gray
 Write-Host ""
 
-$totalSteps = 9
+$totalSteps = 10
 
 # ============================================================
 # Step 1: Check Prerequisites
@@ -250,7 +256,7 @@ if ($gitVersion) {
     Write-Success "Git installed ($gitVersion)"
 }
 else {
-    Write-Warn "Git not found — you'll need to copy the source code manually"
+    Write-Warn "Git not found -- you'll need to copy the source code manually"
 }
 
 # Check SQL Server
@@ -363,7 +369,7 @@ EXEC xp_instance_regwrite
         Write-Warn "SQL Server service needs to be restarted for auth mode change"
     }
     catch {
-        Write-Warn "Could not change auth mode automatically — you may need to do this in SSMS"
+        Write-Warn "Could not change auth mode automatically -- you may need to do this in SSMS"
     }
 
     # Check if login exists
@@ -376,7 +382,7 @@ EXEC xp_instance_regwrite
             Write-Success "Password updated for existing login"
         }
         catch {
-            Write-Warn "Could not update password — the existing login will be used"
+            Write-Warn "Could not update password -- the existing login will be used"
         }
     }
     else {
@@ -418,7 +424,7 @@ ALTER ROLE db_owner ADD MEMBER [$($Script:DbUser)];
         Write-Success "Application can connect to database"
     }
     else {
-        Write-Warn "Application connection test failed — SQL Server may still be restarting"
+        Write-Warn "Application connection test failed -- SQL Server may still be restarting"
         Write-Detail "The connection will be retried when the app starts"
     }
 }
@@ -497,16 +503,94 @@ Write-Host "  http://$($currentIP):$($Script:HttpPort)" -ForegroundColor White
 Write-Host ""
 
 # ============================================================
-# Step 6: Set Environment Variables
+# Step 6: HTTPS Configuration (Optional)
 # ============================================================
-Write-StepHeader -Step 6 -Total $totalSteps -Title "Setting Environment Variables"
+Write-StepHeader -Step 6 -Total $totalSteps -Title "HTTPS Configuration (Optional)"
+
+Write-Host ""
+Write-Host "  HTTPS encrypts traffic between browsers/scanners and this server." -ForegroundColor Gray
+Write-Host "  A self-signed certificate is generated and trusted on this machine." -ForegroundColor Gray
+Write-Host "  Browsers show a one-time security warning -- click Advanced -> Proceed." -ForegroundColor Gray
+Write-Host ""
+
+if (Read-YesNo "Enable HTTPS?" $false) {
+    $Script:EnableHttps = $true
+    $Script:HttpsPort = [int](Read-Input "HTTPS port" "$($Script:HttpsPort)")
+
+    Write-Host ""
+    $certHostname = if ($currentIP) { $currentIP } else { $env:COMPUTERNAME }
+
+    # Build SAN list
+    $sanList = @($certHostname, $env:COMPUTERNAME, "localhost", "127.0.0.1")
+    $localIps = (Get-NetIPAddress -AddressFamily IPv4 |
+                 Where-Object { $_.InterfaceAlias -notmatch "Loopback" } |
+                 Select-Object -ExpandProperty IPAddress)
+    $sanList = ($sanList + $localIps) | Select-Object -Unique
+    Write-Detail "Certificate SANs: $($sanList -join ', ')"
+
+    # Generate self-signed certificate
+    Write-Detail "Generating self-signed certificate (valid 3 years)..."
+    $cert = New-SelfSignedCertificate `
+        -DnsName $sanList `
+        -CertStoreLocation "cert:\LocalMachine\My" `
+        -NotAfter (Get-Date).AddDays(1095) `
+        -KeyAlgorithm RSA `
+        -KeyLength 2048 `
+        -HashAlgorithm SHA256 `
+        -KeyUsage DigitalSignature, KeyEncipherment `
+        -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.1")
+
+    $Script:CertThumbprint = $cert.Thumbprint
+    Write-Success "Certificate generated -- thumbprint: $($Script:CertThumbprint)"
+
+    # Trust on this machine
+    $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+        [System.Security.Cryptography.X509Certificates.StoreName]::Root,
+        [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
+    $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+    $rootStore.Add($cert)
+    $rootStore.Close()
+    Write-Success "Certificate added to Trusted Root CA store"
+
+    # Export to PFX with auto-generated password
+    New-Item -ItemType Directory -Force -Path (Split-Path $Script:CertPath) | Out-Null
+    $pfxChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$'
+    $Script:CertPassword = -join ((1..24) | ForEach-Object { $pfxChars[(Get-Random -Maximum $pfxChars.Length)] })
+    $securePfxPw = ConvertTo-SecureString -String $Script:CertPassword -Force -AsPlainText
+    Export-PfxCertificate -Cert $cert -FilePath $Script:CertPath -Password $securePfxPw | Out-Null
+    Write-Success "Certificate exported to $($Script:CertPath)"
+
+    Write-Host ""
+    Write-Host "  Scanner devices should use HTTPS URL:" -ForegroundColor Gray
+    Write-Host "  https://${certHostname}:$($Script:HttpsPort)" -ForegroundColor White
+    Write-Host ""
+}
+else {
+    Write-Detail "Skipped -- app will serve HTTP only"
+}
+
+# ============================================================
+# Step 7: Set Environment Variables
+# ============================================================
+Write-StepHeader -Step 7 -Total $totalSteps -Title "Setting Environment Variables"
+
+$aspnetUrls = "http://0.0.0.0:$($Script:HttpPort)"
+if ($Script:EnableHttps) {
+    $aspnetUrls += ";https://0.0.0.0:$($Script:HttpsPort)"
+}
 
 $envVars = @{
     "SMARTLOG_DB_CONNECTION"   = $appConnStr
     "SMARTLOG_HMAC_SECRET_KEY" = $hmacSecret
     "SMARTLOG_SEED_PASSWORD"   = $adminPassword
     "ASPNETCORE_ENVIRONMENT"   = "Production"
-    "ASPNETCORE_URLS"          = "http://0.0.0.0:$($Script:HttpPort)"
+    "ASPNETCORE_URLS"          = $aspnetUrls
+}
+
+if ($Script:EnableHttps) {
+    $envVars["SMARTLOG_CERT_PATH"]     = $Script:CertPath
+    $envVars["SMARTLOG_CERT_PASSWORD"] = $Script:CertPassword
+    $envVars["SMARTLOG_HTTPS_PORT"]    = $Script:HttpsPort.ToString()
 }
 
 foreach ($key in $envVars.Keys) {
@@ -520,9 +604,9 @@ foreach ($key in $envVars.Keys) {
 Write-Success "All environment variables set (system-wide)"
 
 # ============================================================
-# Step 7: Build & Publish
+# Step 8: Build & Publish
 # ============================================================
-Write-StepHeader -Step 7 -Total $totalSteps -Title "Building & Publishing Application"
+Write-StepHeader -Step 8 -Total $totalSteps -Title "Building & Publishing Application"
 
 # Find the project root
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -570,22 +654,25 @@ if ($publishExitCode -ne 0) {
 Write-Success "Application published to $($Script:InstallDir)"
 
 # ============================================================
-# Step 8: Firewall Rules
+# Step 9: Firewall Rules
 # ============================================================
-Write-StepHeader -Step 8 -Total $totalSteps -Title "Configuring Firewall"
+Write-StepHeader -Step 9 -Total $totalSteps -Title "Configuring Firewall"
 
-# Remove existing rules if they exist
 Remove-NetFirewallRule -DisplayName "SmartLog HTTP" -ErrorAction SilentlyContinue
 Remove-NetFirewallRule -DisplayName "SmartLog HTTPS" -ErrorAction SilentlyContinue
 
 New-NetFirewallRule -DisplayName "SmartLog HTTP" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpPort -Action Allow -Profile Domain,Private | Out-Null
 Write-Success "Firewall rule created: HTTP port $($Script:HttpPort) (Domain, Private networks)"
 
+if ($Script:EnableHttps) {
+    New-NetFirewallRule -DisplayName "SmartLog HTTPS" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpsPort -Action Allow -Profile Domain,Private | Out-Null
+    Write-Success "Firewall rule created: HTTPS port $($Script:HttpsPort) (Domain, Private networks)"
+}
 
 # ============================================================
-# Step 9: Install Windows Service
+# Step 10: Install Windows Service
 # ============================================================
-Write-StepHeader -Step 9 -Total $totalSteps -Title "Windows Service Setup"
+Write-StepHeader -Step 10 -Total $totalSteps -Title "Windows Service Setup"
 
 if (Read-YesNo "Install SmartLog as a Windows Service (auto-start on boot)?" $true) {
 
@@ -603,7 +690,7 @@ if (Read-YesNo "Install SmartLog as a Windows Service (auto-start on boot)?" $tr
     # Create service
     $exePath = Join-Path $Script:InstallDir "SmartLog.Web.exe"
     sc.exe create $Script:ServiceName binPath="$exePath" DisplayName="$($Script:ServiceDisplay)" start=auto obj=LocalSystem | Out-Null
-    sc.exe description $Script:ServiceName "SmartLog School Information Management System — Attendance tracking via QR scanning" | Out-Null
+    sc.exe description $Script:ServiceName "SmartLog School Information Management System - Attendance tracking via QR scanning" | Out-Null
     sc.exe failure $Script:ServiceName reset=86400 actions=restart/5000/restart/10000/restart/30000 | Out-Null
 
     Write-Success "Windows Service '$($Script:ServiceName)' created"
@@ -644,6 +731,14 @@ Write-Host "  │  Local:   http://localhost:$($Script:HttpPort)                
 if ($currentIP) {
 Write-Host "  │  Network: http://$($currentIP):$($Script:HttpPort)$(' ' * (22 - $currentIP.Length - "$($Script:HttpPort)".Length))│" -ForegroundColor White
 }
+if ($Script:EnableHttps) {
+Write-Host "  ├─────────────────────────────────────────────────┤" -ForegroundColor DarkGray
+Write-Host "  │  HTTPS (encrypted):                             │" -ForegroundColor DarkGray
+Write-Host "  │  Local:   https://localhost:$($Script:HttpsPort)               │" -ForegroundColor White
+if ($currentIP) {
+Write-Host "  │  Network: https://$($currentIP):$($Script:HttpsPort)$(' ' * (21 - $currentIP.Length - "$($Script:HttpsPort)".Length))│" -ForegroundColor White
+}
+}
 Write-Host "  └─────────────────────────────────────────────────┘" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  ┌─────────────────────────────────────────────────┐" -ForegroundColor DarkGray
@@ -656,8 +751,7 @@ Write-Host "  └─────────────────────
 Write-Host ""
 
 # Show credentials that need to be saved
-$dbPwPad = [Math]::Max(0, 47 - $dbPassword.Length)
-$hmacPad = [Math]::Max(0, 47 - $hmacSecret.Length)
+$dbPwPad    = [Math]::Max(0, 47 - $dbPassword.Length)
 $adminPwPad = [Math]::Max(0, 47 - $adminPassword.Length)
 
 Write-Host "  ┌─────────────────────────────────────────────────┐" -ForegroundColor Yellow
@@ -672,13 +766,22 @@ Write-Host "  │  $hmacSecret" -ForegroundColor White
 Write-Host "  │                                                 │" -ForegroundColor Yellow
 Write-Host "  │  Admin Password:                                │" -ForegroundColor Yellow
 Write-Host "  │  $adminPassword$(' ' * $adminPwPad)│" -ForegroundColor White
+if ($Script:EnableHttps) {
+Write-Host "  │                                                 │" -ForegroundColor Yellow
+Write-Host "  │  TLS Certificate Thumbprint (for Scanner App):  │" -ForegroundColor Yellow
+Write-Host "  │  $($Script:CertThumbprint)" -ForegroundColor White
+}
 Write-Host "  │                                                 │" -ForegroundColor Yellow
 Write-Host "  └─────────────────────────────────────────────────┘" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  IMPORTANT:" -ForegroundColor Red
-Write-Host "  1. Save the HMAC Secret Key — Scanner App needs it" -ForegroundColor Yellow
+Write-Host "  1. Save the HMAC Secret Key -- Scanner App needs it" -ForegroundColor Yellow
 Write-Host "  2. Change default account passwords after first login" -ForegroundColor Yellow
-Write-Host "  3. Set a static IP for this machine (see setup-guide.html)" -ForegroundColor Yellow
+Write-Host "  3. Set a static IP for this machine (see docs/DEPLOYMENT.md)" -ForegroundColor Yellow
+if ($Script:EnableHttps) {
+Write-Host "  4. Copy the TLS thumbprint into each Scanner App's HTTPS settings" -ForegroundColor Yellow
+Write-Host "     Scanner URL: https://$($currentIP ?? $env:COMPUTERNAME):$($Script:HttpsPort)" -ForegroundColor Cyan
+}
 Write-Host ""
 
 # Service management commands
