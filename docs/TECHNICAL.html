@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartLog Web App — Technical Reference</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --tag-bg: #dbeafe;
+    --tag-text: #1e40af;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface-alt); }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { background: var(--primary-dark); color: #fff; padding: 0 2rem; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 1.5rem 0; display: flex; align-items: center; gap: 1rem; }
+  .header-badge { background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { font-size: 13px; opacity: .75; margin-top: 2px; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 10; }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+  nav a { display: block; padding: .75rem 1.1rem; font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover, nav a.active { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem; }
+  section h2 { font-size: 1.15rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem; padding-bottom: .6rem; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: .5rem; }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 .75rem; color: var(--text); }
+  h4 { font-size: .9rem; font-weight: 600; margin: 1.25rem 0 .5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  p { margin-bottom: .75rem; }
+  ul, ol { padding-left: 1.4rem; margin-bottom: .75rem; }
+  li { margin-bottom: .2rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 1rem 0; }
+  th { background: var(--surface-alt); color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; text-align: left; padding: .6rem .9rem; border: 1px solid var(--border); }
+  td { padding: .6rem .9rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surface-alt); }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: var(--radius); padding: 1.2rem 1.4rem; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 1rem 0; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; }
+  p code, td code, li code { background: #f1f5f9; color: #c7254e; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } main { padding: 1.5rem 1rem; } }
+
+  .badge { display: inline-block; background: var(--tag-bg); color: var(--tag-text); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.25rem;">
+        <h1>SmartLog Web App</h1>
+        <span class="header-badge">Technical Reference</span>
+      </div>
+      <p>ASP.NET Core 8.0 · EF Core · SQL Server · Serilog</p>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#stack">Stack</a>
+    <a href="#structure">Structure</a>
+    <a href="#data-model">Data Model</a>
+    <a href="#auth">Auth & Roles</a>
+    <a href="#flows">Process Flows</a>
+    <a href="#qr">QR Format</a>
+    <a href="#config">Configuration</a>
+    <a href="#dev">Development</a>
+  </div>
+</nav>
+
+<main>
+
+  <section id="stack">
+    <h2>Stack</h2>
+    <table>
+      <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+      <tbody>
+        <tr><td>Framework</td><td>ASP.NET Core 8.0 Razor Pages</td></tr>
+        <tr><td>ORM</td><td>Entity Framework Core 8.0</td></tr>
+        <tr><td>Database</td><td>SQL Server (Express for on-premise, full for production)</td></tr>
+        <tr><td>Auth</td><td>ASP.NET Core Identity (cookie-based)</td></tr>
+        <tr><td>Logging</td><td>Serilog (structured, file + console)</td></tr>
+        <tr><td>QR Generation</td><td>QRCoder 1.4.3</td></tr>
+        <tr><td>SMS (GSM)</td><td>System.IO.Ports — AT command serial communication</td></tr>
+        <tr><td>SMS (Cloud)</td><td>Semaphore HTTP API (Philippines)</td></tr>
+        <tr><td>Containerization</td><td>Docker + docker-compose</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="structure">
+    <h2>Solution Structure</h2>
+    <pre><code>SmartLogWebApp/
+├── src/SmartLog.Web/
+│   ├── Controllers/Api/           # REST API controllers (scanner + dashboard)
+│   │   ├── ScansApiController.cs        # POST /api/v1/scans
+│   │   ├── AttendanceApiController.cs   # Attendance summary/list
+│   │   ├── DashboardApiController.cs    # Dashboard stats
+│   │   ├── ReportsApiController.cs      # CSV/HTML exports
+│   │   ├── ProfilePictureApiController.cs
+│   │   ├── SmsDeliveryReportController.cs  # Webhook
+│   │   └── HealthController.cs          # GET /api/v1/health
+│   ├── Data/
+│   │   ├── ApplicationDbContext.cs      # EF Core DbContext
+│   │   ├── Entities/                    # All domain entities
+│   │   └── Migrations/                  # EF Core migration history
+│   ├── Services/                        # Business logic
+│   │   ├── Sms/                         # SMS gateways, queue, templates
+│   │   └── *.cs                         # StudentService, AttendanceService, etc.
+│   ├── Pages/                           # Razor Pages UI
+│   │   ├── Account/                     # Login, Logout, Profile, ChangePassword
+│   │   └── Admin/                       # All admin pages
+│   ├── Middleware/                      # ForcePasswordChangeMiddleware
+│   ├── wwwroot/                         # Static assets (CSS, JS, images)
+│   ├── Program.cs                       # Startup, DI, middleware, auth config
+│   └── appsettings.json                 # Base configuration
+├── tests/SmartLog.Web.Tests/            # xUnit test suite
+├── deploy/                              # Windows deployment scripts
+├── docs/                                # This documentation
+└── sdlc-studio/                         # PRD, TRD, epics, user stories</code></pre>
+  </section>
+
+  <section id="data-model">
+    <h2>Data Model</h2>
+    <table>
+      <thead><tr><th>Entity</th><th>Purpose</th><th>Key Fields</th></tr></thead>
+      <tbody>
+        <tr><td><code>Student</code></td><td>Student records</td><td><code>StudentId</code> (YYYY-GG-NNNN), <code>LRN</code>, <code>GradeLevelId</code>, <code>SectionId</code>, <code>ParentPhone</code>, <code>SmsEnabled</code>, <code>SmsLanguage</code></td></tr>
+        <tr><td><code>Faculty</code></td><td>Teacher/staff records</td><td><code>EmployeeId</code> (EMP-YYYY-NNNN), <code>Department</code>, <code>Position</code>, <code>UserId</code></td></tr>
+        <tr><td><code>Device</code></td><td>Registered scanner devices</td><td><code>Name</code>, <code>ApiKeyHash</code> (SHA-256), <code>IsActive</code>, <code>LastSeenAt</code></td></tr>
+        <tr><td><code>Scan</code></td><td>Attendance scan records</td><td><code>DeviceId</code>, <code>StudentId</code>, <code>QrPayload</code>, <code>ScannedAt</code>, <code>ScanType</code> (ENTRY/EXIT), <code>Status</code></td></tr>
+        <tr><td><code>QrCode</code></td><td>Student QR codes</td><td><code>Payload</code>, <code>HmacSignature</code>, <code>IsValid</code>, <code>QrImageBase64</code></td></tr>
+        <tr><td><code>SmsQueue</code></td><td>Async SMS send queue</td><td><code>PhoneNumber</code>, <code>Message</code>, <code>Status</code>, <code>Priority</code>, <code>ScheduledAt</code>, <code>RetryCount</code></td></tr>
+        <tr><td><code>SmsLog</code></td><td>SMS delivery audit trail</td><td><code>Provider</code>, <code>ProviderMessageId</code>, <code>DeliveryStatus</code>, <code>ProcessingTimeMs</code></td></tr>
+        <tr><td><code>SmsTemplate</code></td><td>Bilingual message templates</td><td><code>Code</code>, <code>TemplateEn</code>, <code>TemplateFil</code>, <code>AvailablePlaceholders</code></td></tr>
+        <tr><td><code>GradeLevel</code></td><td>K-12 grade definitions</td><td><code>Code</code> (K, 1–12), <code>Name</code>, <code>SortOrder</code></td></tr>
+        <tr><td><code>Section</code></td><td>Class sections</td><td><code>Name</code>, <code>GradeLevelId</code>, <code>AdviserId</code>, <code>Capacity</code></td></tr>
+        <tr><td><code>StudentEnrollment</code></td><td>Year-to-year enrollment</td><td><code>StudentId</code>, <code>SectionId</code>, <code>AcademicYearId</code>, <code>IsActive</code></td></tr>
+        <tr><td><code>AcademicYear</code></td><td>School year periods</td><td><code>Name</code>, <code>StartDate</code>, <code>EndDate</code>, <code>IsCurrent</code></td></tr>
+        <tr><td><code>CalendarEvent</code></td><td>Holidays/suspensions/events</td><td><code>EventType</code>, <code>AffectsAttendance</code>, <code>AffectedGrades</code></td></tr>
+        <tr><td><code>AuditLog</code></td><td>Security & change audit</td><td><code>Action</code>, <code>UserId</code>, <code>PerformedByUserId</code>, <code>IpAddress</code></td></tr>
+        <tr><td><code>AppSettings</code></td><td>Runtime app config</td><td><code>Key</code>, <code>Value</code>, <code>Category</code>, <code>IsSensitive</code></td></tr>
+        <tr><td><code>SmsSettings</code></td><td>Runtime SMS config</td><td><code>Key</code>, <code>Value</code>, <code>Category</code></td></tr>
+      </tbody>
+    </table>
+    <h3>ID Formats</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Format</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Student ID</td><td><code>YYYY-GG-NNNN</code></td><td><code>2026-07-0001</code></td></tr>
+        <tr><td>Employee ID</td><td><code>EMP-YYYY-NNNN</code></td><td><code>EMP-2026-0001</code></td></tr>
+        <tr><td>API Key</td><td><code>sk_live_</code> prefix + random hex</td><td><code>sk_live_a1b2c3d4...</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="auth">
+    <h2>Authentication &amp; Authorization</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Session</h3>
+        <ul>
+          <li>Provider: ASP.NET Core Identity</li>
+          <li>Cookie auth — 10-hour sliding expiration</li>
+          <li>HttpOnly + Secure + SameSite=Strict</li>
+          <li>Lockout: 5 failed attempts → 15-minute lockout</li>
+        </ul>
+        <h3>Scanner Device Auth</h3>
+        <p>Devices authenticate via <code>X-API-Key</code> header. The key is SHA-256 hashed and compared using constant-time comparison.</p>
+      </div>
+      <div>
+        <h3>Roles &amp; Policies</h3>
+        <table>
+          <thead><tr><th>Role</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>SuperAdmin</td><td>Full access</td></tr>
+            <tr><td>Admin</td><td>Student/faculty/device management</td></tr>
+            <tr><td>Teacher</td><td>View attendance, view students</td></tr>
+            <tr><td>Security</td><td>Gate ops, view attendance</td></tr>
+            <tr><td>Staff</td><td>View student records</td></tr>
+          </tbody>
+        </table>
+        <table style="margin-top:1rem">
+          <thead><tr><th>Policy</th><th>Allowed Roles</th></tr></thead>
+          <tbody>
+            <tr><td><code>RequireSuperAdmin</code></td><td>SuperAdmin</td></tr>
+            <tr><td><code>RequireAdmin</code></td><td>SuperAdmin, Admin</td></tr>
+            <tr><td><code>CanManageUsers</code></td><td>SuperAdmin, Admin</td></tr>
+            <tr><td><code>CanViewStudents</code></td><td>SuperAdmin, Admin, Teacher, Staff</td></tr>
+            <tr><td><code>CanManageStudents</code></td><td>SuperAdmin, Admin</td></tr>
+            <tr><td><code>CanViewAttendance</code></td><td>SuperAdmin, Admin, Teacher, Security</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="flows">
+    <h2>Core Process Flows</h2>
+    <h3>QR Code Scanning (Attendance)</h3>
+    <pre><code>SmartLogScannerApp                       SmartLogWebApp
+       │                                       │
+       │  POST /api/v1/scans                   │
+       │  X-API-Key: sk_live_xxx               │
+       │  { qrPayload, scannedAt, scanType }   │
+       ├──────────────────────────────────────►│
+       │                                       ├─ Authenticate device (API key hash)
+       │                                       ├─ Parse QR: SMARTLOG:{id}:{ts}:{hmac}
+       │                                       ├─ Verify HMAC-SHA256 (constant-time)
+       │                                       ├─ Look up active student
+       │                                       ├─ Check calendar (must be school day)
+       │                                       ├─ Check duplicate (5-minute window)
+       │                                       ├─ Save Scan record
+       │                                       ├─ Queue SMS (background)
+       │  { scanId, studentName, grade,        │
+       │    section, status: ACCEPTED }        │
+       │◄──────────────────────────────────────┤</code></pre>
+    <p><strong>Rejection statuses:</strong> <code>REJECTED_INVALID_QR</code>, <code>REJECTED_QR_INVALIDATED</code>, <code>REJECTED_STUDENT_INACTIVE</code>, <code>REJECTED_NOT_SCHOOL_DAY</code>, <code>DUPLICATE</code></p>
+
+    <h3>SMS Notification Flow</h3>
+    <pre><code>Scan Accepted
+    │
+    ▼
+QueueAttendanceNotificationAsync()
+    ├─ Check SMS globally enabled
+    ├─ Look up student (phone, language preference)
+    ├─ Render template (ENTRY or EXIT, EN or FIL)
+    ├─ Check 5-min duplicate window
+    └─ Insert into SmsQueue (Pending)
+           │
+           ▼
+    SmsWorkerService (polls every 5s)
+    ├─ Fetch Pending messages (priority order, respects ScheduledAt)
+    ├─ Select gateway: GSM_MODEM → SEMAPHORE (fallback)
+    ├─ Send via gateway
+    ├─ Success: status=Sent, log to SmsLog
+    └─ Failure: exponential backoff (2→4→8 min), max 3 retries</code></pre>
+
+    <h3>Student Enrollment Flow</h3>
+    <pre><code>Admin creates Student
+    ├─ Auto-generate StudentId (YYYY-GG-NNNN)
+    ├─ Save to Students table
+    └─ Generate QR code (HMAC-SHA256 signed)
+
+Annual Batch Re-enrollment
+    ├─ Select source → target academic year
+    ├─ Preview all students with promotion options
+    ├─ Admin assigns: Promote / Graduate / Skip
+    └─ Execute: deactivate old enrollment, create new enrollment</code></pre>
+  </section>
+
+  <section id="qr">
+    <h2>QR Code Format</h2>
+    <pre><code>SMARTLOG:{studentId}:{timestamp}:{HMAC-SHA256-base64}
+
+Example:
+SMARTLOG:2026-07-0001:1739512547:a7Bx9kL2mN4pQ6rS8tU0vW2xY4zA6bC8==</code></pre>
+    <table>
+      <thead><tr><th>Part</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>SMARTLOG</code></td><td>Fixed prefix — identifies this as a SmartLog QR code</td></tr>
+        <tr><td><code>studentId</code></td><td>Student's ID (YYYY-GG-NNNN format)</td></tr>
+        <tr><td><code>timestamp</code></td><td>Unix epoch seconds at QR generation time</td></tr>
+        <tr><td><code>HMAC-SHA256-base64</code></td><td><code>HMAC-SHA256(studentId:timestamp)</code> signed with <code>SMARTLOG_HMAC_SECRET_KEY</code></td></tr>
+      </tbody>
+    </table>
+    <p>The timestamp does not expire — deduplication is handled server-side. The HMAC secret is shared between the Web App (QR generation) and optionally the Scanner App (local pre-validation).</p>
+  </section>
+
+  <section id="config">
+    <h2>Configuration</h2>
+    <h3>Environment Variables</h3>
+    <table>
+      <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>SMARTLOG_DB_CONNECTION</code></td><td>SQL Server connection string</td></tr>
+        <tr><td><code>SMARTLOG_HMAC_SECRET_KEY</code></td><td>QR code HMAC signing secret (keep confidential)</td></tr>
+        <tr><td><code>SMARTLOG_SEED_PASSWORD</code></td><td>Initial password for all seeded admin accounts</td></tr>
+        <tr><td><code>ASPNETCORE_ENVIRONMENT</code></td><td><code>Development</code> or <code>Production</code></td></tr>
+        <tr><td><code>ASPNETCORE_URLS</code></td><td>Listen URL/port (e.g., <code>http://+:5050</code>)</td></tr>
+        <tr><td><code>Cors__AllowedOrigins__0</code></td><td>CORS origin for browser-based scanner clients</td></tr>
+      </tbody>
+    </table>
+    <h3>appsettings.json — SMS Section</h3>
+    <pre><code>{
+  "Sms": {
+    "Enabled": true,
+    "DefaultProvider": "GSM_MODEM",
+    "FallbackEnabled": true,
+    "GsmModem": { "PortName": "COM3", "BaudRate": 9600, "SendDelayMs": 3000 },
+    "Semaphore": { "ApiKey": "", "SenderName": "SmartLog" },
+    "Queue": { "MaxRetries": 3, "PollingIntervalSeconds": 5 }
+  }
+}</code></pre>
+    <h3>Runtime Database Config</h3>
+    <ul>
+      <li><code>AppSettings</code> table — General config (timezone, QR settings, etc.)</li>
+      <li><code>SmsSettings</code> table — SMS provider config (modifiable via Admin &gt; Settings without restart)</li>
+    </ul>
+  </section>
+
+  <section id="dev">
+    <h2>Development</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Build &amp; Run</h3>
+        <pre><code>dotnet build
+dotnet run --project src/SmartLog.Web \
+  --urls="http://localhost:5050"</code></pre>
+        <h3>Run Tests</h3>
+        <pre><code>dotnet test</code></pre>
+        <h3>Migrations</h3>
+        <pre><code>dotnet ef migrations add &lt;Name&gt; \
+  -p src/SmartLog.Web
+dotnet ef database update \
+  -p src/SmartLog.Web</code></pre>
+      </div>
+      <div>
+        <h3>Docker</h3>
+        <pre><code># Start (auto-applies migrations)
+docker-compose up --build -d
+
+# View logs
+docker-compose logs -f smartlog-web
+
+# Stop
+docker-compose down
+
+# Full reset (destroys data)
+docker-compose down -v && \
+docker-compose up --build -d</code></pre>
+      </div>
+    </div>
+    <h3>Key NuGet Packages</h3>
+    <table>
+      <thead><tr><th>Package</th><th>Version</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>Microsoft.EntityFrameworkCore.SqlServer</code></td><td>8.0</td><td>ORM + SQL Server driver</td></tr>
+        <tr><td><code>Microsoft.AspNetCore.Identity.EntityFrameworkCore</code></td><td>8.0</td><td>Auth + user management</td></tr>
+        <tr><td><code>QRCoder</code></td><td>1.4.3</td><td>QR code image generation</td></tr>
+        <tr><td><code>Serilog.AspNetCore</code></td><td>8.0</td><td>Structured logging</td></tr>
+        <tr><td><code>System.IO.Ports</code></td><td>8.0</td><td>GSM modem serial communication</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+</body>
+</html>

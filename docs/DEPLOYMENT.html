@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartLog Web App — Deployment Guide</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface-alt); }
+  a { color: var(--primary); }
+
+  header { background: var(--primary-dark); color: #fff; padding: 0 2rem; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 1.5rem 0; }
+  .header-badge { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: .4rem; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { font-size: 13px; opacity: .75; margin-top: 4px; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 10; }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+  nav a { display: block; padding: .75rem 1rem; font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem; }
+  section > h2 { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem; padding-bottom: .6rem; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 .6rem; }
+  h4 { font-size: .875rem; font-weight: 600; margin: 1.25rem 0 .5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  p { margin-bottom: .75rem; }
+  ul, ol { padding-left: 1.4rem; margin-bottom: .75rem; }
+  li { margin-bottom: .25rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: .75rem 0; }
+  th { background: var(--surface-alt); color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; text-align: left; padding: .5rem .9rem; border: 1px solid var(--border); }
+  td { padding: .55rem .9rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surface-alt); }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: var(--radius); padding: 1.1rem 1.3rem; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: .75rem 0; }
+  code { font-family: 'SFMono-Regular', Consolas, monospace; }
+  p code, td code, li code { background: #f1f5f9; color: #c7254e; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+
+  .step-list { list-style: none; padding: 0; counter-reset: steps; }
+  .step-list li { counter-increment: steps; padding: .6rem 0 .6rem 2.5rem; position: relative; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .step-list li:last-child { border-bottom: none; }
+  .step-list li::before { content: counter(steps); position: absolute; left: 0; width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; top: .7rem; }
+
+  .callout { border-radius: var(--radius); padding: 1rem 1.25rem; margin: 1rem 0; font-size: 14px; }
+  .callout-info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+  .callout-warn { background: #fef9c3; border-left: 4px solid #eab308; }
+  .callout-danger { background: #fee2e2; border-left: 4px solid #ef4444; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } main { padding: 1.5rem 1rem; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-badge">Deployment Guide</div>
+    <h1>SmartLog Web App</h1>
+    <p>Docker · Windows Service · Network Setup · SMS Configuration</p>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#prereqs">Prerequisites</a>
+    <a href="#docker">Docker</a>
+    <a href="#windows">Windows Service</a>
+    <a href="#firstrun">First-Time Setup</a>
+    <a href="#sms">SMS</a>
+    <a href="#network">Network</a>
+    <a href="#manage">Managing</a>
+    <a href="#troubleshoot">Troubleshooting</a>
+  </div>
+</nav>
+
+<main>
+
+  <section id="prereqs">
+    <h2>Prerequisites</h2>
+    <h3>Hardware (Windows Service deployment)</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Minimum</th><th>Recommended</th></tr></thead>
+      <tbody>
+        <tr><td>CPU</td><td>2 cores</td><td>4 cores</td></tr>
+        <tr><td>RAM</td><td>4 GB</td><td>8 GB</td></tr>
+        <tr><td>Disk</td><td>10 GB free</td><td>20 GB free</td></tr>
+        <tr><td>Network</td><td>Ethernet (LAN)</td><td>Gigabit Ethernet</td></tr>
+        <tr><td>USB port</td><td>1 (for GSM modem)</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="docker">
+    <h2>Option A: Docker (Quick Start)</h2>
+    <div class="callout callout-info">Recommended for development and simple single-machine setups.</div>
+    <h3>Requirements</h3>
+    <p>Docker Desktop installed.</p>
+    <h3>Start</h3>
+    <pre><code>git clone &lt;repository-url&gt;
+cd SmartLogWebApp
+docker-compose up --build -d</code></pre>
+    <p>Migrations run automatically. Open <strong>http://localhost:8080</strong> when the container is healthy.</p>
+
+    <h3>Default Credentials</h3>
+    <table>
+      <thead><tr><th>Username</th><th>Password</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>super.admin</code></td><td><code>SecurePass1!</code></td><td>SuperAdmin</td></tr>
+        <tr><td><code>admin.amy</code></td><td><code>SecurePass1!</code></td><td>Admin</td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-warn">Change default passwords immediately after first login.</div>
+
+    <h3>Common Commands</h3>
+    <pre><code># View logs
+docker-compose logs -f smartlog-web
+
+# Stop
+docker-compose down
+
+# Full reset (destroys all data)
+docker-compose down -v &amp;&amp; docker-compose up --build -d
+
+# Access SQL Server directly
+docker exec -it smartlog-db /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SmartLog2026!" -C</code></pre>
+
+    <h3>Docker Services</h3>
+    <table>
+      <thead><tr><th>Service</th><th>Port</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>smartlog-web</code></td><td>8080</td><td>Web application</td></tr>
+        <tr><td><code>smartlog-db</code></td><td>1433</td><td>SQL Server Express</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="windows">
+    <h2>Option B: Windows Service (Production)</h2>
+    <div class="callout callout-info">The application runs as a Windows Service — starts automatically on boot, runs in the background, requires no user logged in.</div>
+
+    <h3>Deployment Scripts</h3>
+    <p>All scripts are in <code>deploy/</code>. Run <code>.bat</code> files as Administrator — they launch the corresponding <code>.ps1</code> script.</p>
+    <table>
+      <thead><tr><th>Script</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>Setup-SmartLog.bat</code></td><td><strong>Full automated installation wizard</strong> — checks prereqs, creates DB, generates HMAC secret, sets env vars, builds, configures firewall, registers Windows Service</td></tr>
+        <tr><td><code>Update-SmartLog.bat</code></td><td>Update existing installation — backs up, pulls latest code, rebuilds, restarts service. Supports <code>-SkipBackup</code> and <code>-Branch</code> flags</td></tr>
+        <tr><td><code>Setup-Network.bat</code></td><td>Detect current network settings and configure a static IP address interactively</td></tr>
+        <tr><td><code>Setup-Https.bat</code></td><td>Generate a self-signed SSL certificate and configure HTTPS on port 5051</td></tr>
+        <tr><td><code>GenerateHMAC.bat</code></td><td>Generate a cryptographically secure 256-bit HMAC secret key (Base64 output)</td></tr>
+        <tr><td><code>Reset-SmartLog.bat</code></td><td>Remove the installation — stops service, removes env vars and firewall rules. Optionally drops the database</td></tr>
+        <tr><td><code>Backup-SmartLog.ps1</code></td><td>Backup DB + app files to <code>C:\SmartLogBackups\</code>, retains last 7 daily backups. Can be registered as a Windows Scheduled Task</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Recommended flow for a fresh installation:</strong></p>
+    <pre><code># 1. Run the full setup wizard (handles everything)
+deploy\Setup-SmartLog.bat
+
+# 2. Optionally set up HTTPS
+deploy\Setup-Https.bat
+
+# 3. Optionally configure network / static IP
+deploy\Setup-Network.bat</code></pre>
+
+    <h3>Step 1 — Install SQL Server Express</h3>
+    <p>Download SQL Server 2022 Express from microsoft.com. Choose <strong>Basic</strong> install. Default instance name: <code>SQLEXPRESS</code>.</p>
+    <pre><code># Verify it is running
+sc query MSSQL$SQLEXPRESS
+
+# Create the database
+sqlcmd -S .\SQLEXPRESS -E -Q "CREATE DATABASE SmartLog"</code></pre>
+
+    <h3>Step 2 — Install .NET 8.0 SDK</h3>
+    <p>Download from dotnet.microsoft.com/download/dotnet/8.0. Verify: <code>dotnet --version</code> (expect <code>8.0.xxx</code>).</p>
+
+    <h3>Step 3 — Clone the Repository</h3>
+    <pre><code>git clone &lt;repository-url&gt; C:\Source\SmartLogWebApp</code></pre>
+
+    <h3>Step 4 — Set Environment Variables</h3>
+    <p>Open <strong>Command Prompt as Administrator</strong> and run each command:</p>
+    <pre><code>setx /M SMARTLOG_DB_CONNECTION "Server=.\SQLEXPRESS;Database=SmartLog;Trusted_Connection=true;TrustServerCertificate=true"
+setx /M SMARTLOG_HMAC_SECRET_KEY "your-generated-secret-key-here"
+setx /M SMARTLOG_SEED_PASSWORD "SmartLog@2026!"
+setx /M ASPNETCORE_URLS "http://+:5050"
+setx /M ASPNETCORE_ENVIRONMENT "Production"</code></pre>
+    <p><strong>Generate the HMAC secret key</strong> (PowerShell):</p>
+    <pre><code>[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])</code></pre>
+    <div class="callout callout-danger">Keep the HMAC secret confidential. Changing it later invalidates all existing QR codes.</div>
+
+    <h3>Step 5 — Build and Publish</h3>
+    <pre><code>cd C:\Source\SmartLogWebApp
+dotnet build
+dotnet publish src\SmartLog.Web -p:PublishProfile=WinX64 -o C:\SmartLog</code></pre>
+
+    <h3>Step 6 — Install as Windows Service</h3>
+    <div class="grid-2">
+      <div>
+        <h4>Option A — Automated (Recommended)</h4>
+        <pre><code>cd C:\Source\SmartLogWebApp
+deploy\Setup-SmartLog.bat</code></pre>
+        <p style="font-size:13px">Run as Administrator. The wizard handles prerequisites, build, publish, service registration, and firewall in one go.</p>
+      </div>
+      <div>
+        <h4>Option B — Manual</h4>
+        <pre><code>sc create SmartLogWeb \
+  binPath="C:\SmartLog\SmartLog.Web.exe" \
+  start=auto obj=LocalSystem
+sc failure SmartLogWeb reset=86400 \
+  actions=restart/5000/restart/10000/restart/30000
+sc start SmartLogWeb</code></pre>
+      </div>
+    </div>
+
+    <h3>Step 7 — Open Firewall Port</h3>
+    <pre><code>netsh advfirewall firewall add rule name="SmartLog Web" dir=in action=allow protocol=TCP localport=5050</code></pre>
+
+    <h3>Step 8 — Verify</h3>
+    <pre><code>sc query SmartLogWeb
+curl http://localhost:5050/health</code></pre>
+    <p>Expected: <code>STATE: 4  RUNNING</code> and response <code>Healthy</code>.</p>
+  </section>
+
+  <section id="firstrun">
+    <h2>First-Time Application Setup</h2>
+    <p>On first startup, SmartLog auto-applies migrations and seeds initial data.</p>
+
+    <h3>1. Log In</h3>
+    <p>Open <code>http://localhost:5050</code> (Windows) or <code>http://localhost:8080</code> (Docker). Log in as <code>super.admin</code>.</p>
+
+    <h3>2. Change Default Passwords</h3>
+    <p>Navigate to <strong>Admin &gt; Manage Users</strong> and change passwords for all seeded accounts:</p>
+    <table>
+      <thead><tr><th>Username</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>super.admin</code></td><td>SuperAdmin</td></tr>
+        <tr><td><code>admin.amy</code></td><td>Admin</td></tr>
+        <tr><td><code>teacher.tina</code></td><td>Teacher</td></tr>
+        <tr><td><code>guard.gary</code></td><td>Security</td></tr>
+        <tr><td><code>staff.sarah</code></td><td>Staff</td></tr>
+      </tbody>
+    </table>
+
+    <ol style="font-size:14px;margin-top:1rem">
+      <li style="margin-bottom:.5rem"><strong>Configure Academic Year</strong> — Admin &gt; Academic Years. Verify dates and mark current year.</li>
+      <li style="margin-bottom:.5rem"><strong>Set Up Grade Levels &amp; Sections</strong> — Grades 7–12 and sections A, B, C are pre-loaded. Add/rename to match your school.</li>
+      <li style="margin-bottom:.5rem"><strong>Add Students</strong> — Admin &gt; Students. Add individually or use Bulk Import (CSV).</li>
+      <li style="margin-bottom:.5rem"><strong>Generate QR Codes</strong> — Admin &gt; QR Codes. Print and attach to student ID cards.</li>
+      <li style="margin-bottom:.5rem"><strong>Configure Calendar</strong> — 13 Philippine national holidays are pre-loaded. Add school-specific events.</li>
+      <li><strong>Register Scanner Devices</strong> — Admin &gt; Register Device. Copy the API key (<code>sk_live_xxx</code>) immediately — shown only once.</li>
+    </ol>
+  </section>
+
+  <section id="sms">
+    <h2>SMS Configuration</h2>
+    <div class="grid-2">
+      <div>
+        <h3>GSM Modem (Recommended)</h3>
+        <p style="font-size:13px">Offline-capable, ~₱1/SMS. Uses a USB GSM modem with a prepaid SIM card.</p>
+        <ol style="font-size:14px">
+          <li>Plug USB GSM modem into the server.</li>
+          <li>Open Device Manager, note the COM port (e.g., <code>COM3</code>).</li>
+          <li>Go to <strong>Admin &gt; Settings &gt; SMS</strong>.</li>
+        </ol>
+        <table style="margin-top:.75rem">
+          <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>SMS Enabled</td><td><code>true</code></td></tr>
+            <tr><td>Default Provider</td><td><code>GSM_MODEM</code></td></tr>
+            <tr><td>GSM Modem Port</td><td><code>COM3</code></td></tr>
+            <tr><td>Baud Rate</td><td><code>9600</code></td></tr>
+            <tr><td>Send Delay (ms)</td><td><code>3000</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Semaphore (Cloud)</h3>
+        <p style="font-size:13px">Internet required. Register at semaphore.co.</p>
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>SMS Enabled</td><td><code>true</code></td></tr>
+            <tr><td>Default Provider</td><td><code>SEMAPHORE</code></td></tr>
+            <tr><td>Semaphore API Key</td><td>Your key</td></tr>
+            <tr><td>Sender Name</td><td><code>SmartLog</code></td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:1.25rem">Fallback</h3>
+        <p style="font-size:14px">Set Default Provider to <code>GSM_MODEM</code> and Fallback Enabled to <code>true</code>. SmartLog automatically retries via Semaphore when the modem fails.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="network">
+    <h2>Network Setup for Scanner Devices</h2>
+    <div class="callout callout-info">All scanner devices and the server must be on the same LAN. The server needs a static IP so scanners always find it.</div>
+
+    <h3>Typical School Network</h3>
+    <pre><code>School LAN / Wi-Fi (e.g., 192.168.1.x)
+
+  SmartLog Server  ──────────────────────────────►  Scanner Device #1
+  Static IP: 192.168.1.10, Port: 5050               Main Gate
+                   └─────────────────────────────►  Scanner Device #2
+                                                     Back Gate</code></pre>
+
+    <h3>Set a Static IP on the Server</h3>
+    <p><strong>Via Windows Settings:</strong> Settings &gt; Network &amp; Internet &gt; Ethernet &gt; IP assignment &gt; Manual</p>
+    <table>
+      <thead><tr><th>Field</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>IP address</td><td><code>192.168.1.10</code> (outside DHCP range)</td></tr>
+        <tr><td>Subnet prefix length</td><td><code>24</code></td></tr>
+        <tr><td>Gateway</td><td><code>192.168.1.1</code> (router)</td></tr>
+        <tr><td>Preferred DNS</td><td><code>192.168.1.1</code></td></tr>
+      </tbody>
+    </table>
+    <p><strong>Via Command Prompt (Admin):</strong></p>
+    <pre><code>netsh interface ip set address "Ethernet" static 192.168.1.10 255.255.255.0 192.168.1.1
+netsh interface ip set dns "Ethernet" static 192.168.1.1</code></pre>
+
+    <h3>Test Connectivity from Scanner Device</h3>
+    <pre><code>ping 192.168.1.10
+curl http://192.168.1.10:5050/health</code></pre>
+    <p>Expected: ping replies + <code>Healthy</code> response.</p>
+
+    <h3>Changing the Port</h3>
+    <pre><code>setx /M ASPNETCORE_URLS "http://+:8080"
+sc stop SmartLogWeb &amp; timeout /t 3 &amp; sc start SmartLogWeb
+netsh advfirewall firewall add rule name="SmartLog Web" dir=in action=allow protocol=TCP localport=8080</code></pre>
+    <div class="callout callout-warn">Update the Server URL on all scanner devices after changing the port.</div>
+  </section>
+
+  <section id="manage">
+    <h2>Managing the Windows Service</h2>
+    <pre><code># Check status
+sc query SmartLogWeb
+
+# Start / Stop / Restart
+sc start SmartLogWeb
+sc stop SmartLogWeb
+sc stop SmartLogWeb &amp; timeout /t 5 &amp; sc start SmartLogWeb
+
+# View logs (PowerShell)
+Get-Content "C:\SmartLog\logs\*.log" -Tail 50</code></pre>
+
+    <h3>Updating SmartLog</h3>
+    <p><strong>Option A — Update script (recommended):</strong></p>
+    <pre><code>deploy\Update-SmartLog.bat</code></pre>
+    <p style="font-size:13px">Backs up the current install, pulls latest code, rebuilds, and restarts the service.</p>
+    <p><strong>PowerShell flags (optional):</strong></p>
+    <pre><code>.\deploy\Update-SmartLog.ps1 -SkipBackup        # Skip backup (faster)
+.\deploy\Update-SmartLog.ps1 -Branch staging    # Pull from a different branch</code></pre>
+    <p><strong>Option B — Manual:</strong></p>
+    <pre><code>cd C:\Source\SmartLogWebApp
+git pull
+sc stop SmartLogWeb
+dotnet publish src\SmartLog.Web -p:PublishProfile=WinX64 -o C:\SmartLog
+sc start SmartLogWeb</code></pre>
+
+    <h3>Resetting the Installation</h3>
+    <p>To wipe the installation and start fresh (reconfiguring for a different server, or cleaning up):</p>
+    <pre><code>deploy\Reset-SmartLog.bat</code></pre>
+    <p style="font-size:13px">Stops and removes the Windows Service, clears env vars and firewall rules. Optionally drops the database. Does <strong>not</strong> delete source code or backups.</p>
+
+    <h3>Backup &amp; Restore</h3>
+    <p><strong>Automated backup (recommended):</strong></p>
+    <pre><code># Run manually
+.\deploy\Backup-SmartLog.ps1
+
+# Register as a daily scheduled task (run once, as Administrator)
+.\deploy\Backup-SmartLog.ps1 -RegisterTask</code></pre>
+    <p style="font-size:13px">Backs up DB + app files to <code>C:\SmartLogBackups\</code>, retains last 7 daily backups.</p>
+    <p><strong>Manual restore:</strong></p>
+    <pre><code>sc stop SmartLogWeb
+sqlcmd -S .\SQLEXPRESS -E -Q \
+  "RESTORE DATABASE SmartLog FROM DISK='C:\SmartLogBackups\SmartLog.bak' WITH REPLACE"
+sc start SmartLogWeb</code></pre>
+  </section>
+
+  <section id="troubleshoot">
+    <h2>Troubleshooting</h2>
+    <table>
+      <thead><tr><th>Problem</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr><td>Login page not loading</td><td><code>sc query SmartLogWeb</code> — must show RUNNING. Check <code>%ASPNETCORE_URLS%</code>.</td></tr>
+        <tr><td><code>Healthy</code> endpoint not responding</td><td>Firewall rule for port 5050. Re-run <code>netsh advfirewall</code> command.</td></tr>
+        <tr><td>Scanner can't connect</td><td>Static IP set on server? Firewall open? Run <code>ping</code> and <code>curl /health</code> from scanner device.</td></tr>
+        <tr><td>"Connection string" error on startup</td><td>Verify <code>%SMARTLOG_DB_CONNECTION%</code> and that SQL Server service is running.</td></tr>
+        <tr><td>SMS not sending</td><td>Check GSM modem COM port in Device Manager. Use Test SMS in Admin &gt; Settings.</td></tr>
+        <tr><td>Database migration error</td><td>Check application logs. Stop service, fix the issue, restart.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+</body>
+</html>

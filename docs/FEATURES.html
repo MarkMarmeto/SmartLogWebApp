@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartLog Web App — Features</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --code-bg: #1e293b;
+    --radius: 8px;
+    --green: #dcfce7; --green-text: #166534;
+    --blue: #dbeafe; --blue-text: #1e40af;
+    --purple: #ede9fe; --purple-text: #5b21b6;
+    --orange: #ffedd5; --orange-text: #9a3412;
+    --teal: #ccfbf1; --teal-text: #134e4a;
+    --pink: #fce7f3; --pink-text: #9d174d;
+    --yellow: #fef9c3; --yellow-text: #713f12;
+    --gray: #f1f5f9; --gray-text: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface-alt); }
+  a { color: var(--primary); text-decoration: none; }
+
+  header { background: var(--primary-dark); color: #fff; padding: 0 2rem; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 1.5rem 0; }
+  .header-badge { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: .4rem; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { font-size: 13px; opacity: .75; margin-top: 4px; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 10; }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+  nav a { display: block; padding: .75rem 1rem; font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+
+  .module { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1.5rem; overflow: hidden; }
+  .module-header { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .module-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .module-title { font-size: 1rem; font-weight: 700; }
+  .module-body { padding: 1.25rem 1.5rem; }
+
+  .feature-list { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+  @media (max-width: 700px) { .feature-list { grid-template-columns: 1fr; } main { padding: 1.5rem 1rem; } }
+  .feature-list li { padding: .3rem 0 .3rem .9rem; position: relative; font-size: 14px; }
+  .feature-list li::before { content: '✓'; position: absolute; left: 0; color: #22c55e; font-weight: 700; font-size: 12px; top: .45rem; }
+
+  .intro { background: var(--blue); border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 2rem; color: var(--blue-text); font-size: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-badge">Features</div>
+    <h1>SmartLog Web App</h1>
+    <p>School Information Management System for Philippine K-12 schools</p>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#access">User &amp; Access</a>
+    <a href="#students">Students</a>
+    <a href="#enrollment">Enrollment</a>
+    <a href="#attendance">Attendance</a>
+    <a href="#sms">SMS</a>
+    <a href="#calendar">Calendar</a>
+    <a href="#devices">Devices</a>
+    <a href="#reports">Reports</a>
+    <a href="#settings">Settings</a>
+    <a href="#system">System</a>
+  </div>
+</nav>
+
+<main>
+
+  <div class="intro">
+    SmartLog runs on the school's local network (LAN-only, offline-capable) and serves as the central hub for attendance, notifications, and records. It is designed for Philippine K-12 schools with support for bilingual SMS notifications and GSM modem-based messaging.
+  </div>
+
+  <div class="module" id="access">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--blue)">🔐</div>
+      <div><div class="module-title">User &amp; Access Management</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Role-based access control: SuperAdmin, Admin, Teacher, Security, Staff</li>
+        <li>Secure login with account lockout (5 attempts → 15-min lockout)</li>
+        <li>10-hour sliding sessions (HttpOnly, Secure, SameSite cookies)</li>
+        <li>Per-user profile with profile picture upload</li>
+        <li>Password change with forced change on first login</li>
+        <li>User activation/deactivation by admins</li>
+        <li>Full audit log of user actions (who, what, from which IP)</li>
+        <li>CSRF protection via anti-forgery tokens</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="students">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--green)">👤</div>
+      <div><div class="module-title">Student Management</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Add, edit, deactivate, and search students</li>
+        <li>Auto-generated Student ID: <code>YYYY-GG-NNNN</code></li>
+        <li>LRN (Learner Reference Number) tracking</li>
+        <li>Assign to grade level and section</li>
+        <li>Parent/guardian mobile number for SMS</li>
+        <li>Per-student SMS language preference (EN / Filipino)</li>
+        <li>Bulk import students via CSV upload</li>
+        <li>Profile picture upload per student</li>
+        <li>QR code generation (HMAC-SHA256 signed, printable)</li>
+        <li>QR code regeneration/invalidation (old code immediately revoked)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="enrollment">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--purple)">📚</div>
+      <div><div class="module-title">Academic Year &amp; Enrollment</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Define and manage academic years (e.g., 2025-2026)</li>
+        <li>Mark one year as current; historical years remain accessible</li>
+        <li>Manage grade levels (K-12) and sections (name, capacity, adviser)</li>
+        <li>Annual batch re-enrollment: promote, graduate, or skip students</li>
+        <li>Per-student active enrollment per academic year</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="attendance">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--teal)">📋</div>
+      <div><div class="module-title">Attendance Tracking</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>QR code scanning via registered scanner devices</li>
+        <li>ENTRY and EXIT scan types</li>
+        <li>Duplicate prevention (5-minute window per student/type)</li>
+        <li>Calendar-aware: rejects scans on holidays and suspensions</li>
+        <li>Attendance summary dashboard (by grade, section, date)</li>
+        <li>Daily attendance list with search and filter</li>
+        <li>Attendance trend chart (past 30 days)</li>
+        <li>Attendance by grade chart</li>
+        <li>Recent activity feed</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="sms">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--yellow)">💬</div>
+      <div><div class="module-title">SMS Notifications</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Automated SMS to parents on student entry/exit</li>
+        <li>Bilingual templates: English and Filipino per student</li>
+        <li>Template codes: ENTRY, EXIT, HOLIDAY, SUSPENSION, EMERGENCY</li>
+        <li>Customizable templates via admin UI</li>
+        <li>SMS broadcast: send announcements to filtered groups</li>
+        <li>Schedule broadcasts for future delivery</li>
+        <li>Cancel pending scheduled broadcasts</li>
+        <li>SMS queue with priority ordering and ScheduledAt support</li>
+        <li>Retry with exponential backoff (2→4→8 min, max 3 retries)</li>
+        <li>GSM Modem gateway (USB serial, offline-capable, ~₱1/SMS)</li>
+        <li>Semaphore cloud gateway (internet required)</li>
+        <li>Automatic fallback from GSM Modem to Semaphore</li>
+        <li>SMS delivery reports via webhook (Semaphore)</li>
+        <li>Full SMS history log with delivery status</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="calendar">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--orange)">📅</div>
+      <div><div class="module-title">Calendar Management</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>School calendar with events, holidays, and suspensions</li>
+        <li>13 Philippine national holidays pre-loaded per academic year</li>
+        <li>Mark events as "Affects Attendance" to block scans</li>
+        <li>Grade-specific events (e.g., Grade 12 activity only)</li>
+        <li>Event types: Holiday, School Event, Class Suspension</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="devices">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--gray)">🖥️</div>
+      <div><div class="module-title">Scanner Device Management</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Register scanner devices and generate API keys</li>
+        <li>API key shown once; stored as SHA-256 hash</li>
+        <li>Activate/deactivate devices; revoked devices immediately rejected</li>
+        <li>View last-seen timestamp per device</li>
+        <li>Multiple devices supported (one API key each)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="reports">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--blue)">📊</div>
+      <div><div class="module-title">Reporting &amp; Export</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Daily Attendance Report — export CSV or HTML</li>
+        <li>Weekly Attendance Report — export CSV</li>
+        <li>Monthly Attendance Report — export CSV</li>
+        <li>Student Attendance Report (individual history) — export CSV</li>
+        <li>Audit Log Export (SuperAdmin only) — export CSV</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="settings">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--purple)">⚙️</div>
+      <div><div class="module-title">Settings &amp; Configuration</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Runtime configuration via Admin &gt; Settings (no restart required)</li>
+        <li>SMS provider switch, API key updates, test SMS</li>
+        <li>GSM modem port and baud rate configuration</li>
+        <li>HMAC secret rotation (invalidates all existing QR codes)</li>
+        <li>Application timezone setting</li>
+        <li>QR code settings</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="module" id="system">
+    <div class="module-header">
+      <div class="module-icon" style="background:var(--teal)">🔧</div>
+      <div><div class="module-title">System &amp; Security</div></div>
+    </div>
+    <div class="module-body">
+      <ul class="feature-list">
+        <li>Automatic database migration on startup (EF Core)</li>
+        <li>Seed data on first run: grade levels, sections, admin accounts, holidays</li>
+        <li>CORS configuration for browser-based scanner clients</li>
+        <li>HTTPS-ready (configure SSL certificate in production)</li>
+        <li>Docker deployment (docker-compose with SQL Server container)</li>
+        <li>Windows Service deployment (auto-start on boot, auto-restart)</li>
+        <li>Structured logging via Serilog (file + console)</li>
+        <li>GitHub Actions CI (build + test on every push)</li>
+        <li>GitHub Actions CD (release on version tags)</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartLog Web App — API Reference</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --radius: 8px;
+    --method-post: #dcfce7; --method-post-text: #166534;
+    --method-get: #dbeafe; --method-get-text: #1e40af;
+    --method-delete: #fee2e2; --method-delete-text: #991b1b;
+    --status-2xx: #dcfce7; --status-2xx-text: #166534;
+    --status-4xx: #fee2e2; --status-4xx-text: #991b1b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface-alt); }
+  a { color: var(--primary); }
+
+  header { background: var(--primary-dark); color: #fff; padding: 0 2rem; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 1.5rem 0; }
+  .header-badge { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: .4rem; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { font-size: 13px; opacity: .75; margin-top: 4px; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 10; }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+  nav a { display: block; padding: .75rem 1rem; font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem; }
+  section > h2 { font-size: 1.05rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1.25rem; padding-bottom: .6rem; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.75rem 0 .6rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  h3:first-of-type { margin-top: 0; }
+  h4 { font-size: .875rem; font-weight: 600; margin: 1.25rem 0 .5rem; color: var(--text-muted); }
+  p { margin-bottom: .75rem; font-size: 14px; }
+  ul { padding-left: 1.4rem; margin-bottom: .75rem; font-size: 14px; }
+  li { margin-bottom: .2rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: .75rem 0; }
+  th { background: var(--surface-alt); color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; text-align: left; padding: .5rem .9rem; border: 1px solid var(--border); }
+  td { padding: .55rem .9rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surface-alt); }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: var(--radius); padding: 1.1rem 1.3rem; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: .75rem 0; }
+  code { font-family: 'SFMono-Regular', Consolas, monospace; }
+  p code, td code, li code, h3 code { background: #f1f5f9; color: #c7254e; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+
+  .method { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: .03em; }
+  .method-post { background: var(--method-post); color: var(--method-post-text); }
+  .method-get { background: var(--method-get); color: var(--method-get-text); }
+  .method-delete { background: var(--method-delete); color: var(--method-delete-text); }
+
+  .status { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+  .status-2xx { background: var(--status-2xx); color: var(--status-2xx-text); }
+  .status-4xx { background: var(--status-4xx); color: var(--status-4xx-text); }
+
+  .auth-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 4px; background: #ede9fe; color: #5b21b6; }
+
+  .endpoint-divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  .callout-info { background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: var(--radius); padding: .85rem 1.1rem; margin: .75rem 0; font-size: 14px; color: #1e40af; }
+
+  @media (max-width: 700px) { main { padding: 1.5rem 1rem; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-badge">API Reference</div>
+    <h1>SmartLog Web App</h1>
+    <p>Base URL: <code style="background:rgba(255,255,255,0.15);padding:1px 6px;border-radius:3px">http://{server}:{port}/api/v1</code></p>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#auth">Authentication</a>
+    <a href="#scanner">Scanner API</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#attendance">Attendance</a>
+    <a href="#reports">Reports</a>
+    <a href="#pictures">Profile Pictures</a>
+    <a href="#webhook">SMS Webhook</a>
+    <a href="#qr">QR Format</a>
+  </div>
+</nav>
+
+<main>
+
+  <section id="auth">
+    <h2>Authentication</h2>
+    <h3>Scanner Device Authentication</h3>
+    <p>All scanner-facing endpoints require the <code>X-API-Key</code> header:</p>
+    <pre><code>X-API-Key: sk_live_xxxxxxxxxxxx</code></pre>
+    <p>API keys are generated in <strong>Admin &gt; Register Device</strong>. Keys are shown once and stored as SHA-256 hashes — constant-time comparison prevents timing attacks. Revoked devices are rejected immediately.</p>
+
+    <h3>Admin/User Authentication</h3>
+    <p>Dashboard, attendance, report, and profile picture endpoints use cookie-based session auth (10-hour sliding expiration). Log in at <code>/Account/Login</code>.</p>
+  </section>
+
+  <section id="scanner">
+    <h2>Scanner API</h2>
+
+    <h3><span class="method method-post">POST</span> <code>/api/v1/scans</code> &nbsp;<span class="auth-badge">X-API-Key</span></h3>
+    <p>Submit a QR code scan from a scanner device.</p>
+
+    <h4>Request</h4>
+    <pre><code>POST /api/v1/scans
+X-API-Key: sk_live_xxx
+Content-Type: application/json
+
+{
+  "qrPayload": "SMARTLOG:2026-07-0001:1739512547:base64HmacSignature==",
+  "scannedAt": "2026-02-16T10:30:00Z",
+  "scanType": "ENTRY"
+}</code></pre>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>qrPayload</code></td><td>string</td><td>Yes</td><td>Full QR code string from student ID card</td></tr>
+        <tr><td><code>scannedAt</code></td><td>datetime (ISO 8601)</td><td>Yes</td><td>When the scan occurred</td></tr>
+        <tr><td><code>scanType</code></td><td>string</td><td>Yes</td><td><code>"ENTRY"</code> or <code>"EXIT"</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>Response — <span class="status status-2xx">200 Accepted</span></h4>
+    <pre><code>{
+  "scanId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "studentId": "2026-07-0001",
+  "studentName": "Juan Dela Cruz",
+  "grade": "Grade 7",
+  "section": "Section A",
+  "scanType": "ENTRY",
+  "scannedAt": "2026-02-16T10:30:00Z",
+  "status": "ACCEPTED"
+}</code></pre>
+
+    <h4>Response — <span class="status status-2xx">200 Duplicate</span></h4>
+    <pre><code>{
+  "scanId": "...",
+  "studentId": "2026-07-0001",
+  "studentName": "Juan Dela Cruz",
+  "grade": "Grade 7",
+  "section": "Section A",
+  "scanType": "ENTRY",
+  "scannedAt": "2026-02-16T10:30:00Z",
+  "status": "DUPLICATE",
+  "originalScanId": "...",
+  "message": "Already scanned. Please proceed."
+}</code></pre>
+
+    <h4>Error Responses — <span class="status status-4xx">400 / 401 / 404</span></h4>
+    <pre><code>{
+  "error": "ErrorCode",
+  "message": "Human-readable description",
+  "status": "REJECTED",
+  "studentId": "2026-07-0001"
+}</code></pre>
+    <table>
+      <thead><tr><th>HTTP</th><th>Error Code</th><th>Meaning</th><th>Scanner Action</th></tr></thead>
+      <tbody>
+        <tr><td>401</td><td><code>InvalidApiKey</code></td><td>Missing or wrong API key</td><td>Disable scanner, show critical error</td></tr>
+        <tr><td>401</td><td><code>DeviceRevoked</code></td><td>Device deactivated by admin</td><td>Disable scanner, show critical error</td></tr>
+        <tr><td>400</td><td><code>InvalidQrCode</code></td><td>Wrong format or HMAC mismatch</td><td>Show error — invalid ID</td></tr>
+        <tr><td>400</td><td><code>QrCodeInvalidated</code></td><td>QR regenerated; old code revoked</td><td>Show error — get new ID from office</td></tr>
+        <tr><td>400</td><td><code>StudentInactive</code></td><td>Student account deactivated</td><td>Show error — contact office</td></tr>
+        <tr><td>400</td><td><code>NotSchoolDay</code></td><td>Holiday, weekend, or suspension</td><td>Show info — school closed</td></tr>
+        <tr><td>404</td><td><code>StudentNotFound</code></td><td>Student ID not in database</td><td>Show error — contact office</td></tr>
+      </tbody>
+    </table>
+
+    <hr class="endpoint-divider">
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/health</code></h3>
+    <p>Server health check. Used by scanner apps on startup and periodic polling.</p>
+    <p><strong>Auth:</strong> None &nbsp;·&nbsp; <strong>Response:</strong> <code>200 OK</code> with body <code>Healthy</code></p>
+  </section>
+
+  <section id="dashboard">
+    <h2>Dashboard API</h2>
+    <div class="callout-info">All dashboard endpoints require cookie auth (<code>CanViewAttendance</code> policy).</div>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/dashboard/summary</code></h3>
+    <p>Overall attendance summary for today.</p>
+    <pre><code>{ "totalStudents": 450, "presentToday": 312, "absentToday": 138, "attendanceRate": 69.3 }</code></pre>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/dashboard/attendance-trend</code></h3>
+    <p><strong>Query:</strong> <code>?days=30</code> — Attendance trend over past N days.</p>
+    <p><strong>Response:</strong> Array of <code>{ date, presentCount, absentCount, attendanceRate }</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/dashboard/attendance-by-grade</code></h3>
+    <p><strong>Query:</strong> <code>?date=2026-02-16</code> — Attendance by grade for a given date.</p>
+    <p><strong>Response:</strong> Array of <code>{ grade, presentCount, totalStudents, attendanceRate }</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/dashboard/attendance-by-weekday</code></h3>
+    <p><strong>Query:</strong> <code>?weeks=4</code> — Average attendance by day of week.</p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/dashboard/recent-activity</code></h3>
+    <p><strong>Query:</strong> <code>?count=10</code> — Most recent scan activity.</p>
+  </section>
+
+  <section id="attendance">
+    <h2>Attendance API</h2>
+    <div class="callout-info">Requires cookie auth (<code>CanViewStudents</code> policy).</div>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/attendance/summary</code></h3>
+    <p><strong>Query:</strong> <code>?date=2026-02-16&amp;grade=Grade 7&amp;section=Section A</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/attendance/list</code></h3>
+    <p>Paginated list of attendance records.</p>
+    <p><strong>Query:</strong> <code>?date=&amp;grade=&amp;section=&amp;search=&amp;status=&amp;page=1&amp;pageSize=50</code></p>
+  </section>
+
+  <section id="reports">
+    <h2>Reports API</h2>
+    <div class="callout-info">Requires cookie auth (<code>CanViewStudents</code>). All export endpoints return file downloads.</div>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/reports/daily/export</code></h3>
+    <p><strong>Query:</strong> <code>?date=2026-02-16&amp;grade=&amp;section=&amp;format=csv</code> — Formats: <code>csv</code>, <code>html</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/reports/weekly/export</code></h3>
+    <p><strong>Query:</strong> <code>?startDate=2026-02-10&amp;format=csv</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/reports/monthly/export</code></h3>
+    <p><strong>Query:</strong> <code>?year=2026&amp;month=2&amp;format=csv</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/reports/student/{id}/export</code></h3>
+    <p>Individual student attendance history. <strong>Query:</strong> <code>?format=csv</code></p>
+
+    <h3><span class="method method-get">GET</span> <code>/api/v1/reports/audit-logs/export</code></h3>
+    <p>Export audit log. Requires <code>RequireSuperAdmin</code> policy.</p>
+  </section>
+
+  <section id="pictures">
+    <h2>Profile Picture API</h2>
+    <div class="callout-info">Requires cookie auth. Upload body: <code>multipart/form-data</code> with <code>file</code> field.</div>
+
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Policy</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method method-post">POST</span></td><td><code>/api/v1/profile-picture/user</code></td><td>Current user</td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td><code>/api/v1/profile-picture/student/{id}</code></td><td><code>CanManageStudents</code></td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td><code>/api/v1/profile-picture/faculty/{id}</code></td><td><code>CanManageFaculty</code></td></tr>
+        <tr><td><span class="method method-delete">DELETE</span></td><td><code>/api/v1/profile-picture/user</code></td><td>Current user</td></tr>
+        <tr><td><span class="method method-delete">DELETE</span></td><td><code>/api/v1/profile-picture/student/{id}</code></td><td><code>CanManageStudents</code></td></tr>
+        <tr><td><span class="method method-delete">DELETE</span></td><td><code>/api/v1/profile-picture/faculty/{id}</code></td><td><code>CanManageFaculty</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="webhook">
+    <h2>SMS Webhook</h2>
+
+    <h3><span class="method method-post">POST</span> <code>/api/sms/delivery-report</code></h3>
+    <p>Delivery status callback from SMS providers (Semaphore).</p>
+    <p><strong>Auth:</strong> Optional <code>X-Webhook-Secret</code> header (configure in Admin &gt; Settings)</p>
+    <p><strong>Body:</strong> Provider-specific delivery report payload.</p>
+  </section>
+
+  <section id="qr">
+    <h2>QR Code Format Reference</h2>
+    <pre><code>SMARTLOG:{studentId}:{timestamp}:{HMAC-SHA256-base64}
+
+Example:
+SMARTLOG:2026-07-0001:1739512547:a7Bx9kL2mN4pQ6rS8tU0vW2xY4zA6bC8==</code></pre>
+
+    <table>
+      <thead><tr><th>Part</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>SMARTLOG</code></td><td>Fixed prefix — identifies this as a SmartLog QR code</td></tr>
+        <tr><td><code>studentId</code></td><td>Student's ID (YYYY-GG-NNNN format)</td></tr>
+        <tr><td><code>timestamp</code></td><td>Unix epoch seconds at QR generation time</td></tr>
+        <tr><td><code>HMAC-SHA256-base64</code></td><td><code>HMAC-SHA256(studentId:timestamp)</code> signed with <code>SMARTLOG_HMAC_SECRET_KEY</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>The scanner app validates the HMAC locally, then submits the full raw <code>qrPayload</code> string to <code>POST /api/v1/scans</code>. The server re-validates independently. The timestamp does not expire — deduplication is server-side.</p>
+
+    <h3>Security Notes</h3>
+    <ul>
+      <li>Store API keys in platform secure storage — never hardcode in the scanner app.</li>
+      <li>Use HTTPS in production to prevent man-in-the-middle attacks.</li>
+      <li>Log only the first 20 characters of QR payloads to protect student data.</li>
+      <li>Rate limit scan submissions on the scanner side (e.g., 1 per second).</li>
+      <li>API key hash comparison uses <code>CryptographicOperations.FixedTimeEquals</code> — do not implement your own comparison.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
