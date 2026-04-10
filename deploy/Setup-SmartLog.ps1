@@ -661,12 +661,12 @@ Write-StepHeader -Step 9 -Total $totalSteps -Title "Configuring Firewall"
 Remove-NetFirewallRule -DisplayName "SmartLog HTTP" -ErrorAction SilentlyContinue
 Remove-NetFirewallRule -DisplayName "SmartLog HTTPS" -ErrorAction SilentlyContinue
 
-New-NetFirewallRule -DisplayName "SmartLog HTTP" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpPort -Action Allow -Profile Domain,Private | Out-Null
-Write-Success "Firewall rule created: HTTP port $($Script:HttpPort) (Domain, Private networks)"
+New-NetFirewallRule -DisplayName "SmartLog HTTP" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpPort -Action Allow -Profile Any | Out-Null
+Write-Success "Firewall rule created: HTTP port $($Script:HttpPort) (all network profiles)"
 
 if ($Script:EnableHttps) {
-    New-NetFirewallRule -DisplayName "SmartLog HTTPS" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpsPort -Action Allow -Profile Domain,Private | Out-Null
-    Write-Success "Firewall rule created: HTTPS port $($Script:HttpsPort) (Domain, Private networks)"
+    New-NetFirewallRule -DisplayName "SmartLog HTTPS" -Direction Inbound -Protocol TCP -LocalPort $Script:HttpsPort -Action Allow -Profile Any | Out-Null
+    Write-Success "Firewall rule created: HTTPS port $($Script:HttpsPort) (all network profiles)"
 }
 
 # ============================================================
