@@ -142,7 +142,8 @@
                                     <td>@msg.RetryCount / @msg.MaxRetries</td>
                                     <td>
                                         @if (msg.Status == SmartLog.Web.Data.Entities.SmsStatus.Pending ||
-                                             msg.Status == SmartLog.Web.Data.Entities.SmsStatus.Failed)
+                                             (msg.Status == SmartLog.Web.Data.Entities.SmsStatus.Failed &&
+                                              msg.RetryCount < msg.MaxRetries))
                                         {
                                             <form method="post" asp-page-handler="Cancel" class="d-inline"
                                                   onsubmit="return confirm('Cancel this message?');">
