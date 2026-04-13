@@ -55,25 +55,22 @@ public class SemaphoreGateway : ISmsGateway
                ?? "SmartLog";
     }
 
+    /// <summary>
+    /// Returns true when a Semaphore API key is configured.
+    /// Does NOT make a live HTTP request — routing decisions must not block on a
+    /// rate-limited availability check (Semaphore /account is capped at 2 req/min).
+    /// Use GetHealthStatusAsync() for the Settings UI health check only.
+    /// </summary>
     public async Task<bool> IsAvailableAsync()
     {
-        try
+        var apiKey = await GetApiKeyAsync();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            var apiKey = await GetApiKeyAsync();
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                _logger.LogWarning("Semaphore API key not configured");
-                return false;
-            }
-
-            var health = await GetHealthStatusAsync();
-            return health.IsHealthy;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Semaphore gateway not available");
+            _logger.LogDebug("Semaphore API key not configured — gateway unavailable");
             return false;
         }
+
+        return true;
     }
 
     public async Task<SmsSendResult> SendAsync(string phoneNumber, string message)
