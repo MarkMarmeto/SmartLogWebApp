@@ -469,6 +469,22 @@ public class SmsService : ISmsService
     }
 
     /// <summary>
+    /// Converts a Philippine mobile number to the international format Semaphore echoes back.
+    /// 09XXXXXXXXX → 639XXXXXXXXX, +639XXXXXXXXX → 639XXXXXXXXX
+    /// Used only for matching Semaphore bulk-send results back to raw-format phone numbers.
+    /// Stored phone numbers are kept in their original format.
+    /// </summary>
+    private static string NormalizePhoneForLookup(string phoneNumber)
+    {
+        var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("09") && digits.Length == 11)
+            return "63" + digits[1..];
+        if (phoneNumber.StartsWith("+"))
+            return digits;
+        return digits;
+    }
+
+    /// <summary>
     /// Returns true when Semaphore is the configured default provider and is reachable.
     /// </summary>
     private async Task<bool> CanUseBulkAsync()
@@ -534,13 +550,18 @@ public class SmsService : ISmsService
             var messageParts = CalculateMessageParts(renderedMessage);
             var now = DateTime.UtcNow;
 
+            // Semaphore returns normalized phone numbers (639XXXXXXXXX).
+            // phones list may have raw format (09XXXXXXXXX). Build lookup with both forms
+            // so the outcome is found regardless of which format Semaphore echoes back.
             var outcomeByPhone = bulkResult.Results
                 .ToDictionary(r => r.PhoneNumber, r => r, StringComparer.OrdinalIgnoreCase);
 
             // FIX: collect all queue entries first, then save once
             var queueEntries = phones.Select(phone =>
             {
-                outcomeByPhone.TryGetValue(phone, out var outcome);
+                // Try raw first, then normalized (Semaphore echoes back 639XXXXXXXXX)
+                if (!outcomeByPhone.TryGetValue(phone, out var outcome))
+                    outcomeByPhone.TryGetValue(NormalizePhoneForLookup(phone), out outcome);
                 var success = outcome?.Success ?? false;
                 return new SmsQueue
                 {
