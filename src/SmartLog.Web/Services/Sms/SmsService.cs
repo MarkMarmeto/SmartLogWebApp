@@ -387,7 +387,9 @@ public class SmsService : ISmsService
         // FIX 1: Render each language variant ONCE — cache by language code
         var renderedByLanguage = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // FIX 2: Batch duplicate check — collect all candidate phones, query once
+        // FIX 2: Batch duplicate check — collect all candidate phones, query once.
+        // Scoped to the same messageType so attendance notifications (ENTRY/EXIT/ATTENDANCE)
+        // don't block ANNOUNCEMENT or EMERGENCY broadcasts — and vice versa.
         HashSet<string>? duplicatePhones = null;
         if (checkDuplicates)
         {
@@ -399,7 +401,8 @@ public class SmsService : ISmsService
             duplicatePhones = (await _context.SmsQueues
                 .Where(q => allCandidatePhones.Contains(q.PhoneNumber) &&
                             q.CreatedAt >= cutoff &&
-                            q.Status != SmsStatus.Cancelled)
+                            q.Status != SmsStatus.Cancelled &&
+                            q.MessageType == messageType)
                 .Select(q => q.PhoneNumber)
                 .Distinct()
                 .ToListAsync())
