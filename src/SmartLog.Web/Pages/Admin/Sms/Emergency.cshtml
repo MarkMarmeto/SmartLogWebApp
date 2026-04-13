@@ -34,7 +34,7 @@
         Use this feature only for urgent announcements.
     </div>
 
-    <form method="post" onsubmit="return confirmSubmit();">
+    <form method="post" id="emergencyForm">
         <div class="card mb-4">
             <div class="card-header bg-danger text-white">
                 <i class="bi bi-megaphone me-2"></i>Broadcast Message
@@ -42,10 +42,11 @@
             <div class="card-body">
                 <div class="mb-3">
                     <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="message" name="Message" rows="4"
+                    <textarea class="form-control border-danger" id="message" name="Message" rows="4"
                               required maxlength="200" placeholder="Enter emergency message..."></textarea>
-                    <div class="form-text">
-                        <span id="charCount">0</span> / 200 characters
+                    <div class="d-flex justify-content-between form-text">
+                        <span>Characters: <span id="charCount">0</span> / 200</span>
+                        <span id="smsPartsHint" class="text-muted"></span>
                     </div>
                 </div>
 
@@ -89,21 +90,22 @@
                     <div class="col-md-6">
                         <h6>English Template</h6>
                         <div class="bg-light p-3 rounded">
-                            <pre class="mb-0">@Model.TemplatePrefixEn <span id="previewEn">[Your message here]</span></pre>
+                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixEn<span id="previewEn">[Your message here]</span></pre>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <h6>Filipino Template</h6>
                         <div class="bg-light p-3 rounded">
-                            <pre class="mb-0">@Model.TemplatePrefixFil <span id="previewFil">[Your message here]</span></pre>
+                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixFil<span id="previewFil">[Your message here]</span></pre>
                         </div>
                     </div>
                 </div>
 
-                <div id="recipientAlert" class="alert alert-info mt-3">
+                <div id="recipientAlert" class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-people me-2"></i>
                     <strong>Estimated Recipients:</strong>
                     <span id="recipientCount">@Model.TotalActiveStudents</span> students
-                    <span id="gradeFilter" class="ms-2"></span>
+                    <span id="gradeFilter" class="ms-1 text-muted small"></span>
                     <span id="noRecipientsWarning" class="d-none ms-2 fw-bold text-danger">
                         <i class="bi bi-exclamation-circle me-1"></i>No recipients — adjust grade filter or enable SMS for students.
                     </span>
@@ -113,11 +115,72 @@
 
         <div class="d-flex justify-content-between">
             <a asp-page="/Admin/Sms/Index" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-danger btn-lg">
+            <button type="button" class="btn btn-danger btn-lg" id="submitBtn"
+                    onclick="openConfirmModal()">
                 <i class="bi bi-send me-1"></i>Send Emergency Broadcast
             </button>
         </div>
     </form>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white rounded-top">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirm Emergency Broadcast
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+
+                <!-- Urgency banner -->
+                <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-4">
+                    <i class="bi bi-exclamation-octagon-fill fs-5 flex-shrink-0"></i>
+                    <span class="small fw-semibold">This will be sent immediately and cannot be undone.</span>
+                </div>
+
+                <!-- Recipient count badge -->
+                <div class="text-center mb-4">
+                    <div class="display-6 fw-bold text-danger" id="modalRecipientCount">0</div>
+                    <div class="text-muted">recipients will receive this message</div>
+                    <div class="text-muted small mt-1" id="modalGradeScope"></div>
+                </div>
+
+                <!-- Summary rows -->
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start">
+                        <span class="text-muted small">Priority</span>
+                        <span class="badge bg-danger">Emergency</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start">
+                        <span class="text-muted small">Language</span>
+                        <span class="fw-semibold" id="modalLanguage">Student's preferred</span>
+                    </li>
+                    <li class="list-group-item px-0">
+                        <div class="text-muted small mb-1">Message preview</div>
+                        <div class="bg-light rounded p-2 small text-break" id="modalMessagePreview"
+                             style="max-height:80px;overflow:hidden;"></div>
+                    </li>
+                </ul>
+
+                <div class="alert alert-warning mb-0 py-2 small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    SMS credits will be consumed for each recipient.
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Go Back
+                </button>
+                <button type="button" class="btn btn-danger flex-fill" id="modalConfirmBtn"
+                        onclick="submitForm()">
+                    <i class="bi bi-send me-1"></i>Send Emergency Now
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -126,16 +189,17 @@
         const totalStudents = @Model.TotalActiveStudents;
         let currentRecipientCount = totalStudents;
 
-        // Character counter
-        document.getElementById('message').addEventListener('input', function() {
-            const count = this.value.length;
-            document.getElementById('charCount').textContent = count;
+        document.getElementById('message').addEventListener('input', function () {
+            const len = this.value.length;
+            document.getElementById('charCount').textContent = len;
+            document.getElementById('smsPartsHint').textContent =
+                len > 160 ? `${Math.ceil(len / 153)} SMS parts` : '';
             document.getElementById('previewEn').textContent = this.value || '[Your message here]';
             document.getElementById('previewFil').textContent = this.value || '[Your message here]';
         });
 
-        document.querySelectorAll('.grade-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', updateRecipientCount);
+        document.querySelectorAll('.grade-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateRecipientCount);
         });
 
         function updateRecipientCount() {
@@ -147,38 +211,63 @@
 
             if (selectedGrades.length === 0) {
                 count = totalStudents;
-                gradeText = '(All grades)';
+                gradeText = 'All grades';
             } else {
                 selectedGrades.forEach(grade => { count += gradeCounts[grade] || 0; });
-                gradeText = `(${selectedGrades.join(', ')})`;
+                gradeText = `Grade ${selectedGrades.join(', ')}`;
             }
 
             currentRecipientCount = count;
             document.getElementById('recipientCount').textContent = count;
-            document.getElementById('gradeFilter').textContent = gradeText;
+            document.getElementById('gradeFilter').textContent = `(${gradeText})`;
 
-            const alert = document.getElementById('recipientAlert');
+            const alertEl = document.getElementById('recipientAlert');
             const warning = document.getElementById('noRecipientsWarning');
-            const submitBtn = document.querySelector('button[type="submit"]');
+            const submitBtn = document.getElementById('submitBtn');
 
             if (count === 0) {
-                alert.className = 'alert alert-danger mt-3';
+                alertEl.className = 'alert alert-danger mt-3 mb-0';
                 warning.classList.remove('d-none');
                 submitBtn.disabled = true;
             } else {
-                alert.className = 'alert alert-info mt-3';
+                alertEl.className = 'alert alert-info mt-3 mb-0';
                 warning.classList.add('d-none');
                 submitBtn.disabled = false;
             }
         }
 
-        function confirmSubmit() {
-            if (currentRecipientCount === 0) {
-                alert('Cannot send: no recipients match the selected grade filter.');
-                return false;
+        function openConfirmModal() {
+            const form = document.getElementById('emergencyForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
             }
-            const gradeText = document.getElementById('gradeFilter').textContent;
-            return confirm(`Send emergency broadcast to ${currentRecipientCount} student(s) ${gradeText}?`);
+            if (currentRecipientCount === 0) return;
+
+            const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
+                .map(cb => cb.value);
+            const gradeScope = selectedGrades.length === 0
+                ? 'Sending to all grade levels'
+                : `Grade ${selectedGrades.join(', ')} only`;
+
+            const langSelect = document.getElementById('language');
+            const langText = langSelect.options[langSelect.selectedIndex].text;
+            const messageText = document.getElementById('message').value;
+
+            document.getElementById('modalRecipientCount').textContent = currentRecipientCount.toLocaleString();
+            document.getElementById('modalGradeScope').textContent = gradeScope;
+            document.getElementById('modalLanguage').textContent = langText;
+            document.getElementById('modalMessagePreview').textContent =
+                messageText.length > 120 ? messageText.substring(0, 120) + '…' : messageText;
+
+            new bootstrap.Modal(document.getElementById('confirmModal')).show();
+        }
+
+        function submitForm() {
+            document.getElementById('modalConfirmBtn').disabled = true;
+            document.getElementById('modalConfirmBtn').innerHTML =
+                '<span class="spinner-border spinner-border-sm me-1"></span>Sending…';
+            document.getElementById('emergencyForm').submit();
         }
     </script>
 }
