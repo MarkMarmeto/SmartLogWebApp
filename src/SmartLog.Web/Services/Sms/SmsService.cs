@@ -442,6 +442,10 @@ public class SmsService : ISmsService
         if (useBulk)
         {
             recipientCount = await SendBulkGroupsAsync(groups, broadcastId, messageType, priority);
+
+            // Finalize broadcast status: bulk path sends immediately (no worker involvement),
+            // so we must update Broadcast.Status here after all messages are processed.
+            await FinalizeBroadcastAsync(broadcastId);
         }
         else
         {
@@ -472,6 +476,41 @@ public class SmsService : ISmsService
         if (!provider.Equals("SEMAPHORE", StringComparison.OrdinalIgnoreCase)) return false;
 
         return await _semaphoreGateway.IsAvailableAsync();
+    }
+
+    /// <summary>
+    /// Marks a broadcast as Sent after all messages have been processed.
+    /// Called after the bulk send path, which bypasses the SmsWorkerService.
+    /// </summary>
+    private async Task FinalizeBroadcastAsync(Guid broadcastId)
+    {
+        try
+        {
+            var broadcast = await _context.Broadcasts
+                .FirstOrDefaultAsync(b => b.Id == broadcastId);
+
+            if (broadcast == null || broadcast.Status == Data.Entities.BroadcastStatus.Cancelled)
+                return;
+
+            // Check that no messages are still pending (shouldn't happen after bulk, but be safe)
+            var stillPending = await _context.SmsQueues
+                .AnyAsync(q => q.BroadcastId == broadcastId &&
+                               (q.Status == SmsStatus.Pending || q.Status == SmsStatus.Processing));
+
+            if (stillPending) return;
+
+            broadcast.Status = Data.Entities.BroadcastStatus.Sent;
+            broadcast.SentAt = DateTime.UtcNow;
+            broadcast.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Broadcast {BroadcastId} finalized to Sent after bulk send", broadcastId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finalizing broadcast {BroadcastId} after bulk send", broadcastId);
+        }
     }
 
     /// <summary>
