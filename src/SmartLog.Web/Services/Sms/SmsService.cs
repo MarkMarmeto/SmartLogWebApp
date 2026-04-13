@@ -384,12 +384,19 @@ public class SmsService : ISmsService
         var isScheduled = scheduledAt.HasValue && scheduledAt.Value > DateTime.UtcNow;
         var useBulk = !isScheduled && await CanUseBulkAsync();
 
-        // FIX 1: Render each language variant ONCE — cache by language code
+        // Pre-render each language variant ONCE — needed before the duplicate check
+        // so we can match on exact message content (prevents different broadcasts blocking each other).
         var renderedByLanguage = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lang in students.Select(s => language ?? s.SmsLanguage).Distinct())
+        {
+            var rendered = await _templateService.RenderTemplateAsync(templateCode, lang, placeholders);
+            if (!string.IsNullOrWhiteSpace(rendered))
+                renderedByLanguage[lang] = rendered;
+        }
 
-        // FIX 2: Batch duplicate check — collect all candidate phones, query once.
-        // Scoped to the same messageType so attendance notifications (ENTRY/EXIT/ATTENDANCE)
-        // don't block ANNOUNCEMENT or EMERGENCY broadcasts — and vice versa.
+        // Batch duplicate check — one query per rendered message variant.
+        // Matching on exact message content means two different announcements sent within the
+        // 60-minute window won't block each other (only the same text to the same phone is a duplicate).
         HashSet<string>? duplicatePhones = null;
         if (checkDuplicates)
         {
@@ -398,15 +405,23 @@ public class SmsService : ISmsService
                 .ToList();
 
             var cutoff = DateTime.UtcNow.AddMinutes(-60);
-            duplicatePhones = (await _context.SmsQueues
-                .Where(q => allCandidatePhones.Contains(q.PhoneNumber) &&
-                            q.CreatedAt >= cutoff &&
-                            q.Status != SmsStatus.Cancelled &&
-                            q.MessageType == messageType)
-                .Select(q => q.PhoneNumber)
-                .Distinct()
-                .ToListAsync())
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            duplicatePhones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var renderedMessage in renderedByLanguage.Values.Distinct(StringComparer.Ordinal))
+            {
+                var dupes = await _context.SmsQueues
+                    .Where(q => allCandidatePhones.Contains(q.PhoneNumber) &&
+                                q.Message == renderedMessage &&
+                                q.CreatedAt >= cutoff &&
+                                q.Status != SmsStatus.Cancelled &&
+                                q.MessageType == messageType)
+                    .Select(q => q.PhoneNumber)
+                    .Distinct()
+                    .ToListAsync();
+
+                foreach (var phone in dupes)
+                    duplicatePhones.Add(phone);
+            }
         }
 
         // Group recipients by their rendered message (EN vs FIL)
@@ -418,12 +433,7 @@ public class SmsService : ISmsService
 
             var smsLanguage = language ?? student.SmsLanguage;
 
-            if (!renderedByLanguage.TryGetValue(smsLanguage, out var renderedMessage))
-            {
-                renderedMessage = await _templateService.RenderTemplateAsync(
-                    templateCode, smsLanguage, placeholders);
-                renderedByLanguage[smsLanguage] = renderedMessage;
-            }
+            if (!renderedByLanguage.TryGetValue(smsLanguage, out var renderedMessage)) continue;
 
             if (string.IsNullOrWhiteSpace(renderedMessage)) continue;
 
