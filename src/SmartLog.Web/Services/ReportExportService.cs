@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using System.Text;
@@ -14,13 +15,16 @@ public class ReportExportService : IReportExportService
 {
     private readonly ApplicationDbContext _context;
     private readonly IAttendanceService _attendanceService;
+    private readonly ITimezoneService _timezoneService;
 
     public ReportExportService(
         ApplicationDbContext context,
-        IAttendanceService attendanceService)
+        IAttendanceService attendanceService,
+        ITimezoneService timezoneService)
     {
         _context = context;
         _attendanceService = attendanceService;
+        _timezoneService = timezoneService;
     }
 
     public async Task<byte[]> ExportDailyAttendanceToExcelAsync(DateTime date, string? grade, string? section)
@@ -34,7 +38,7 @@ public class ReportExportService : IReportExportService
         csv.AppendLine($"Date:,{date:MMMM dd, yyyy}");
         if (!string.IsNullOrEmpty(grade)) csv.AppendLine($"Grade:,{grade}");
         if (!string.IsNullOrEmpty(section)) csv.AppendLine($"Section:,{section}");
-        csv.AppendLine($"Generated:,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        csv.AppendLine($"Generated:,{_timezoneService.FormatForDisplay(DateTime.UtcNow)}");
         csv.AppendLine();
 
         csv.AppendLine("Summary Statistics");
@@ -48,8 +52,8 @@ public class ReportExportService : IReportExportService
         csv.AppendLine("Student ID,Name,Grade,Section,Status,Entry Time,Exit Time");
         foreach (var record in records.OrderBy(r => int.TryParse(r.GradeLevel, out var g) ? g : 0).ThenBy(r => r.Section).ThenBy(r => r.FullName))
         {
-            csv.AppendLine($"{record.StudentId},{record.FullName},{record.GradeLevel},{record.Section}," +
-                          $"{record.Status},{record.EntryTime?.ToString("HH:mm") ?? "-"},{record.ExitTime?.ToString("HH:mm") ?? "-"}");
+            csv.AppendLine($"{CsvEscape(record.StudentIdNumber)},{CsvEscape(record.FullName)},{CsvEscape(record.GradeLevel)},{CsvEscape(record.Section)}," +
+                          $"{record.Status},{FormatPht(record.EntryTime, "HH:mm")},{FormatPht(record.ExitTime, "HH:mm")}");
         }
 
         return Encoding.UTF8.GetBytes(csv.ToString());
@@ -73,7 +77,7 @@ public class ReportExportService : IReportExportService
         csv.AppendLine($"Week:,{weekStart:MMM dd} - {weekEnd:MMM dd, yyyy}");
         if (!string.IsNullOrEmpty(grade)) csv.AppendLine($"Grade:,{grade}");
         if (!string.IsNullOrEmpty(section)) csv.AppendLine($"Section:,{section}");
-        csv.AppendLine($"Generated:,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        csv.AppendLine($"Generated:,{_timezoneService.FormatForDisplay(DateTime.UtcNow)}");
         csv.AppendLine();
 
         csv.AppendLine("Date,Day,Total Enrolled,Present,Departed,Absent,Attendance Rate %");
@@ -99,9 +103,9 @@ public class ReportExportService : IReportExportService
                        "th,td{border:1px solid #ddd;padding:8px;text-align:left;} th{background-color:#0d6efd;color:white;}</style></head><body>");
         html.AppendLine($"<h1>Weekly Attendance Summary</h1>");
         html.AppendLine($"<p><strong>Week:</strong> {weekStart:MMMM dd} - {weekEnd:MMMM dd, yyyy}</p>");
-        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {grade}</p>");
-        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {section}</p>");
-        html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {HtmlEsc(grade)}</p>");
+        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {HtmlEsc(section)}</p>");
+        html.AppendLine($"<p><strong>Generated:</strong> {_timezoneService.FormatForDisplay(DateTime.UtcNow)}</p>");
 
         html.AppendLine("<table><tr><th>Date</th><th>Day</th><th>Total Enrolled</th><th>Present</th><th>Departed</th><th>Absent</th><th>Attendance Rate</th></tr>");
 
@@ -127,7 +131,7 @@ public class ReportExportService : IReportExportService
         csv.AppendLine($"Month:,{monthStart:MMMM yyyy}");
         if (!string.IsNullOrEmpty(grade)) csv.AppendLine($"Grade:,{grade}");
         if (!string.IsNullOrEmpty(section)) csv.AppendLine($"Section:,{section}");
-        csv.AppendLine($"Generated:,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        csv.AppendLine($"Generated:,{_timezoneService.FormatForDisplay(DateTime.UtcNow)}");
         csv.AppendLine();
 
         csv.AppendLine("Date,Day,Total Enrolled,Present,Departed,Absent,Attendance Rate %");
@@ -154,9 +158,9 @@ public class ReportExportService : IReportExportService
                        "th,td{border:1px solid #ddd;padding:8px;text-align:left;} th{background-color:#0d6efd;color:white;}</style></head><body>");
         html.AppendLine($"<h1>Monthly Attendance Report</h1>");
         html.AppendLine($"<p><strong>Month:</strong> {monthStart:MMMM yyyy}</p>");
-        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {grade}</p>");
-        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {section}</p>");
-        html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {HtmlEsc(grade)}</p>");
+        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {HtmlEsc(section)}</p>");
+        html.AppendLine($"<p><strong>Generated:</strong> {_timezoneService.FormatForDisplay(DateTime.UtcNow)}</p>");
 
         html.AppendLine("<table><tr><th>Date</th><th>Day</th><th>Total</th><th>Present</th><th>Departed</th><th>Absent</th><th>Rate</th></tr>");
 
@@ -179,30 +183,34 @@ public class ReportExportService : IReportExportService
 
         var csv = new StringBuilder();
         csv.AppendLine("SmartLog - Student Attendance History");
-        csv.AppendLine($"Student:,{student.FirstName} {student.LastName}");
-        csv.AppendLine($"Student ID:,{student.StudentId}");
-        csv.AppendLine($"Grade:,{student.GradeLevel}-{student.Section}");
+        csv.AppendLine($"Student:,{CsvEscape($"{student.FirstName} {student.LastName}")}");
+        csv.AppendLine($"Student ID:,{CsvEscape(student.StudentId)}");
+        csv.AppendLine($"Grade:,{CsvEscape($"{student.GradeLevel}-{student.Section}")}");
         csv.AppendLine($"Period:,{startDate:MMM dd yyyy} - {endDate:MMM dd yyyy}");
-        csv.AppendLine($"Generated:,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        csv.AppendLine($"Generated:,{_timezoneService.FormatForDisplay(DateTime.UtcNow)}");
         csv.AppendLine();
 
         csv.AppendLine("Date,Day,Status,Entry Time,Exit Time");
 
+        // Single query for entire date range
+        var allScans = await _context.Scans
+            .Where(s => s.StudentId == studentId && s.ScannedAt >= startDate.Date && s.ScannedAt < endDate.Date.AddDays(1) && s.Status == "ACCEPTED")
+            .OrderBy(s => s.ScannedAt)
+            .ToListAsync();
+
+        var scansByDate = allScans.GroupBy(s => s.ScannedAt.Date).ToDictionary(g => g.Key, g => g.ToList());
+
         for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
         {
-            var nextDay = date.AddDays(1);
-            var scans = await _context.Scans
-                .Where(s => s.StudentId == studentId && s.ScannedAt >= date && s.ScannedAt < nextDay && s.Status == "ACCEPTED")
-                .OrderBy(s => s.ScannedAt)
-                .ToListAsync();
+            scansByDate.TryGetValue(date, out var scans);
 
-            var entryTime = scans.FirstOrDefault(s => s.ScanType == "ENTRY")?.ScannedAt;
-            var exitTime = scans.FirstOrDefault(s => s.ScanType == "EXIT")?.ScannedAt;
+            var entryTime = scans?.FirstOrDefault(s => s.ScanType == "ENTRY")?.ScannedAt;
+            var exitTime = scans?.FirstOrDefault(s => s.ScanType == "EXIT")?.ScannedAt;
             var status = entryTime.HasValue && exitTime.HasValue ? "Departed" :
                         entryTime.HasValue ? "Present" : "Absent";
 
             csv.AppendLine($"{date:MMM dd yyyy},{date:dddd},{status}," +
-                          $"{entryTime?.ToString("HH:mm") ?? "-"},{exitTime?.ToString("HH:mm") ?? "-"}");
+                          $"{FormatPht(entryTime, "HH:mm")},{FormatPht(exitTime, "HH:mm")}");
         }
 
         return Encoding.UTF8.GetBytes(csv.ToString());
@@ -218,28 +226,32 @@ public class ReportExportService : IReportExportService
         html.AppendLine("<style>body{font-family:Arial;} table{border-collapse:collapse;width:100%;} " +
                        "th,td{border:1px solid #ddd;padding:8px;text-align:left;} th{background-color:#0d6efd;color:white;}</style></head><body>");
         html.AppendLine($"<h1>Student Attendance History</h1>");
-        html.AppendLine($"<p><strong>Student:</strong> {student.FirstName} {student.LastName} ({student.StudentId})</p>");
-        html.AppendLine($"<p><strong>Grade:</strong> {student.GradeLevel} - Section {student.Section}</p>");
+        html.AppendLine($"<p><strong>Student:</strong> {HtmlEsc($"{student.FirstName} {student.LastName}")} ({HtmlEsc(student.StudentId)})</p>");
+        html.AppendLine($"<p><strong>Grade:</strong> {HtmlEsc(student.GradeLevel)} - Section {HtmlEsc(student.Section)}</p>");
         html.AppendLine($"<p><strong>Period:</strong> {startDate:MMMM dd, yyyy} - {endDate:MMMM dd, yyyy}</p>");
-        html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+        html.AppendLine($"<p><strong>Generated:</strong> {_timezoneService.FormatForDisplay(DateTime.UtcNow)}</p>");
 
         html.AppendLine("<table><tr><th>Date</th><th>Day</th><th>Status</th><th>Entry Time</th><th>Exit Time</th></tr>");
 
+        // Single query for entire date range
+        var allScansHtml = await _context.Scans
+            .Where(s => s.StudentId == studentId && s.ScannedAt >= startDate.Date && s.ScannedAt < endDate.Date.AddDays(1) && s.Status == "ACCEPTED")
+            .OrderBy(s => s.ScannedAt)
+            .ToListAsync();
+
+        var scansByDateHtml = allScansHtml.GroupBy(s => s.ScannedAt.Date).ToDictionary(g => g.Key, g => g.ToList());
+
         for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
         {
-            var nextDay = date.AddDays(1);
-            var scans = await _context.Scans
-                .Where(s => s.StudentId == studentId && s.ScannedAt >= date && s.ScannedAt < nextDay && s.Status == "ACCEPTED")
-                .OrderBy(s => s.ScannedAt)
-                .ToListAsync();
+            scansByDateHtml.TryGetValue(date, out var scans);
 
-            var entryTime = scans.FirstOrDefault(s => s.ScanType == "ENTRY")?.ScannedAt;
-            var exitTime = scans.FirstOrDefault(s => s.ScanType == "EXIT")?.ScannedAt;
+            var entryTime = scans?.FirstOrDefault(s => s.ScanType == "ENTRY")?.ScannedAt;
+            var exitTime = scans?.FirstOrDefault(s => s.ScanType == "EXIT")?.ScannedAt;
             var status = entryTime.HasValue && exitTime.HasValue ? "Departed" :
                         entryTime.HasValue ? "Present" : "Absent";
 
-            html.AppendLine($"<tr><td>{date:MMM dd, yyyy}</td><td>{date:dddd}</td><td>{status}</td>" +
-                          $"<td>{entryTime?.ToString("h:mm tt") ?? "-"}</td><td>{exitTime?.ToString("h:mm tt") ?? "-"}</td></tr>");
+            html.AppendLine($"<tr><td>{date:MMM dd, yyyy}</td><td>{date:dddd}</td><td>{HtmlEsc(status)}</td>" +
+                          $"<td>{FormatPht(entryTime, "h:mm tt")}</td><td>{FormatPht(exitTime, "h:mm tt")}</td></tr>");
         }
 
         html.AppendLine("</table></body></html>");
@@ -278,17 +290,16 @@ public class ReportExportService : IReportExportService
 
         var csv = new StringBuilder();
         csv.AppendLine("SmartLog - Audit Logs Export");
-        csv.AppendLine($"Period:,{defaultStartDate:yyyy-MM-dd HH:mm} - {defaultEndDate:yyyy-MM-dd HH:mm}");
-        csv.AppendLine($"Generated:,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        csv.AppendLine($"Period:,{_timezoneService.FormatForDisplay(defaultStartDate, "yyyy-MM-dd hh:mm tt")} - {_timezoneService.FormatForDisplay(defaultEndDate, "yyyy-MM-dd hh:mm tt")}");
+        csv.AppendLine($"Generated:,{_timezoneService.FormatForDisplay(DateTime.UtcNow)}");
         csv.AppendLine();
 
         csv.AppendLine("Timestamp,Action,User,Performed By,Details,IP Address");
         foreach (var log in logs)
         {
-            var details = log.Details?.Replace("\"", "\"\"").Replace("\n", " ").Replace("\r", " ") ?? "";
-            csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.Action}," +
-                          $"{log.User?.UserName ?? "-"},{log.PerformedByUser?.UserName ?? "System"}," +
-                          $"\"{details}\",{log.IpAddress ?? "-"}");
+            csv.AppendLine($"{_timezoneService.FormatForDisplay(log.Timestamp)},{CsvEscape(log.Action)}," +
+                          $"{CsvEscape(log.User?.UserName ?? "-")},{CsvEscape(log.PerformedByUser?.UserName ?? "System")}," +
+                          $"{CsvEscape(log.Details)},{CsvEscape(log.IpAddress ?? "-")}");
         }
 
         return Encoding.UTF8.GetBytes(csv.ToString());
@@ -305,9 +316,9 @@ public class ReportExportService : IReportExportService
 
         html.AppendLine($"<h1>Daily Attendance Report</h1>");
         html.AppendLine($"<p><strong>Date:</strong> {date:MMMM dd, yyyy (dddd)}</p>");
-        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {grade}</p>");
-        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {section}</p>");
-        html.AppendLine($"<p><strong>Generated:</strong> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>");
+        if (!string.IsNullOrEmpty(grade)) html.AppendLine($"<p><strong>Grade:</strong> {HtmlEsc(grade)}</p>");
+        if (!string.IsNullOrEmpty(section)) html.AppendLine($"<p><strong>Section:</strong> {HtmlEsc(section)}</p>");
+        html.AppendLine($"<p><strong>Generated:</strong> {_timezoneService.FormatForDisplay(DateTime.UtcNow)}</p>");
 
         html.AppendLine("<div class='summary'>");
         html.AppendLine($"<h3>Summary</h3>");
@@ -321,13 +332,49 @@ public class ReportExportService : IReportExportService
         html.AppendLine("<table><tr><th>Student ID</th><th>Name</th><th>Grade</th><th>Section</th><th>Status</th><th>Entry</th><th>Exit</th></tr>");
         foreach (var record in records.OrderBy(r => int.TryParse(r.GradeLevel, out var g) ? g : 0).ThenBy(r => r.Section).ThenBy(r => r.FullName))
         {
-            html.AppendLine($"<tr><td>{record.StudentId}</td><td>{record.FullName}</td><td>{record.GradeLevel}</td>" +
-                          $"<td>{record.Section}</td><td>{record.Status}</td>" +
-                          $"<td>{record.EntryTime?.ToString("h:mm tt") ?? "-"}</td>" +
-                          $"<td>{record.ExitTime?.ToString("h:mm tt") ?? "-"}</td></tr>");
+            html.AppendLine($"<tr><td>{HtmlEsc(record.StudentIdNumber)}</td><td>{HtmlEsc(record.FullName)}</td><td>{HtmlEsc(record.GradeLevel)}</td>" +
+                          $"<td>{HtmlEsc(record.Section)}</td><td>{HtmlEsc(record.Status)}</td>" +
+                          $"<td>{FormatPht(record.EntryTime, "h:mm tt")}</td>" +
+                          $"<td>{FormatPht(record.ExitTime, "h:mm tt")}</td></tr>");
         }
         html.AppendLine("</table></body></html>");
 
         return html.ToString();
+    }
+
+    /// <summary>
+    /// Escapes a value for safe CSV output. Prevents formula injection (=, +, -, @, tab, CR)
+    /// and handles commas/quotes/newlines per RFC 4180.
+    /// </summary>
+    private static string CsvEscape(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+
+        // Prefix formula-triggering characters to prevent CSV injection in Excel/Calc
+        if (value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n')
+            value = "'" + value;
+
+        // Quote the field if it contains special CSV characters
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            return "\"" + value.Replace("\"", "\"\"") + "\"";
+
+        return value;
+    }
+
+    /// <summary>
+    /// HTML-encodes a value for safe inclusion in HTML exports.
+    /// </summary>
+    private static string HtmlEsc(string? value)
+    {
+        return WebUtility.HtmlEncode(value ?? "");
+    }
+
+    /// <summary>
+    /// Formats a UTC DateTime to Philippines time with the given format. Returns fallback if null.
+    /// </summary>
+    private string FormatPht(DateTime? utcDateTime, string format, string fallback = "-")
+    {
+        if (!utcDateTime.HasValue) return fallback;
+        return _timezoneService.FormatForDisplay(utcDateTime.Value, format);
     }
 }

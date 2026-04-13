@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Validation;
 
 namespace SmartLog.Web.Services;
 
@@ -124,8 +125,8 @@ public class BulkImportService : IBulkImportService
                 rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "GuardianRelationship", Message = "Must be Mother, Father, Guardian, or Other", OriginalValue = row.GuardianRelationship });
             if (string.IsNullOrWhiteSpace(row.ParentPhone))
                 rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "ParentPhone", Message = "Parent phone is required" });
-            else if (!Regex.IsMatch(row.ParentPhone, @"^[\d\+\-\(\)\s]{7,20}$"))
-                rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "ParentPhone", Message = "Invalid phone number format", OriginalValue = row.ParentPhone });
+            else if (!PhMobileAttribute.IsValidPhMobile(row.ParentPhone))
+                rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "ParentPhone", Message = "Invalid Philippine mobile number (e.g. 09171234567)", OriginalValue = row.ParentPhone });
 
             // Validate grade level exists
             if (!string.IsNullOrWhiteSpace(row.GradeLevelCode))
@@ -164,8 +165,8 @@ public class BulkImportService : IBulkImportService
                 rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "SmsLanguage", Message = "Must be EN or FIL", OriginalValue = row.SmsLanguage });
 
             // Validate alternate phone if provided
-            if (!string.IsNullOrWhiteSpace(row.AlternatePhone) && !Regex.IsMatch(row.AlternatePhone, @"^[\d\+\-\(\)\s]{7,20}$"))
-                rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "AlternatePhone", Message = "Invalid phone number format", OriginalValue = row.AlternatePhone });
+            if (!string.IsNullOrWhiteSpace(row.AlternatePhone) && !PhMobileAttribute.IsValidPhMobile(row.AlternatePhone))
+                rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "AlternatePhone", Message = "Invalid Philippine mobile number (e.g. 09171234567)", OriginalValue = row.AlternatePhone });
 
             var validatedRow = new ValidatedRow<StudentImportRow>
             {

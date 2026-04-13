@@ -130,8 +130,8 @@
                             @foreach (var scan in Model.Scans)
                             {
                                 <tr class="@(scan.Status.StartsWith("REJECTED") ? "table-danger" : "")">
-                                    <td class="text-nowrap">@scan.ScannedAt.ToLocalTime().ToString("MMM dd HH:mm:ss")</td>
-                                    <td class="text-nowrap">@scan.ReceivedAt.ToLocalTime().ToString("MMM dd HH:mm:ss")</td>
+                                    <td class="text-nowrap">@scan.ScannedAt.ToString("MMM dd hh:mm:ss tt")</td>
+                                    <td class="text-nowrap">@scan.ReceivedAt.ToString("MMM dd hh:mm:ss tt")</td>
                                     <td>@scan.StudentId</td>
                                     <td>@scan.StudentName</td>
                                     <td>@scan.GradeLevel</td>

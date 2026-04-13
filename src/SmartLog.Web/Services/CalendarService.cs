@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
-using SmartLog.Web.Services.Sms;
 
 namespace SmartLog.Web.Services;
 
@@ -13,18 +12,15 @@ public class CalendarService : ICalendarService
 {
     private readonly ApplicationDbContext _context;
     private readonly IAcademicYearService _academicYearService;
-    private readonly ISmsService _smsService;
     private readonly ILogger<CalendarService> _logger;
 
     public CalendarService(
         ApplicationDbContext context,
         IAcademicYearService academicYearService,
-        ISmsService smsService,
         ILogger<CalendarService> logger)
     {
         _context = context;
         _academicYearService = academicYearService;
-        _smsService = smsService;
         _logger = logger;
     }
 
@@ -120,7 +116,9 @@ public class CalendarService : ICalendarService
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogError(ex, "Error parsing AffectedGrades JSON for event {EventId}", suspension.Id);
+                    // Fail-safe: if AffectedGrades JSON is corrupted, treat suspension as affecting all grades
+                    _logger.LogError(ex, "Malformed AffectedGrades JSON for event {EventId} — treating as all-grade suspension", suspension.Id);
+                    return false;
                 }
             }
         }
@@ -174,24 +172,6 @@ public class CalendarService : ICalendarService
         _logger.LogInformation(
             "Created calendar event: {Title} ({EventType}) for {StartDate} - {EndDate}",
             calendarEvent.Title, calendarEvent.EventType, calendarEvent.StartDate, calendarEvent.EndDate);
-
-        // Queue SMS notifications for holidays and suspensions that affect attendance
-        if (calendarEvent.AffectsAttendance &&
-            (calendarEvent.EventType == EventType.Holiday ||
-             calendarEvent.EventType == EventType.Suspension))
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _smsService.QueueCalendarEventNotificationsAsync(calendarEvent.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error queuing SMS notifications for calendar event {EventId}", calendarEvent.Id);
-                }
-            });
-        }
 
         return calendarEvent;
     }

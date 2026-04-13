@@ -150,6 +150,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.AcademicYearId);
 
+            // Composite index for report queries filtering by status + date range
+            entity.HasIndex(e => new { e.Status, e.ScannedAt })
+                .HasDatabaseName("IX_Scans_Status_ScannedAt");
+
+            // Unique filtered index to prevent concurrent duplicate scans
+            // Only enforced for ACCEPTED scans (duplicates are allowed for rejected/duplicate statuses)
+            entity.HasIndex(e => new { e.StudentId, e.ScanType, e.ScannedAt })
+                .HasFilter("[Status] = 'ACCEPTED'")
+                .IsUnique()
+                .HasDatabaseName("IX_Scans_NoDuplicateAccepted");
+
             entity.HasOne(e => e.Device)
                 .WithMany(d => d.Scans)
                 .HasForeignKey(e => e.DeviceId)

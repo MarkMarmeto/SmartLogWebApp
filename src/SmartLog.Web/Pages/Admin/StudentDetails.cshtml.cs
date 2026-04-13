@@ -87,10 +87,11 @@ public class StudentDetailsModel : PageModel
             return NotFound();
         }
 
-        // Invalidate old QR code
+        // Remove old QR code (one-to-one FK requires removal before creating new one)
+        string? oldQrPayload = null;
         if (student.QrCode != null)
         {
-            student.QrCode.IsValid = false;
+            oldQrPayload = student.QrCode.Payload;
             _context.QrCodes.Remove(student.QrCode);
         }
 
@@ -101,14 +102,14 @@ public class StudentDetailsModel : PageModel
 
         await _context.SaveChangesAsync();
 
-        // Audit log
+        // Audit log — include old payload for audit trail since QR record is deleted
         var currentUser = User.Identity?.Name;
         var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "QrCodeRegenerated",
             userId: null,
             performedByUserId: currentUserId,
-            details: $"QR code regenerated for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}",
+            details: $"QR code regenerated for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}. Previous QR: {oldQrPayload ?? "none"}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
 

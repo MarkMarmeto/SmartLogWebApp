@@ -37,7 +37,7 @@ public class FileUploadService : IFileUploadService
 
     public async Task<string> UploadProfilePictureAsync(IFormFile file, string entityType, string entityId)
     {
-        if (!IsValidImage(file))
+        if (!await IsValidImageAsync(file))
         {
             throw new InvalidOperationException("Invalid image file");
         }
@@ -111,15 +111,15 @@ public class FileUploadService : IFileUploadService
         return Task.CompletedTask;
     }
 
-    public bool IsValidImage(IFormFile file)
+    public async Task<bool> IsValidImageAsync(IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
             return false;
         }
 
-        // Check file size (use sync-over-async since interface is sync; cached after first call)
-        var maxFileSize = GetMaxFileSizeAsync().GetAwaiter().GetResult();
+        // Check file size
+        var maxFileSize = await GetMaxFileSizeAsync();
         if (file.Length > maxFileSize)
         {
             _logger.LogWarning("File too large: {Size} bytes (max: {Max})", file.Length, maxFileSize);
@@ -127,7 +127,7 @@ public class FileUploadService : IFileUploadService
         }
 
         // Check extension
-        var allowedExtensions = GetAllowedExtensionsAsync().GetAwaiter().GetResult();
+        var allowedExtensions = await GetAllowedExtensionsAsync();
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(extension))
         {

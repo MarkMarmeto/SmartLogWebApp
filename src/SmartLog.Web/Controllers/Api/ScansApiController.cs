@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
-using SmartLog.Web.Services.Sms;
 using System.ComponentModel.DataAnnotations;
 
 namespace SmartLog.Web.Controllers.Api;
@@ -23,9 +22,7 @@ public class ScansApiController : ControllerBase
     private readonly IQrCodeService _qrCodeService;
     private readonly IDeviceService _deviceService;
     private readonly ICalendarService _calendarService;
-    private readonly ISmsService _smsService;
     private readonly IAppSettingsService _appSettingsService;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ScansApiController> _logger;
 
     public ScansApiController(
@@ -33,18 +30,14 @@ public class ScansApiController : ControllerBase
         IQrCodeService qrCodeService,
         IDeviceService deviceService,
         ICalendarService calendarService,
-        ISmsService smsService,
         IAppSettingsService appSettingsService,
-        IServiceScopeFactory scopeFactory,
         ILogger<ScansApiController> logger)
     {
         _context = context;
         _qrCodeService = qrCodeService;
         _deviceService = deviceService;
         _calendarService = calendarService;
-        _smsService = smsService;
         _appSettingsService = appSettingsService;
-        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -236,30 +229,6 @@ public class ScansApiController : ControllerBase
         _logger.LogInformation("Scan accepted for student {StudentId} on device {DeviceId}",
             studentIdStr, device.Id);
 
-        // Queue SMS notification in background using a fresh scope — the request scope is
-        // disposed before Task.Run executes, so captured scoped services would be invalid.
-        var capturedStudentId = student.Id;
-        var capturedScanType = request.ScanType;
-        var capturedScannedAt = request.ScannedAt;
-        var capturedScanId = scan.Id;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
-                await smsService.QueueAttendanceNotificationAsync(
-                    capturedStudentId,
-                    capturedScanType,
-                    capturedScannedAt,
-                    capturedScanId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error queuing SMS notification for student {StudentId}", studentIdStr);
-            }
-        });
-
         // US0030-AC3: Return success response
         return Ok(new ScanResponse
         {
@@ -283,17 +252,16 @@ public class ScansApiController : ControllerBase
 
     private async Task<Scan?> CheckDuplicateScanAsync(Guid deviceId, Guid studentId, string scanType, DateTime scannedAt)
     {
-        // US0032-AC1: Check for scan within configurable window
+        // US0032-AC1: Check for existing scan within the window before the current scan time
         var windowMinutes = await _appSettingsService.GetAsync("QRCode.DuplicateScanWindowMinutes", 5);
-        var fiveMinutesAgo = scannedAt.AddMinutes(-windowMinutes);
-        var fiveMinutesLater = scannedAt.AddMinutes(windowMinutes);
+        var windowStart = scannedAt.AddMinutes(-windowMinutes);
 
         return await _context.Scans
             .Where(s => s.DeviceId == deviceId &&
                        s.StudentId == studentId &&
                        s.ScanType == scanType &&
-                       s.ScannedAt >= fiveMinutesAgo &&
-                       s.ScannedAt <= fiveMinutesLater &&
+                       s.ScannedAt >= windowStart &&
+                       s.ScannedAt <= scannedAt &&
                        s.Status == "ACCEPTED")
             .OrderByDescending(s => s.ScannedAt)
             .FirstOrDefaultAsync();

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
 
 namespace SmartLog.Web.Pages.Admin;
 
@@ -11,10 +12,12 @@ namespace SmartLog.Web.Pages.Admin;
 public class ScanLogsModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly ITimezoneService _timezoneService;
 
-    public ScanLogsModel(ApplicationDbContext context)
+    public ScanLogsModel(ApplicationDbContext context, ITimezoneService timezoneService)
     {
         _context = context;
+        _timezoneService = timezoneService;
     }
 
     public List<ScanLogEntry> Scans { get; set; } = new();
@@ -98,13 +101,18 @@ public class ScanLogsModel : PageModel
             query = query.Where(s => s.ScannedAt < endOfDay);
         }
 
-        // Get summary counts (from filtered set)
-        AcceptedCount = await query.CountAsync(s => s.Status == "ACCEPTED");
-        RejectedCount = await query.CountAsync(s => s.Status.StartsWith("REJECTED"));
-        DuplicateCount = await query.CountAsync(s => s.Status == "DUPLICATE");
+        // Get summary counts in a single query instead of 4 separate round-trips
+        var statusCounts = await query
+            .GroupBy(s => s.Status == "ACCEPTED" ? "ACCEPTED" :
+                         s.Status == "DUPLICATE" ? "DUPLICATE" :
+                         s.Status.StartsWith("REJECTED") ? "REJECTED" : "OTHER")
+            .Select(g => new { Category = g.Key, Count = g.Count() })
+            .ToListAsync();
 
-        // Get total count for pagination
-        TotalScans = await query.CountAsync();
+        AcceptedCount = statusCounts.Where(x => x.Category == "ACCEPTED").Sum(x => x.Count);
+        RejectedCount = statusCounts.Where(x => x.Category == "REJECTED").Sum(x => x.Count);
+        DuplicateCount = statusCounts.Where(x => x.Category == "DUPLICATE").Sum(x => x.Count);
+        TotalScans = statusCounts.Sum(x => x.Count);
         TotalPages = (int)Math.Ceiling(TotalScans / (double)PageSize);
 
         if (PageNumber < 1) PageNumber = 1;
@@ -129,6 +137,13 @@ public class ScanLogsModel : PageModel
                 DeviceName = s.Device.Name
             })
             .ToListAsync();
+
+        // Convert UTC timestamps to Philippines time for display
+        foreach (var scan in Scans)
+        {
+            scan.ScannedAt = _timezoneService.ToPhilippinesTime(scan.ScannedAt);
+            scan.ReceivedAt = _timezoneService.ToPhilippinesTime(scan.ReceivedAt);
+        }
     }
 
     public class ScanLogEntry

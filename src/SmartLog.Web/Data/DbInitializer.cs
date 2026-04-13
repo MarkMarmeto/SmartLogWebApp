@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
 
 namespace SmartLog.Web.Data;
 
@@ -45,8 +46,8 @@ public static class DbInitializer
                 throw new InvalidOperationException("SMARTLOG_SEED_PASSWORD environment variable must be set in production.");
             }
 
-            adminPassword = "SecurePass1!";
-            logger.LogWarning("Using default seed password for development. Set SMARTLOG_SEED_PASSWORD environment variable for production.");
+            adminPassword = PasswordGenerator.GenerateTemporaryPassword();
+            logger.LogWarning("Generated seed password for admin.amy: {Password} — Set SMARTLOG_SEED_PASSWORD environment variable to use a fixed password.", adminPassword);
         }
 
         var existingUser = await userManager.FindByNameAsync(adminUserName);

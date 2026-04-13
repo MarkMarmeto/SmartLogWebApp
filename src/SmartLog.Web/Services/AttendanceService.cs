@@ -96,6 +96,7 @@ public class AttendanceService : IAttendanceService
     /// <summary>
     /// Get detailed attendance list for a specific date.
     /// US0034-AC3: Student attendance list with pagination.
+    /// Status filter is applied BEFORE pagination so counts are accurate.
     /// </summary>
     public async Task<List<StudentAttendanceRecord>> GetAttendanceListAsync(
         DateTime date,
@@ -106,6 +107,73 @@ public class AttendanceService : IAttendanceService
         int pageNumber = 1,
         int pageSize = 50)
     {
+        // Cap pageSize to prevent abuse
+        pageSize = Math.Clamp(pageSize, 1, 200);
+
+        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm);
+
+        // Apply status filter BEFORE pagination
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+        {
+            records = records.Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        // Apply pagination AFTER status filter
+        return records
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Get total count for pagination, accounting for status filter.
+    /// </summary>
+    public async Task<int> GetAttendanceCountAsync(
+        DateTime date,
+        string? gradeFilter = null,
+        string? sectionFilter = null,
+        string? searchTerm = null,
+        string? statusFilter = null)
+    {
+        // When no status filter, count is just the number of matching students
+        if (string.IsNullOrWhiteSpace(statusFilter))
+        {
+            var studentsQuery = _context.Students.Where(s => s.IsActive);
+
+            if (!string.IsNullOrWhiteSpace(gradeFilter))
+                studentsQuery = studentsQuery.Where(s => s.GradeLevel == gradeFilter);
+
+            if (!string.IsNullOrWhiteSpace(sectionFilter))
+                studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var search = searchTerm.ToLower();
+                studentsQuery = studentsQuery.Where(s =>
+                    s.FirstName.ToLower().Contains(search) ||
+                    s.LastName.ToLower().Contains(search) ||
+                    s.StudentId.ToLower().Contains(search) ||
+                    (s.LRN != null && s.LRN.Contains(search)));
+            }
+
+            return await studentsQuery.CountAsync();
+        }
+
+        // When status filter is active, we need to derive status to get accurate count
+        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm);
+        return records.Count(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Builds attendance records with derived status for all matching students.
+    /// Shared by GetAttendanceListAsync and GetAttendanceCountAsync to ensure consistency.
+    /// </summary>
+    private async Task<List<StudentAttendanceRecord>> BuildAttendanceRecordsAsync(
+        DateTime date,
+        string? gradeFilter = null,
+        string? sectionFilter = null,
+        string? searchTerm = null)
+    {
         var dateOnly = date.Date;
         var nextDay = dateOnly.AddDays(1);
 
@@ -113,16 +181,11 @@ public class AttendanceService : IAttendanceService
         var studentsQuery = _context.Students
             .Where(s => s.IsActive);
 
-        // Apply filters
         if (!string.IsNullOrWhiteSpace(gradeFilter))
-        {
             studentsQuery = studentsQuery.Where(s => s.GradeLevel == gradeFilter);
-        }
 
         if (!string.IsNullOrWhiteSpace(sectionFilter))
-        {
             studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
-        }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -134,12 +197,10 @@ public class AttendanceService : IAttendanceService
                 (s.LRN != null && s.LRN.Contains(search)));
         }
 
-        // Get students with their scans
+        // Load all matching students (needed to derive status before pagination)
         var students = await studentsQuery
             .OrderBy(s => s.LastName)
             .ThenBy(s => s.FirstName)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
             .Select(s => new
             {
                 s.Id,
@@ -163,11 +224,10 @@ public class AttendanceService : IAttendanceService
             .OrderBy(s => s.ScannedAt)
             .ToListAsync();
 
-        // Build attendance records
-        var records = students.Select(student =>
+        // Build attendance records with status derived from scans
+        return students.Select(student =>
         {
             var studentScans = scans.Where(s => s.StudentId == student.Id).ToList();
-
             var entryScans = studentScans.Where(s => s.ScanType == "ENTRY").ToList();
             var exitScans = studentScans.Where(s => s.ScanType == "EXIT").ToList();
 
@@ -177,24 +237,20 @@ public class AttendanceService : IAttendanceService
 
             if (entryScans.Any())
             {
-                // Use the first entry scan
                 entryTime = entryScans.First().ScannedAt;
 
                 if (exitScans.Any(e => e.ScannedAt > entryTime))
                 {
-                    // Has exit after entry = Departed
                     status = "Departed";
                     exitTime = exitScans.Where(e => e.ScannedAt > entryTime).First().ScannedAt;
                 }
                 else
                 {
-                    // Has entry but no exit = Present
                     status = "Present";
                 }
             }
             else
             {
-                // No entry scan = Absent
                 status = "Absent";
             }
 
@@ -211,49 +267,5 @@ public class AttendanceService : IAttendanceService
                 ExitTime = exitTime
             };
         }).ToList();
-
-        // Apply status filter
-        if (!string.IsNullOrWhiteSpace(statusFilter))
-        {
-            records = records.Where(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-
-        return records;
-    }
-
-    /// <summary>
-    /// Get total count for pagination.
-    /// </summary>
-    public async Task<int> GetAttendanceCountAsync(
-        DateTime date,
-        string? gradeFilter = null,
-        string? sectionFilter = null,
-        string? searchTerm = null,
-        string? statusFilter = null)
-    {
-        var studentsQuery = _context.Students
-            .Where(s => s.IsActive);
-
-        if (!string.IsNullOrWhiteSpace(gradeFilter))
-        {
-            studentsQuery = studentsQuery.Where(s => s.GradeLevel == gradeFilter);
-        }
-
-        if (!string.IsNullOrWhiteSpace(sectionFilter))
-        {
-            studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
-        }
-
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var search = searchTerm.ToLower();
-            studentsQuery = studentsQuery.Where(s =>
-                s.FirstName.ToLower().Contains(search) ||
-                s.LastName.ToLower().Contains(search) ||
-                s.StudentId.ToLower().Contains(search) ||
-                (s.LRN != null && s.LRN.Contains(search)));
-        }
-
-        return await studentsQuery.CountAsync();
     }
 }

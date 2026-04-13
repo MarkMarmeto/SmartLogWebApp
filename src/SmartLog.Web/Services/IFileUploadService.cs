@@ -25,7 +25,7 @@ public interface IFileUploadService
     /// </summary>
     /// <param name="file">The file to validate</param>
     /// <returns>True if valid, false otherwise</returns>
-    bool IsValidImage(IFormFile file);
+    Task<bool> IsValidImageAsync(IFormFile file);
 
     /// <summary>
     /// Get the full URL for a profile picture path.

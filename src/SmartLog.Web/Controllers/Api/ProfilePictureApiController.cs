@@ -50,7 +50,7 @@ public class ProfilePictureApiController : ControllerBase
                 return Unauthorized();
             }
 
-            if (!_fileUploadService.IsValidImage(file))
+            if (!await _fileUploadService.IsValidImageAsync(file))
             {
                 return BadRequest(new { error = "Invalid image file. Please upload a JPG, PNG, or GIF file under 5MB." });
             }
@@ -94,7 +94,7 @@ public class ProfilePictureApiController : ControllerBase
                 return NotFound(new { error = "Student not found" });
             }
 
-            if (!_fileUploadService.IsValidImage(file))
+            if (!await _fileUploadService.IsValidImageAsync(file))
             {
                 return BadRequest(new { error = "Invalid image file. Please upload a JPG, PNG, or GIF file under 5MB." });
             }
@@ -138,7 +138,7 @@ public class ProfilePictureApiController : ControllerBase
                 return NotFound(new { error = "Faculty member not found" });
             }
 
-            if (!_fileUploadService.IsValidImage(file))
+            if (!await _fileUploadService.IsValidImageAsync(file))
             {
                 return BadRequest(new { error = "Invalid image file. Please upload a JPG, PNG, or GIF file under 5MB." });
             }

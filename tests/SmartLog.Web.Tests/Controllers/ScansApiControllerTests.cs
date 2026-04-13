@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SmartLog.Web.Controllers.Api;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
-using SmartLog.Web.Services.Sms;
 using SmartLog.Web.Tests.Helpers;
 
 namespace SmartLog.Web.Tests.Controllers;
@@ -16,11 +14,7 @@ public class ScansApiControllerTests
     private readonly Mock<IQrCodeService> _qrCodeService = new();
     private readonly Mock<IDeviceService> _deviceService = new();
     private readonly Mock<ICalendarService> _calendarService = new();
-    private readonly Mock<ISmsService> _smsService = new();
     private readonly Mock<IAppSettingsService> _appSettingsService = new();
-    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
-    private readonly Mock<IServiceScope> _serviceScope = new();
-    private readonly Mock<IServiceProvider> _scopedServiceProvider = new();
     private readonly Mock<ILogger<ScansApiController>> _logger = new();
 
     private const string ValidApiKey = "sk_live_test123";
@@ -30,21 +24,12 @@ public class ScansApiControllerTests
 
     private ScansApiController CreateController(HttpContext? httpContext = null)
     {
-        // Wire up scope factory so background Task.Run resolves the same _smsService mock
-        _scopedServiceProvider
-            .Setup(p => p.GetService(typeof(ISmsService)))
-            .Returns(_smsService.Object);
-        _serviceScope.Setup(s => s.ServiceProvider).Returns(_scopedServiceProvider.Object);
-        _scopeFactory.Setup(f => f.CreateScope()).Returns(_serviceScope.Object);
-
         var controller = new ScansApiController(
             _context,
             _qrCodeService.Object,
             _deviceService.Object,
             _calendarService.Object,
-            _smsService.Object,
             _appSettingsService.Object,
-            _scopeFactory.Object,
             _logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -395,23 +380,4 @@ public class ScansApiControllerTests
         Assert.Equal("EXIT", response.ScanType);
     }
 
-    [Fact]
-    public async Task SubmitScan_QueuesSmsNotification()
-    {
-        var controller = CreateController();
-        var request = CreateValidRequest();
-
-        await controller.SubmitScan(request);
-
-        // Give the fire-and-forget task a moment to execute
-        await Task.Delay(100);
-
-        _smsService.Verify(
-            s => s.QueueAttendanceNotificationAsync(
-                _activeStudent.Id,
-                "ENTRY",
-                It.IsAny<DateTime>(),
-                It.IsAny<Guid>()),
-            Times.Once);
-    }
 }
