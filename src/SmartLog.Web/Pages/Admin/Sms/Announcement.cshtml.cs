@@ -49,13 +49,23 @@ public class AnnouncementModel : PageModel
     [BindProperty]
     public List<string> AffectedGrades { get; set; } = new();
 
+    [BindProperty]
+    public List<string> AffectedPrograms { get; set; } = new();
+
     /// <summary>
     /// Scheduled time in Philippine local time (datetime-local input), empty = send immediately
     /// </summary>
     [BindProperty]
     public string? ScheduledAtLocal { get; set; }
 
+    /// <summary>
+    /// US0055: Per-broadcast gateway override. "GSM_MODEM", "SEMAPHORE", or null = system default.
+    /// </summary>
+    [BindProperty]
+    public string? PreferredProvider { get; set; }
+
     public List<string> AvailableGrades { get; set; } = new();
+    public List<Data.Entities.Program> AvailablePrograms { get; set; } = new();
     public int TotalActiveStudents { get; set; }
     public Dictionary<string, int> StudentCountByGrade { get; set; } = new();
     public string TemplatePrefixEn { get; set; } = string.Empty;
@@ -72,6 +82,19 @@ public class AnnouncementModel : PageModel
     public async Task OnGetAsync()
     {
         await LoadPageDataAsync();
+    }
+
+    public async Task<IActionResult> OnGetRecipientCountAsync(
+        [FromQuery] List<string>? grades,
+        [FromQuery] List<string>? programs)
+    {
+        var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+        if (grades != null && grades.Any())
+            query = query.Where(s => grades.Contains(s.GradeLevel));
+        if (programs != null && programs.Any())
+            query = query.Where(s => s.Program != null && programs.Contains(s.Program));
+        var count = await query.CountAsync();
+        return new JsonResult(new { count });
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -116,13 +139,13 @@ public class AnnouncementModel : PageModel
         var recipientQuery = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
         if (AffectedGrades.Any())
             recipientQuery = recipientQuery.Where(s => AffectedGrades.Contains(s.GradeLevel));
+        if (AffectedPrograms.Any())
+            recipientQuery = recipientQuery.Where(s => s.Program != null && AffectedPrograms.Contains(s.Program));
         var recipientCount = await recipientQuery.CountAsync();
 
         if (recipientCount == 0)
         {
-            ErrorMessage = AffectedGrades.Any()
-                ? $"No students with SMS enabled found in grades {string.Join(", ", AffectedGrades)}. Adjust the grade filter or check that students have SMS enabled."
-                : "No active students with SMS enabled were found. Enable SMS for students before sending a broadcast.";
+            ErrorMessage = "No students with SMS enabled match the selected filters. Adjust the grade/program filter or check that students have SMS enabled.";
             return RedirectToPage();
         }
 
@@ -133,30 +156,36 @@ public class AnnouncementModel : PageModel
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : User.Identity?.Name;
 
+            var provider = string.IsNullOrEmpty(PreferredProvider) ? null : PreferredProvider;
             var broadcastId = await _smsService.QueueAnnouncementAsync(
                 Message,
                 Language,
                 AffectedGrades.Any() ? AffectedGrades : null,
+                AffectedPrograms.Any() ? AffectedPrograms : null,
                 scheduledAtUtc,
                 _userManager.GetUserId(User),
-                createdByName);
+                createdByName,
+                provider);
 
             var gradeText = AffectedGrades.Any()
                 ? $"grades {string.Join(", ", AffectedGrades)}"
                 : "all grades";
+            var programText = AffectedPrograms.Any()
+                ? $", programs {string.Join(", ", AffectedPrograms)}"
+                : string.Empty;
 
             if (scheduledAtUtc.HasValue)
             {
                 var localTime = TimeZoneInfo.ConvertTimeFromUtc(scheduledAtUtc.Value, PhilippineTime);
-                StatusMessage = $"Announcement scheduled for {localTime:MMM d, yyyy h:mm tt} (PHT) for {gradeText}.";
+                StatusMessage = $"Announcement scheduled for {localTime:MMM d, yyyy h:mm tt} (PHT) for {gradeText}{programText}.";
             }
             else
             {
-                StatusMessage = $"Announcement queued successfully for {gradeText}.";
+                StatusMessage = $"Announcement queued successfully for {gradeText}{programText}.";
             }
 
-            _logger.LogInformation("Announcement broadcast created by {User}: {Message} to {Grades}",
-                User.Identity?.Name, Message, gradeText);
+            _logger.LogInformation("Announcement broadcast created by {User}: {Message} to {Grades} {Programs}",
+                User.Identity?.Name, Message, gradeText, programText);
 
             return RedirectToPage("/Admin/Sms/Broadcasts");
         }
@@ -173,6 +202,12 @@ public class AnnouncementModel : PageModel
         AvailableGrades = await _context.GradeLevels
             .OrderBy(g => g.SortOrder)
             .Select(g => g.Code)
+            .ToListAsync();
+
+        AvailablePrograms = await _context.Programs
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Code)
             .ToListAsync();
 
         TotalActiveStudents = await _context.Students

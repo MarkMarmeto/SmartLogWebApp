@@ -102,6 +102,9 @@ try
     builder.Services.AddSingleton<GsmModemGateway>();
     builder.Services.AddSingleton<SemaphoreGateway>();
     builder.Services.AddHostedService<SmsWorkerService>();
+    builder.Services.AddSingleton<NoScanAlertService>();
+    builder.Services.AddSingleton<INoScanAlertService>(sp => sp.GetRequiredService<NoScanAlertService>());
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<NoScanAlertService>());
     builder.Services.AddHttpClient(); // Required for SemaphoreGateway
 
     // Add authorization policies (US0007)

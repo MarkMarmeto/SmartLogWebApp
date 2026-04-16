@@ -5,6 +5,7 @@ using Moq;
 using SmartLog.Web.Controllers.Api;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Sms;
 using SmartLog.Web.Tests.Helpers;
 
 namespace SmartLog.Web.Tests.Controllers;
@@ -15,6 +16,7 @@ public class ScansApiControllerTests
     private readonly Mock<IDeviceService> _deviceService = new();
     private readonly Mock<ICalendarService> _calendarService = new();
     private readonly Mock<IAppSettingsService> _appSettingsService = new();
+    private readonly Mock<ISmsService> _smsService = new();
     private readonly Mock<ILogger<ScansApiController>> _logger = new();
 
     private const string ValidApiKey = "sk_live_test123";
@@ -30,6 +32,7 @@ public class ScansApiControllerTests
             _deviceService.Object,
             _calendarService.Object,
             _appSettingsService.Object,
+            _smsService.Object,
             _logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -378,6 +381,61 @@ public class ScansApiControllerTests
         var response = Assert.IsType<ScanResponse>(ok.Value);
         Assert.Equal("ACCEPTED", response.Status);
         Assert.Equal("EXIT", response.ScanType);
+    }
+
+    // ========== US0054: Entry/Exit SMS Opt-In ==========
+
+    [Fact]
+    public async Task SubmitScan_EntryExitSmsDisabled_DoesNotQueueSms()
+    {
+        // Default _activeStudent has EntryExitSmsEnabled=false
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        await controller.SubmitScan(request);
+
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitScan_EntryExitSmsEnabled_QueuesAttendanceSms()
+    {
+        _activeStudent.SmsEnabled = true;
+        _activeStudent.EntryExitSmsEnabled = true;
+        await _context.SaveChangesAsync();
+
+        _smsService.Setup(s => s.QueueAttendanceNotificationAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(_activeStudent.Id, "ENTRY", It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SubmitScan_MasterSmsDisabled_DoesNotQueueEvenIfEntryExitEnabled()
+    {
+        _activeStudent.SmsEnabled = false;
+        _activeStudent.EntryExitSmsEnabled = true;
+        await _context.SaveChangesAsync();
+
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        await controller.SubmitScan(request);
+
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
     }
 
 }

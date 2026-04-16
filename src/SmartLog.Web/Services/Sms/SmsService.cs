@@ -237,8 +237,10 @@ public class SmsService : ISmsService
         string message,
         string? language = null,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         string? createdByUserId = null,
-        string? createdByName = null)
+        string? createdByName = null,
+        string? preferredProvider = null)
     {
         var broadcastId = Guid.NewGuid();
         try
@@ -246,6 +248,8 @@ public class SmsService : ISmsService
             var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
             if (affectedGrades != null && affectedGrades.Any())
                 query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
+            if (affectedPrograms != null && affectedPrograms.Any())
+                query = query.Where(s => s.Program != null && affectedPrograms.Contains(s.Program));
             var students = await query.ToListAsync();
 
             _logger.LogInformation("Sending emergency announcement to {Count} students", students.Count);
@@ -258,10 +262,13 @@ public class SmsService : ISmsService
                 Language = language,
                 AffectedGrades = affectedGrades != null && affectedGrades.Any()
                     ? System.Text.Json.JsonSerializer.Serialize(affectedGrades) : null,
+                AffectedPrograms = affectedPrograms != null && affectedPrograms.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedPrograms) : null,
                 ScheduledAt = null,
                 Status = Data.Entities.BroadcastStatus.Sending,
                 CreatedByUserId = createdByUserId,
                 CreatedByName = createdByName,
+                PreferredProvider = preferredProvider,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -298,9 +305,11 @@ public class SmsService : ISmsService
         string message,
         string? language = null,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         DateTime? scheduledAt = null,
         string? createdByUserId = null,
-        string? createdByName = null)
+        string? createdByName = null,
+        string? preferredProvider = null)
     {
         var broadcastId = Guid.NewGuid();
         try
@@ -308,6 +317,8 @@ public class SmsService : ISmsService
             var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
             if (affectedGrades != null && affectedGrades.Any())
                 query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
+            if (affectedPrograms != null && affectedPrograms.Any())
+                query = query.Where(s => s.Program != null && affectedPrograms.Contains(s.Program));
             var students = await query.ToListAsync();
 
             _logger.LogInformation("Sending announcement to {Count} students", students.Count);
@@ -321,10 +332,13 @@ public class SmsService : ISmsService
                 Language = language,
                 AffectedGrades = affectedGrades != null && affectedGrades.Any()
                     ? System.Text.Json.JsonSerializer.Serialize(affectedGrades) : null,
+                AffectedPrograms = affectedPrograms != null && affectedPrograms.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedPrograms) : null,
                 ScheduledAt = scheduledAt,
                 Status = isScheduled ? Data.Entities.BroadcastStatus.Scheduled : Data.Entities.BroadcastStatus.Sending,
                 CreatedByUserId = createdByUserId,
                 CreatedByName = createdByName,
+                PreferredProvider = preferredProvider,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -380,9 +394,26 @@ public class SmsService : ISmsService
         var broadcastId = broadcast.Id;
         var messageType = broadcast.Type;
         var language = broadcast.Language;
+        var preferredProvider = broadcast.PreferredProvider;
 
         var isScheduled = scheduledAt.HasValue && scheduledAt.Value > DateTime.UtcNow;
-        var useBulk = !isScheduled && await CanUseBulkAsync();
+        bool useBulk;
+        if (isScheduled)
+        {
+            useBulk = false;
+        }
+        else if (preferredProvider == "GSM_MODEM")
+        {
+            useBulk = false;
+        }
+        else if (preferredProvider == "SEMAPHORE")
+        {
+            useBulk = _semaphoreGateway != null && await _semaphoreGateway.IsAvailableAsync();
+        }
+        else
+        {
+            useBulk = await CanUseBulkAsync();
+        }
 
         // Pre-render each language variant ONCE — needed before the duplicate check
         // so we can match on exact message content (prevents different broadcasts blocking each other).
@@ -462,9 +493,10 @@ public class SmsService : ISmsService
         }
         else
         {
-            // FIX 3: Batch queue inserts for GSM modem / scheduled path
+            // Batch queue inserts for GSM modem / scheduled path
+            // US0055: pass preferredProvider so SmsWorkerService can respect the per-broadcast gateway choice
             recipientCount = await QueueBroadcastBatchAsync(
-                groups, broadcastId, messageType, priority, scheduledAt);
+                groups, broadcastId, messageType, priority, scheduledAt, preferredProvider);
         }
 
         return recipientCount;
@@ -636,7 +668,8 @@ public class SmsService : ISmsService
         Guid broadcastId,
         string messageType,
         SmsPriority priority,
-        DateTime? scheduledAt)
+        DateTime? scheduledAt,
+        string? preferredProvider = null)
     {
         var now = DateTime.UtcNow;
         var entries = groups
@@ -651,7 +684,8 @@ public class SmsService : ISmsService
                 MaxRetries = 3,
                 CreatedAt = now,
                 ScheduledAt = scheduledAt,
-                BroadcastId = broadcastId
+                BroadcastId = broadcastId,
+                Provider = preferredProvider   // US0055: pre-set provider so worker respects it
             }))
             .ToList();
 
@@ -672,8 +706,9 @@ public class SmsService : ISmsService
         string message,
         SmsPriority priority = SmsPriority.Normal,
         string messageType = "CUSTOM",
-        DateTime? scheduledAt = null)
-        => QueueSmsInternalAsync(phoneNumber, message, priority, messageType, scheduledAt, broadcastId: null);
+        DateTime? scheduledAt = null,
+        string? preferredProvider = null)
+        => QueueSmsInternalAsync(phoneNumber, message, priority, messageType, scheduledAt, broadcastId: null, preferredProvider);
 
     private async Task<long> QueueSmsInternalAsync(
         string phoneNumber,
@@ -681,7 +716,8 @@ public class SmsService : ISmsService
         SmsPriority priority,
         string messageType,
         DateTime? scheduledAt,
-        Guid? broadcastId)
+        Guid? broadcastId,
+        string? preferredProvider = null)
     {
         try
         {
@@ -696,7 +732,8 @@ public class SmsService : ISmsService
                 MaxRetries = 3,
                 CreatedAt = DateTime.UtcNow,
                 ScheduledAt = scheduledAt,
-                BroadcastId = broadcastId
+                BroadcastId = broadcastId,
+                Provider = preferredProvider   // US0055: pre-set provider so worker respects it
             };
 
             _context.SmsQueues.Add(queueEntry);

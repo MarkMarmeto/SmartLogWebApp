@@ -124,10 +124,12 @@ public class SmsWorkerService : BackgroundService
             await context.SaveChangesAsync();
 
             // Select gateway
+            // US0055: if the message has a pre-set provider (per-broadcast override), honour it
             ISmsGateway? gateway = null;
-            string provider = defaultProvider;
+            var effectiveProvider = !string.IsNullOrEmpty(message.Provider) ? message.Provider : defaultProvider;
+            string provider = effectiveProvider;
 
-            if (defaultProvider == "GSM_MODEM" && gsmGateway != null)
+            if (effectiveProvider == "GSM_MODEM" && gsmGateway != null)
             {
                 if (await gsmGateway.IsAvailableAsync())
                 {
@@ -144,7 +146,7 @@ public class SmsWorkerService : BackgroundService
                     }
                 }
             }
-            else if (defaultProvider == "SEMAPHORE" && semaphoreGateway != null)
+            else if (effectiveProvider == "SEMAPHORE" && semaphoreGateway != null)
             {
                 if (await semaphoreGateway.IsAvailableAsync())
                 {
@@ -191,6 +193,7 @@ public class SmsWorkerService : BackgroundService
                     MessageParts = result.MessageParts,
                     ProcessingTimeMs = result.ProcessingTimeMs,
                     StudentId = message.StudentId,
+                    MessageType = message.MessageType,   // US0057
                     CreatedAt = DateTime.UtcNow,
                     SentAt = DateTime.UtcNow
                 });
@@ -224,6 +227,7 @@ public class SmsWorkerService : BackgroundService
                         ErrorMessage = result.ErrorMessage,
                         ProcessingTimeMs = result.ProcessingTimeMs,
                         StudentId = message.StudentId,
+                        MessageType = message.MessageType,   // US0057
                         CreatedAt = DateTime.UtcNow
                     });
 

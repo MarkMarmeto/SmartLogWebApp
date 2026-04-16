@@ -202,6 +202,21 @@
             </div>
         </div>
 
+        <!-- No-Scan Alert Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-bell me-2"></i>No-Scan Alert Settings
+            </div>
+            <div class="card-body">
+                <div class="col-md-4 mb-3">
+                    <label for="noScanAlertTime" class="form-label">Alert Time</label>
+                    <input type="time" class="form-control" id="noScanAlertTime"
+                           name="NoScanAlertTime" value="@Model.NoScanAlertTime" />
+                    <div class="form-text">Time to send end-of-day no-scan alerts (24-hour local time, default 18:10)</div>
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex justify-content-between">
             <button type="submit" class="btn btn-primary">
                 <i class="bi bi-save me-1"></i>Save Settings

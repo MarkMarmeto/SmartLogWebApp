@@ -391,6 +391,10 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("AffectedPrograms")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -412,6 +416,10 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("PreferredProvider")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("ScheduledAt")
                         .HasColumnType("datetime2");
@@ -725,6 +733,62 @@ namespace SmartLog.Web.Migrations
                     b.ToTable("GradeLevels");
                 });
 
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevelProgram", b =>
+                {
+                    b.Property<Guid>("GradeLevelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("GradeLevelId", "ProgramId");
+
+                    b.HasIndex("ProgramId");
+
+                    b.ToTable("GradeLevelPrograms");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.Program", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("Programs");
+                });
+
             modelBuilder.Entity("SmartLog.Web.Data.Entities.QrCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -811,9 +875,15 @@ namespace SmartLog.Web.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("Status", "ScannedAt")
+                        .HasDatabaseName("IX_Scans_Status_ScannedAt");
 
                     b.HasIndex("DeviceId", "StudentId", "ScannedAt");
+
+                    b.HasIndex("StudentId", "ScanType", "ScannedAt")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Scans_NoDuplicateAccepted")
+                        .HasFilter("[Status] = 'ACCEPTED'");
 
                     b.ToTable("Scans");
                 });
@@ -846,9 +916,14 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AdviserId");
+
+                    b.HasIndex("ProgramId");
 
                     b.HasIndex("GradeLevelId", "Name");
 
@@ -886,6 +961,10 @@ namespace SmartLog.Web.Migrations
 
                     b.Property<int>("MessageParts")
                         .HasColumnType("int");
+
+                    b.Property<string>("MessageType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -1130,6 +1209,9 @@ namespace SmartLog.Web.Migrations
                     b.Property<Guid?>("CurrentEnrollmentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("EntryExitSmsEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1174,6 +1256,10 @@ namespace SmartLog.Web.Migrations
                     b.Property<string>("ProfilePicturePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Program")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Section")
                         .IsRequired()
@@ -1359,6 +1445,25 @@ namespace SmartLog.Web.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevelProgram", b =>
+                {
+                    b.HasOne("SmartLog.Web.Data.Entities.GradeLevel", "GradeLevel")
+                        .WithMany("GradeLevelPrograms")
+                        .HasForeignKey("GradeLevelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartLog.Web.Data.Entities.Program", "Program")
+                        .WithMany("GradeLevelPrograms")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GradeLevel");
+
+                    b.Navigation("Program");
+                });
+
             modelBuilder.Entity("SmartLog.Web.Data.Entities.QrCode", b =>
                 {
                     b.HasOne("SmartLog.Web.Data.Entities.Student", "Student")
@@ -1409,9 +1514,17 @@ namespace SmartLog.Web.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SmartLog.Web.Data.Entities.Program", "Program")
+                        .WithMany("Sections")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Adviser");
 
                     b.Navigation("GradeLevel");
+
+                    b.Navigation("Program");
                 });
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.SmsLog", b =>
@@ -1509,6 +1622,15 @@ namespace SmartLog.Web.Migrations
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevel", b =>
                 {
+                    b.Navigation("GradeLevelPrograms");
+
+                    b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.Program", b =>
+                {
+                    b.Navigation("GradeLevelPrograms");
+
                     b.Navigation("Sections");
                 });
 

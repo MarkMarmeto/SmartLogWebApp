@@ -61,6 +61,16 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="preferredProvider" class="form-label">Send via</label>
+                    <select class="form-select" id="preferredProvider" name="PreferredProvider">
+                        <option value="">System default</option>
+                        <option value="SEMAPHORE">Online (Semaphore)</option>
+                        <option value="GSM_MODEM">Offline (GSM Modem)</option>
+                    </select>
+                    <div class="form-text">Override the system default gateway for this broadcast only.</div>
+                </div>
+
+                <div class="mb-3">
                     <label for="scheduledAtLocal" class="form-label">
                         <i class="bi bi-clock me-1"></i>Schedule Delivery (Optional)
                     </label>
@@ -87,6 +97,28 @@
                     </div>
                     <div class="form-text">Leave unchecked to send to all grade levels</div>
                 </div>
+
+                @if (Model.AvailablePrograms.Any())
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Affected Programs (Optional)</label>
+                        <div class="row">
+                            @foreach (var prog in Model.AvailablePrograms)
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input program-checkbox" type="checkbox"
+                                               name="AffectedPrograms" value="@prog.Code" id="prog_@prog.Code" />
+                                        <label class="form-check-label" for="prog_@prog.Code">
+                                            @prog.Code
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="form-text">Leave unchecked to send to all programs</div>
+                    </div>
+                }
             </div>
         </div>
 
@@ -201,7 +233,7 @@
             document.getElementById('previewFil').textContent = val;
         });
 
-        document.querySelectorAll('.grade-checkbox').forEach(cb => {
+        document.querySelectorAll('.grade-checkbox, .program-checkbox').forEach(cb => {
             cb.addEventListener('change', updateRecipientCount);
         });
 
@@ -217,6 +249,28 @@
         function updateRecipientCount() {
             const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
                 .map(cb => cb.value);
+            const selectedPrograms = Array.from(document.querySelectorAll('.program-checkbox:checked'))
+                .map(cb => cb.value);
+
+            // Use server-side count when programs are selected (client-side doesn't have per-program counts)
+            if (selectedPrograms.length > 0) {
+                const params = new URLSearchParams();
+                selectedGrades.forEach(g => params.append('grades', g));
+                selectedPrograms.forEach(p => params.append('programs', p));
+                fetch(`?handler=RecipientCount&${params}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        currentRecipientCount = data.count;
+                        document.getElementById('recipientCount').textContent = data.count;
+                        const filterText = [
+                            selectedGrades.length ? `Grade ${selectedGrades.join(', ')}` : 'All grades',
+                            selectedPrograms.length ? selectedPrograms.join(', ') : ''
+                        ].filter(Boolean).join(' • ');
+                        document.getElementById('gradeFilter').textContent = `(${filterText})`;
+                        applyRecipientWarning(data.count);
+                    });
+                return;
+            }
 
             let count = 0;
             let gradeText = '';
@@ -232,6 +286,10 @@
             currentRecipientCount = count;
             document.getElementById('recipientCount').textContent = count;
             document.getElementById('gradeFilter').textContent = `(${gradeText})`;
+            applyRecipientWarning(count);
+        }
+
+        function applyRecipientWarning(count) {
 
             const alertEl = document.getElementById('recipientAlert');
             const warning = document.getElementById('noRecipientsWarning');

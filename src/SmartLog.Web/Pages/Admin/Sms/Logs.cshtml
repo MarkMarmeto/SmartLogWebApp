@@ -33,7 +33,20 @@
                         <option value="SEMAPHORE" selected="@(Model.ProviderFilter == "SEMAPHORE")">Semaphore</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="messageTypeFilter" class="form-label">Message Type</label>
+                    <select class="form-select" id="messageTypeFilter" name="messageTypeFilter">
+                        <option value="">All Types</option>
+                        <option value="ATTENDANCE" selected="@(Model.MessageTypeFilter == "ATTENDANCE")">Attendance</option>
+                        <option value="NO_SCAN_ALERT" selected="@(Model.MessageTypeFilter == "NO_SCAN_ALERT")">No-Scan Alert</option>
+                        <option value="PERSONAL" selected="@(Model.MessageTypeFilter == "PERSONAL")">Personal</option>
+                        <option value="ANNOUNCEMENT" selected="@(Model.MessageTypeFilter == "ANNOUNCEMENT")">Announcement</option>
+                        <option value="EMERGENCY" selected="@(Model.MessageTypeFilter == "EMERGENCY")">Emergency</option>
+                        <option value="CALENDAR" selected="@(Model.MessageTypeFilter == "CALENDAR")">Calendar</option>
+                        <option value="CUSTOM" selected="@(Model.MessageTypeFilter == "CUSTOM")">Custom</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="phoneSearch" class="form-label">Phone Number</label>
                     <input type="text" class="form-control" id="phoneSearch" name="phoneSearch"
                            value="@Model.PhoneSearch" placeholder="Search phone number...">
@@ -177,6 +190,7 @@
                                asp-route-pageNumber="@(Model.PageNumber - 1)"
                                asp-route-statusFilter="@Model.StatusFilter"
                                asp-route-providerFilter="@Model.ProviderFilter"
+                               asp-route-messageTypeFilter="@Model.MessageTypeFilter"
                                asp-route-phoneSearch="@Model.PhoneSearch"
                                asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">Previous</a>
@@ -188,6 +202,7 @@
                                    asp-route-pageNumber="@i"
                                    asp-route-statusFilter="@Model.StatusFilter"
                                    asp-route-providerFilter="@Model.ProviderFilter"
+                                   asp-route-messageTypeFilter="@Model.MessageTypeFilter"
                                    asp-route-phoneSearch="@Model.PhoneSearch"
                                    asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                    asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">@i</a>
@@ -198,6 +213,7 @@
                                asp-route-pageNumber="@(Model.PageNumber + 1)"
                                asp-route-statusFilter="@Model.StatusFilter"
                                asp-route-providerFilter="@Model.ProviderFilter"
+                               asp-route-messageTypeFilter="@Model.MessageTypeFilter"
                                asp-route-phoneSearch="@Model.PhoneSearch"
                                asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">Next</a>

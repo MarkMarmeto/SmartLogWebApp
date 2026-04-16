@@ -6,12 +6,13 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Sms;
 
 namespace SmartLog.Web.Pages.Admin;
 
 /// <summary>
 /// Student details page with QR code display and management.
-/// Implements US0019-AC5 (View QR Code), US0020 (Regenerate QR), US0017 (Deactivate/Reactivate).
+/// Implements US0019-AC5 (View QR Code), US0020 (Regenerate QR), US0017 (Deactivate/Reactivate), US0056 (Personal SMS).
 /// </summary>
 [Authorize(Policy = "CanViewStudents")]
 public class StudentDetailsModel : PageModel
@@ -22,6 +23,7 @@ public class StudentDetailsModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileUploadService _fileUploadService;
     private readonly IAuthorizationService _authorizationService;
+    private readonly ISmsService _smsService;
     private readonly ILogger<StudentDetailsModel> _logger;
 
     public StudentDetailsModel(
@@ -31,6 +33,7 @@ public class StudentDetailsModel : PageModel
         UserManager<ApplicationUser> userManager,
         IFileUploadService fileUploadService,
         IAuthorizationService authorizationService,
+        ISmsService smsService,
         ILogger<StudentDetailsModel> logger)
     {
         _context = context;
@@ -39,6 +42,7 @@ public class StudentDetailsModel : PageModel
         _userManager = userManager;
         _fileUploadService = fileUploadService;
         _authorizationService = authorizationService;
+        _smsService = smsService;
         _logger = logger;
     }
 
@@ -197,4 +201,74 @@ public class StudentDetailsModel : PageModel
         StatusMessage = "Student reactivated successfully";
         return RedirectToPage(new { id = studentId });
     }
+
+    /// <summary>
+    /// US0056: Send a personal freeform SMS to the student's parent(s).
+    /// Queued with MessageType="PERSONAL". Sends to both ParentPhone and AlternatePhone if present.
+    /// </summary>
+    public async Task<IActionResult> OnPostSendPersonalSmsAsync(
+        [FromBody] PersonalSmsRequest request)
+    {
+        var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
+        if (!authResult.Succeeded)
+        {
+            return new JsonResult(new { success = false, error = "Forbidden" }) { StatusCode = 403 };
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Message) || request.Message.Length > 320)
+        {
+            return new JsonResult(new { success = false, error = "Message must be 1–320 characters." });
+        }
+
+        var student = await _context.Students.FindAsync(request.StudentId);
+        if (student == null)
+        {
+            return new JsonResult(new { success = false, error = "Student not found." });
+        }
+
+        if (string.IsNullOrWhiteSpace(student.ParentPhone))
+        {
+            return new JsonResult(new { success = false, error = "No parent phone on record." });
+        }
+
+        try
+        {
+            int queued = 0;
+
+            await _smsService.QueueCustomSmsAsync(
+                student.ParentPhone,
+                request.Message,
+                SmsPriority.Normal,
+                "PERSONAL");
+            queued++;
+
+            if (!string.IsNullOrWhiteSpace(student.AlternatePhone))
+            {
+                await _smsService.QueueCustomSmsAsync(
+                    student.AlternatePhone,
+                    request.Message,
+                    SmsPriority.Normal,
+                    "PERSONAL");
+                queued++;
+            }
+
+            _logger.LogInformation(
+                "Personal SMS queued for student {StudentId} ({Queued} recipient(s)) by {User}",
+                student.StudentId, queued, User.Identity?.Name);
+
+            return new JsonResult(new { success = true, queued });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error queuing personal SMS for student {StudentId}", student.StudentId);
+            return new JsonResult(new { success = false, error = "Failed to queue SMS." });
+        }
+    }
+}
+
+/// <summary>US0056: Request body for personal SMS.</summary>
+public class PersonalSmsRequest
+{
+    public Guid StudentId { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

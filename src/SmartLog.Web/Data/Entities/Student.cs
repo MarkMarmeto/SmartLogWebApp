@@ -46,6 +46,12 @@ public class Student
     [StringLength(50)]
     public string Section { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Denormalized program code from Section.Program.Code. Set on enrollment/transfer.
+    /// </summary>
+    [StringLength(20)]
+    public string? Program { get; set; }
+
     [Required]
     [StringLength(200)]
     public string ParentGuardianName { get; set; } = string.Empty;
@@ -70,9 +76,16 @@ public class Student
     public string? AlternatePhone { get; set; }
 
     /// <summary>
-    /// Enable/disable SMS notifications for this student
+    /// Enable/disable SMS notifications for this student (master switch).
     /// </summary>
     public bool SmsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// When true, parents receive an SMS on each individual ENTRY/EXIT scan.
+    /// When false (default), parents only receive the end-of-day no-scan alert.
+    /// Requires SmsEnabled=true to have effect.
+    /// </summary>
+    public bool EntryExitSmsEnabled { get; set; } = false;
 
     /// <summary>
     /// SMS language preference: EN (English) or FIL (Filipino)

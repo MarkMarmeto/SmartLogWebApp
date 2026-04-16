@@ -59,8 +59,7 @@ public class CreateGradeLevelModel : PageModel
 
             await _auditService.LogAsync(
                 action: "CreateGradeLevel",
-                userId: User.Identity?.Name,
-                details: $"Created grade level '{Input.Code}' - {Input.Name}");
+                details: $"Created grade level '{Input.Code}' - {Input.Name} by {User.Identity?.Name}");
 
             TempData["StatusMessage"] = $"Grade level '{Input.Name}' created successfully.";
             return RedirectToPage("/Admin/GradeLevels");

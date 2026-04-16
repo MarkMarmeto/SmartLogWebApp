@@ -19,6 +19,13 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
     <div class="card mb-3">
         <div class="card-body">
@@ -52,6 +59,7 @@
                     <thead>
                         <tr>
                             <th>Grade Level</th>
+                            <th>Program</th>
                             <th>Section</th>
                             <th>Adviser</th>
                             <th>Capacity</th>
@@ -64,6 +72,7 @@
                         {
                             <tr>
                                 <td>@(section.GradeLevel.Name)</td>
+                                <td><span class="badge bg-light text-dark border">@(section.Program?.Code ?? "—")</span></td>
                                 <td><strong>@(section.Name)</strong></td>
                                 <td>@(section.Adviser?.FullName ?? "Not assigned")</td>
                                 <td>@(section.Capacity) students</td>
@@ -81,6 +90,15 @@
                                     <a asp-page="/Admin/EditSection" asp-route-id="@(section.Id)" class="btn btn-sm btn-primary">
                                         <i class="bi bi-pencil me-1"></i>Edit
                                     </a>
+                                    @if (User.IsInRole("SuperAdmin"))
+                                    {
+                                        <form method="post" asp-page-handler="Delete" asp-route-id="@(section.Id)" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1"
+                                                    onclick="return confirm('Permanently delete section \'@(section.Name)\'? This cannot be undone.')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </td>
                             </tr>
                         }

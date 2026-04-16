@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using Entities = SmartLog.Web.Data.Entities;
 
 namespace SmartLog.Web.Pages.Admin;
 
@@ -32,12 +33,18 @@ public class EditSectionModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    public List<Entities.Program> Programs { get; set; } = new();
     public List<Faculty> Faculty { get; set; } = new();
     public string GradeLevelName { get; set; } = string.Empty;
+    public Guid GradeLevelId { get; set; }
 
     public class InputModel
     {
         public Guid Id { get; set; }
+
+        [Required]
+        [Display(Name = "Program")]
+        public Guid ProgramId { get; set; }
 
         [Required]
         [StringLength(50)]
@@ -57,14 +64,12 @@ public class EditSectionModel : PageModel
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var section = await _gradeSectionService.GetSectionByIdAsync(id);
-        if (section == null)
-        {
-            return NotFound();
-        }
+        if (section == null) return NotFound();
 
         Input = new InputModel
         {
             Id = section.Id,
+            ProgramId = section.ProgramId,
             Name = section.Name,
             AdviserId = section.AdviserId,
             Capacity = section.Capacity,
@@ -72,6 +77,8 @@ public class EditSectionModel : PageModel
         };
 
         GradeLevelName = section.GradeLevel.Name;
+        GradeLevelId = section.GradeLevelId;
+        Programs = await _gradeSectionService.GetProgramsForGradeAsync(section.GradeLevelId);
         Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
 
         return Page();
@@ -81,6 +88,13 @@ public class EditSectionModel : PageModel
     {
         if (!ModelState.IsValid)
         {
+            var section = await _gradeSectionService.GetSectionByIdAsync(Input.Id);
+            if (section != null)
+            {
+                GradeLevelName = section.GradeLevel.Name;
+                GradeLevelId = section.GradeLevelId;
+                Programs = await _gradeSectionService.GetProgramsForGradeAsync(section.GradeLevelId);
+            }
             Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
             return Page();
         }
@@ -88,12 +102,10 @@ public class EditSectionModel : PageModel
         try
         {
             var section = await _gradeSectionService.GetSectionByIdAsync(Input.Id);
-            if (section == null)
-            {
-                return NotFound();
-            }
+            if (section == null) return NotFound();
 
             section.Name = Input.Name;
+            section.ProgramId = Input.ProgramId;
             section.AdviserId = Input.AdviserId;
             section.Capacity = Input.Capacity;
             section.IsActive = Input.IsActive;
@@ -102,8 +114,7 @@ public class EditSectionModel : PageModel
 
             await _auditService.LogAsync(
                 action: "UpdateSection",
-                userId: User.Identity?.Name,
-                details: $"Updated section '{Input.Name}'");
+                details: $"Updated section '{Input.Name}' by {User.Identity?.Name}");
 
             TempData["StatusMessage"] = $"Section '{Input.Name}' updated successfully.";
             return RedirectToPage("/Admin/Sections");

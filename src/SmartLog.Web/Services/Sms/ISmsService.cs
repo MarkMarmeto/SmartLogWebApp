@@ -18,30 +18,34 @@ public interface ISmsService
     Task QueueCalendarEventNotificationsAsync(Guid calendarEventId);
 
     /// <summary>
-    /// Queue emergency announcement to all or filtered by grade. Returns the Broadcast Id.
+    /// Queue emergency announcement to all or filtered by grade/program. Returns the Broadcast Id.
     /// </summary>
     Task<Guid> QueueEmergencyAnnouncementAsync(
         string message,
         string? language = null,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         string? createdByUserId = null,
-        string? createdByName = null);
+        string? createdByName = null,
+        string? preferredProvider = null);
 
     /// <summary>
-    /// Queue general announcement to all or filtered by grade. Returns the Broadcast Id.
+    /// Queue general announcement to all or filtered by grade/program. Returns the Broadcast Id.
     /// </summary>
     Task<Guid> QueueAnnouncementAsync(
         string message,
         string? language = null,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         DateTime? scheduledAt = null,
         string? createdByUserId = null,
-        string? createdByName = null);
+        string? createdByName = null,
+        string? preferredProvider = null);
 
     /// <summary>
     /// Queue custom SMS message
     /// </summary>
-    Task<long> QueueCustomSmsAsync(string phoneNumber, string message, SmsPriority priority = SmsPriority.Normal, string messageType = "CUSTOM", DateTime? scheduledAt = null);
+    Task<long> QueueCustomSmsAsync(string phoneNumber, string message, SmsPriority priority = SmsPriority.Normal, string messageType = "CUSTOM", DateTime? scheduledAt = null, string? preferredProvider = null);
 
     /// <summary>
     /// Cancel a queued SMS

@@ -25,7 +25,8 @@ public class AttendanceService : IAttendanceService
     public async Task<AttendanceSummary> GetAttendanceSummaryAsync(
         DateTime date,
         string? gradeFilter = null,
-        string? sectionFilter = null)
+        string? sectionFilter = null,
+        string? programFilter = null)
     {
         var dateOnly = date.Date;
         var nextDay = dateOnly.AddDays(1);
@@ -42,6 +43,11 @@ public class AttendanceService : IAttendanceService
         if (!string.IsNullOrWhiteSpace(sectionFilter))
         {
             studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(programFilter))
+        {
+            studentsQuery = studentsQuery.Where(s => s.Program == programFilter);
         }
 
         var totalEnrolled = await studentsQuery.CountAsync();
@@ -105,12 +111,13 @@ public class AttendanceService : IAttendanceService
         string? searchTerm = null,
         string? statusFilter = null,
         int pageNumber = 1,
-        int pageSize = 50)
+        int pageSize = 50,
+        string? programFilter = null)
     {
         // Cap pageSize to prevent abuse
         pageSize = Math.Clamp(pageSize, 1, 200);
 
-        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm);
+        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm, programFilter);
 
         // Apply status filter BEFORE pagination
         if (!string.IsNullOrWhiteSpace(statusFilter))
@@ -133,7 +140,8 @@ public class AttendanceService : IAttendanceService
         string? gradeFilter = null,
         string? sectionFilter = null,
         string? searchTerm = null,
-        string? statusFilter = null)
+        string? statusFilter = null,
+        string? programFilter = null)
     {
         // When no status filter, count is just the number of matching students
         if (string.IsNullOrWhiteSpace(statusFilter))
@@ -145,6 +153,9 @@ public class AttendanceService : IAttendanceService
 
             if (!string.IsNullOrWhiteSpace(sectionFilter))
                 studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
+
+            if (!string.IsNullOrWhiteSpace(programFilter))
+                studentsQuery = studentsQuery.Where(s => s.Program == programFilter);
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -160,7 +171,7 @@ public class AttendanceService : IAttendanceService
         }
 
         // When status filter is active, we need to derive status to get accurate count
-        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm);
+        var records = await BuildAttendanceRecordsAsync(date, gradeFilter, sectionFilter, searchTerm, programFilter);
         return records.Count(r => r.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -172,7 +183,8 @@ public class AttendanceService : IAttendanceService
         DateTime date,
         string? gradeFilter = null,
         string? sectionFilter = null,
-        string? searchTerm = null)
+        string? searchTerm = null,
+        string? programFilter = null)
     {
         var dateOnly = date.Date;
         var nextDay = dateOnly.AddDays(1);
@@ -186,6 +198,9 @@ public class AttendanceService : IAttendanceService
 
         if (!string.IsNullOrWhiteSpace(sectionFilter))
             studentsQuery = studentsQuery.Where(s => s.Section == sectionFilter);
+
+        if (!string.IsNullOrWhiteSpace(programFilter))
+            studentsQuery = studentsQuery.Where(s => s.Program == programFilter);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -209,7 +224,8 @@ public class AttendanceService : IAttendanceService
                 s.FirstName,
                 s.LastName,
                 s.GradeLevel,
-                s.Section
+                s.Section,
+                s.Program
             })
             .ToListAsync();
 

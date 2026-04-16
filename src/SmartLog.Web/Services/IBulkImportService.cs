@@ -2,7 +2,7 @@ namespace SmartLog.Web.Services;
 
 public interface IBulkImportService
 {
-    Task<ImportValidationResult> ValidateStudentCsvAsync(Stream csvStream);
+    Task<ImportValidationResult> ValidateStudentXlsxAsync(Stream xlsxStream);
     Task<ImportResult> ImportStudentsAsync(List<StudentImportRow> validRows, string importedByUserId);
     Task<ImportValidationResult> ValidateFacultyCsvAsync(Stream csvStream);
     Task<ImportResult> ImportFacultyAsync(List<FacultyImportRow> validRows, string importedByUserId);

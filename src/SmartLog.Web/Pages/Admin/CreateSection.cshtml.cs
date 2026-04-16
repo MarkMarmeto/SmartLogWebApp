@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using Entities = SmartLog.Web.Data.Entities;
 
 namespace SmartLog.Web.Pages.Admin;
 
@@ -33,6 +34,7 @@ public class CreateSectionModel : PageModel
     public InputModel Input { get; set; } = new();
 
     public List<GradeLevel> GradeLevels { get; set; } = new();
+    public List<Entities.Program> Programs { get; set; } = new();
     public List<Faculty> Faculty { get; set; } = new();
 
     public class InputModel
@@ -40,6 +42,10 @@ public class CreateSectionModel : PageModel
         [Required]
         [Display(Name = "Grade Level")]
         public Guid GradeLevelId { get; set; }
+
+        [Required]
+        [Display(Name = "Program")]
+        public Guid ProgramId { get; set; }
 
         [Required]
         [StringLength(50)]
@@ -59,11 +65,22 @@ public class CreateSectionModel : PageModel
         Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
     }
 
+    /// <summary>
+    /// GET ?handler=ProgramsForGrade&gradeLevelId=xxx — AJAX endpoint for grade-level-filtered program list.
+    /// </summary>
+    public async Task<IActionResult> OnGetProgramsForGradeAsync(Guid gradeLevelId)
+    {
+        var programs = await _gradeSectionService.GetProgramsForGradeAsync(gradeLevelId);
+        return new JsonResult(programs.Select(p => new { id = p.Id, code = p.Code, name = p.Name }));
+    }
+
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid)
         {
             GradeLevels = await _gradeSectionService.GetAllGradeLevelsAsync(activeOnly: true);
+            if (Input.GradeLevelId != Guid.Empty)
+                Programs = await _gradeSectionService.GetProgramsForGradeAsync(Input.GradeLevelId);
             Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
             return Page();
         }
@@ -73,13 +90,13 @@ public class CreateSectionModel : PageModel
             await _gradeSectionService.CreateSectionAsync(
                 Input.GradeLevelId,
                 Input.Name,
+                Input.ProgramId,
                 Input.AdviserId,
                 Input.Capacity);
 
             await _auditService.LogAsync(
                 action: "CreateSection",
-                userId: User.Identity?.Name,
-                details: $"Created section '{Input.Name}'");
+                details: $"Created section '{Input.Name}' by {User.Identity?.Name}");
 
             TempData["StatusMessage"] = $"Section '{Input.Name}' created successfully.";
             return RedirectToPage("/Admin/Sections");
@@ -89,6 +106,8 @@ public class CreateSectionModel : PageModel
             _logger.LogError(ex, "Error creating section");
             ModelState.AddModelError(string.Empty, "An error occurred while creating the section.");
             GradeLevels = await _gradeSectionService.GetAllGradeLevelsAsync(activeOnly: true);
+            if (Input.GradeLevelId != Guid.Empty)
+                Programs = await _gradeSectionService.GetProgramsForGradeAsync(Input.GradeLevelId);
             Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
             return Page();
         }

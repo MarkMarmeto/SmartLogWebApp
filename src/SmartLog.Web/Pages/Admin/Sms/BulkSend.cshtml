@@ -57,6 +57,28 @@
                     <div class="form-text">Leave unchecked to send to all grade levels</div>
                 </div>
 
+                @if (Model.AvailablePrograms.Any())
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Programs</label>
+                        <div class="row">
+                            @foreach (var prog in Model.AvailablePrograms)
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input program-checkbox" type="checkbox"
+                                               name="SelectedPrograms" value="@prog.Code" id="prog_@prog.Code" />
+                                        <label class="form-check-label" for="prog_@prog.Code">
+                                            @prog.Code
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="form-text">Leave unchecked to send to all programs</div>
+                    </div>
+                }
+
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="selectedSection" class="form-label">Section (Optional)</label>
@@ -99,6 +121,16 @@
                         <span id="charCount">0</span> / 320 characters
                     </div>
                 </div>
+
+                <div class="mb-3">
+                    <label for="preferredProvider" class="form-label">Send via</label>
+                    <select class="form-select" id="preferredProvider" name="PreferredProvider">
+                        <option value="">System default</option>
+                        <option value="SEMAPHORE">Online (Semaphore)</option>
+                        <option value="GSM_MODEM">Offline (GSM Modem)</option>
+                    </select>
+                    <div class="form-text">Override the system default gateway for this broadcast only.</div>
+                </div>
             </div>
         </div>
 
@@ -119,17 +151,19 @@
         });
 
         // Update recipient count dynamically
-        document.querySelectorAll('.grade-checkbox').forEach(cb => cb.addEventListener('change', updateCount));
+        document.querySelectorAll('.grade-checkbox, .program-checkbox').forEach(cb => cb.addEventListener('change', updateCount));
         document.getElementById('selectedSection').addEventListener('change', updateCount);
         document.getElementById('activeOnly').addEventListener('change', updateCount);
 
         function updateCount() {
             var grades = Array.from(document.querySelectorAll('.grade-checkbox:checked')).map(cb => cb.value);
+            var programs = Array.from(document.querySelectorAll('.program-checkbox:checked')).map(cb => cb.value);
             var section = document.getElementById('selectedSection').value;
             var activeOnly = document.getElementById('activeOnly').checked;
 
             var params = new URLSearchParams();
             grades.forEach(g => params.append('grades', g));
+            programs.forEach(p => params.append('programs', p));
             if (section) params.append('section', section);
             params.append('activeOnly', activeOnly);
 

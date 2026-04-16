@@ -2,6 +2,7 @@ using System.IO.Ports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 
 namespace SmartLog.Web.Pages.Admin.Sms;
@@ -10,6 +11,7 @@ namespace SmartLog.Web.Pages.Admin.Sms;
 public class SettingsModel : PageModel
 {
     private readonly ISmsSettingsService _settingsService;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly IConfiguration _configuration;
     private readonly GsmModemGateway _gsmGateway;
     private readonly SemaphoreGateway _semaphoreGateway;
@@ -17,12 +19,14 @@ public class SettingsModel : PageModel
 
     public SettingsModel(
         ISmsSettingsService settingsService,
+        IAppSettingsService appSettingsService,
         IConfiguration configuration,
         GsmModemGateway gsmGateway,
         SemaphoreGateway semaphoreGateway,
         ILogger<SettingsModel> logger)
     {
         _settingsService = settingsService;
+        _appSettingsService = appSettingsService;
         _configuration = configuration;
         _gsmGateway = gsmGateway;
         _semaphoreGateway = semaphoreGateway;
@@ -58,6 +62,9 @@ public class SettingsModel : PageModel
 
     [BindProperty]
     public int PollingInterval { get; set; } = 5;
+
+    [BindProperty]
+    public string NoScanAlertTime { get; set; } = "18:10";
 
     [BindProperty]
     public string? TestPhoneNumber { get; set; }
@@ -97,6 +104,8 @@ public class SettingsModel : PageModel
 
         MaxRetries = _configuration.GetValue<int>("Sms:Queue:MaxRetries", 3);
         PollingInterval = _configuration.GetValue<int>("Sms:Queue:PollingIntervalSeconds", 5);
+
+        NoScanAlertTime = await _appSettingsService.GetAsync("Sms:NoScanAlertTime") ?? "18:10";
 
         // Also check database settings
         var dbEnabled = await _settingsService.GetSettingAsync("Sms.Enabled");
@@ -164,6 +173,13 @@ public class SettingsModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!TimeOnly.TryParse(NoScanAlertTime, out _))
+        {
+            ErrorMessage = "Please enter a valid time in HH:mm format";
+            await OnGetAsync();
+            return Page();
+        }
+
         try
         {
             // Save settings to database
@@ -180,6 +196,8 @@ public class SettingsModel : PageModel
 
             await _settingsService.SetSettingAsync("Sms.Queue.MaxRetries", MaxRetries.ToString(), "General");
             await _settingsService.SetSettingAsync("Sms.Queue.PollingIntervalSeconds", PollingInterval.ToString(), "General");
+
+            await _appSettingsService.SetAsync("Sms:NoScanAlertTime", NoScanAlertTime, "Sms", null);
 
             StatusMessage = "Settings saved successfully. Note: Some settings require application restart to take effect.";
             _logger.LogInformation("SMS settings updated");

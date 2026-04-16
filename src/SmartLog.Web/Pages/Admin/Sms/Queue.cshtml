@@ -38,10 +38,13 @@
                 <div class="col-md-3">
                     <label for="messageTypeFilter" class="form-label">Message Type</label>
                     <select class="form-select" id="messageTypeFilter" name="messageTypeFilter">
-                        <option value="">All</option>
-                        <option value="ATTENDANCE" selected="@(Model.MessageTypeFilter == "ATTENDANCE")">Attendance</option>
-                        <option value="CALENDAR" selected="@(Model.MessageTypeFilter == "CALENDAR")">Calendar</option>
+                        <option value="">All Types</option>
+                        <option value="ATTENDANCE" selected="@(Model.MessageTypeFilter == "ATTENDANCE")">Attendance (Entry/Exit)</option>
+                        <option value="NO_SCAN_ALERT" selected="@(Model.MessageTypeFilter == "NO_SCAN_ALERT")">No-Scan Alert</option>
+                        <option value="PERSONAL" selected="@(Model.MessageTypeFilter == "PERSONAL")">Personal</option>
+                        <option value="ANNOUNCEMENT" selected="@(Model.MessageTypeFilter == "ANNOUNCEMENT")">Announcement</option>
                         <option value="EMERGENCY" selected="@(Model.MessageTypeFilter == "EMERGENCY")">Emergency</option>
+                        <option value="CALENDAR" selected="@(Model.MessageTypeFilter == "CALENDAR")">Calendar</option>
                         <option value="CUSTOM" selected="@(Model.MessageTypeFilter == "CUSTOM")">Custom</option>
                     </select>
                 </div>
@@ -59,6 +62,19 @@
             </form>
         </div>
     </div>
+
+    @* US0057: Pending messages count summary by type *@
+    @if (Model.PendingCountByType.Any())
+    {
+        <div class="alert alert-info py-2 mb-3">
+            <i class="bi bi-bar-chart me-2"></i>
+            <strong>Pending:</strong>
+            @foreach (var kv in Model.PendingCountByType)
+            {
+                <span class="badge bg-secondary ms-1">@kv.Key: @kv.Value</span>
+            }
+        </div>
+    }
 
     <!-- Queue Table -->
     <div class="card">

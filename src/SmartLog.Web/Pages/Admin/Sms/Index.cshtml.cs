@@ -1,9 +1,11 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 
 namespace SmartLog.Web.Pages.Admin.Sms;
@@ -15,6 +17,7 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly GsmModemGateway _gsmGateway;
     private readonly SemaphoreGateway _semaphoreGateway;
+    private readonly INoScanAlertService _noScanAlertService;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -22,18 +25,22 @@ public class IndexModel : PageModel
         ApplicationDbContext context,
         GsmModemGateway gsmGateway,
         SemaphoreGateway semaphoreGateway,
+        INoScanAlertService noScanAlertService,
         ILogger<IndexModel> logger)
     {
         _smsService = smsService;
         _context = context;
         _gsmGateway = gsmGateway;
         _semaphoreGateway = semaphoreGateway;
+        _noScanAlertService = noScanAlertService;
         _logger = logger;
     }
 
     public SmsStatistics Stats { get; set; } = new();
     public GatewayHealthStatus GsmHealth { get; set; } = new();
     public List<SmsLog> RecentLogs { get; set; } = new();
+    public NoScanAlertRunStatus NoScanAlert { get; set; } = new();
+    public bool NoScanAlertRanToday { get; set; }
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -53,6 +60,36 @@ public class IndexModel : PageModel
             .OrderByDescending(l => l.CreatedAt)
             .Take(10)
             .ToListAsync();
+
+        // No-scan alert last run status
+        var lastRun = await _context.AuditLogs
+            .Where(a => a.Action == "NO_SCAN_ALERT_EXECUTED" || a.Action == "NO_SCAN_ALERT_SUPPRESSED")
+            .OrderByDescending(a => a.Timestamp)
+            .FirstOrDefaultAsync();
+        NoScanAlert = NoScanAlertRunStatus.FromAuditLog(lastRun);
+        NoScanAlertRanToday = await _noScanAlertService.HasRunTodayAsync();
+    }
+
+    /// <summary>
+    /// POST ?handler=TriggerNoScanAlert — manually runs the no-scan alert for today.
+    /// Accepts force=true to re-run even if it already ran.
+    /// </summary>
+    public async Task<IActionResult> OnPostTriggerNoScanAlertAsync(bool force = false)
+    {
+        try
+        {
+            var result = await _noScanAlertService.TriggerNowAsync(force);
+            StatusMessage = result.WasSkipped
+                ? $"Skipped: {result.Reason}"
+                : $"Done — {result.AlertsQueued} alert(s) queued.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manual no-scan alert trigger failed");
+            StatusMessage = "Error: Could not trigger no-scan alert. Check logs.";
+        }
+
+        return RedirectToPage();
     }
 
     /// <summary>
@@ -83,5 +120,34 @@ public class IndexModel : PageModel
                 checkedAt = DateTime.Now.ToString("MMM d, yyyy h:mm:ss tt")
             });
         }
+    }
+}
+
+public class NoScanAlertRunStatus
+{
+    public bool HasRun { get; init; }
+    public bool WasSuppressed { get; init; }
+    public DateTime? RunAt { get; init; }
+    public int AlertsQueued { get; init; }
+
+    public static NoScanAlertRunStatus FromAuditLog(AuditLog? log)
+    {
+        if (log == null) return new NoScanAlertRunStatus();
+
+        var suppressed = log.Action == "NO_SCAN_ALERT_SUPPRESSED";
+        var count = 0;
+        if (!suppressed && log.Details != null)
+        {
+            var match = Regex.Match(log.Details, @"Alerts queued: (\d+)");
+            if (match.Success) int.TryParse(match.Groups[1].Value, out count);
+        }
+
+        return new NoScanAlertRunStatus
+        {
+            HasRun = true,
+            WasSuppressed = suppressed,
+            RunAt = log.Timestamp,
+            AlertsQueued = count
+        };
     }
 }

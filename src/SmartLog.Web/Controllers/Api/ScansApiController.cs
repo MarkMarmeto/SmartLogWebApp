@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Sms;
 using System.ComponentModel.DataAnnotations;
 
 namespace SmartLog.Web.Controllers.Api;
@@ -23,6 +24,7 @@ public class ScansApiController : ControllerBase
     private readonly IDeviceService _deviceService;
     private readonly ICalendarService _calendarService;
     private readonly IAppSettingsService _appSettingsService;
+    private readonly ISmsService _smsService;
     private readonly ILogger<ScansApiController> _logger;
 
     public ScansApiController(
@@ -31,6 +33,7 @@ public class ScansApiController : ControllerBase
         IDeviceService deviceService,
         ICalendarService calendarService,
         IAppSettingsService appSettingsService,
+        ISmsService smsService,
         ILogger<ScansApiController> logger)
     {
         _context = context;
@@ -38,6 +41,7 @@ public class ScansApiController : ControllerBase
         _deviceService = deviceService;
         _calendarService = calendarService;
         _appSettingsService = appSettingsService;
+        _smsService = smsService;
         _logger = logger;
     }
 
@@ -158,11 +162,14 @@ public class ScansApiController : ControllerBase
             });
         }
 
+        // Always derive UTC from the incoming DateTimeOffset before any date/time comparisons
+        var scannedAtUtc = request.ScannedAt.UtcDateTime;
+
         // Calendar Integration: Check if it's a school day (can be disabled via settings)
         var enforceSchoolDay = await _appSettingsService.GetAsync("Attendance.EnforceSchoolDayValidation");
         if (enforceSchoolDay != "false")
         {
-            var scanDate = request.ScannedAt.Date;
+            var scanDate = scannedAtUtc.Date;
             var isSchoolDay = await _calendarService.IsSchoolDayAsync(scanDate, student.GradeLevel);
             if (!isSchoolDay)
             {
@@ -188,7 +195,7 @@ public class ScansApiController : ControllerBase
         }
 
         // US0032: Check for duplicate scan (within 5 minutes, same device, same scan type)
-        var duplicateScan = await CheckDuplicateScanAsync(device.Id, student.Id, request.ScanType, request.ScannedAt);
+        var duplicateScan = await CheckDuplicateScanAsync(device.Id, student.Id, request.ScanType, scannedAtUtc);
         if (duplicateScan != null)
         {
             _logger.LogInformation("Duplicate scan detected for student {StudentId} on device {DeviceId}",
@@ -203,21 +210,21 @@ public class ScansApiController : ControllerBase
                 Grade = student.GradeLevel,
                 Section = student.Section,
                 ScanType = request.ScanType,
-                ScannedAt = request.ScannedAt,
+                ScannedAt = scannedAtUtc,
                 Status = "DUPLICATE",
                 OriginalScanId = duplicateScan.Id,
                 Message = "Already scanned. Please proceed."
             });
         }
 
-        // US0030-AC4: Create scan record
+        // US0030-AC4: Create scan record — always store ScannedAt as UTC
         var scan = new Scan
         {
             Id = Guid.NewGuid(),
             DeviceId = device.Id,
             StudentId = student.Id,
             QrPayload = request.QrPayload,
-            ScannedAt = request.ScannedAt,
+            ScannedAt = scannedAtUtc,
             ReceivedAt = DateTime.UtcNow,
             ScanType = request.ScanType,
             Status = "ACCEPTED"
@@ -229,6 +236,20 @@ public class ScansApiController : ControllerBase
         _logger.LogInformation("Scan accepted for student {StudentId} on device {DeviceId}",
             studentIdStr, device.Id);
 
+        // US0054: Queue entry/exit SMS only when opted in (both master switch and per-scan flag must be true)
+        if (student.SmsEnabled && student.EntryExitSmsEnabled)
+        {
+            try
+            {
+                await _smsService.QueueAttendanceNotificationAsync(student.Id, request.ScanType, scannedAtUtc, scan.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to queue attendance SMS for student {StudentId}", studentIdStr);
+                // SMS failure does not fail the scan
+            }
+        }
+
         // US0030-AC3: Return success response
         return Ok(new ScanResponse
         {
@@ -239,7 +260,7 @@ public class ScansApiController : ControllerBase
             Grade = student.GradeLevel,
             Section = student.Section,
             ScanType = request.ScanType,
-            ScannedAt = request.ScannedAt,
+            ScannedAt = scannedAtUtc,
             Status = "ACCEPTED"
         });
     }
@@ -275,7 +296,7 @@ public class ScansApiController : ControllerBase
             DeviceId = deviceId,
             StudentId = studentId ?? Guid.Empty, // Use Guid.Empty for invalid student IDs
             QrPayload = request.QrPayload,
-            ScannedAt = request.ScannedAt,
+            ScannedAt = request.ScannedAt.UtcDateTime,
             ReceivedAt = DateTime.UtcNow,
             ScanType = request.ScanType,
             Status = status
@@ -294,8 +315,12 @@ public class ScanSubmissionRequest
     [Required]
     public string QrPayload { get; set; } = string.Empty;
 
+    /// <summary>
+    /// When the QR code was scanned. Scanner sends UTC via DateTimeOffset.UtcNow.
+    /// Using DateTimeOffset (not DateTime) so timezone offset is preserved and UTC can be derived unambiguously.
+    /// </summary>
     [Required]
-    public DateTime ScannedAt { get; set; }
+    public DateTimeOffset ScannedAt { get; set; }
 
     [Required]
     [RegularExpression("^(ENTRY|EXIT)$")]

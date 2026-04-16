@@ -112,6 +112,9 @@ public class EditStudentModel : PageModel
         [Display(Name = "SMS Notifications Enabled")]
         public bool SmsEnabled { get; set; } = true;
 
+        [Display(Name = "Enable Entry/Exit SMS")]
+        public bool EntryExitSmsEnabled { get; set; } = false;
+
         [Display(Name = "SMS Language")]
         public string SmsLanguage { get; set; } = "EN";
     }
@@ -122,6 +125,9 @@ public class EditStudentModel : PageModel
             .Include(s => s.CurrentEnrollment)
                 .ThenInclude(e => e!.Section)
                     .ThenInclude(s => s.GradeLevel)
+            .Include(s => s.CurrentEnrollment)
+                .ThenInclude(e => e!.Section)
+                    .ThenInclude(s => s.Program)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (student == null)
@@ -163,6 +169,7 @@ public class EditStudentModel : PageModel
             ParentPhone = student.ParentPhone,
             AlternatePhone = student.AlternatePhone,
             SmsEnabled = student.SmsEnabled,
+            EntryExitSmsEnabled = student.EntryExitSmsEnabled,
             SmsLanguage = student.SmsLanguage
         };
 
@@ -214,6 +221,7 @@ public class EditStudentModel : PageModel
         student.ParentPhone = Input.ParentPhone;
         student.AlternatePhone = string.IsNullOrWhiteSpace(Input.AlternatePhone) ? null : Input.AlternatePhone;
         student.SmsEnabled = Input.SmsEnabled;
+        student.EntryExitSmsEnabled = Input.EntryExitSmsEnabled;
         student.SmsLanguage = Input.SmsLanguage;
         student.UpdatedAt = DateTime.UtcNow;
 

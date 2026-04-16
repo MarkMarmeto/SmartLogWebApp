@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data.Entities;
+using Entities = SmartLog.Web.Data.Entities;
 
 namespace SmartLog.Web.Data;
 
@@ -32,6 +33,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SmsSettings> SmsSettings => Set<SmsSettings>();
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
     public DbSet<Broadcast> Broadcasts => Set<Broadcast>();
+    public DbSet<Entities.Program> Programs => Set<Entities.Program>();
+    public DbSet<GradeLevelProgram> GradeLevelPrograms => Set<GradeLevelProgram>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -379,6 +382,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
         });
+
+        // Configure Program
+        builder.Entity<Entities.Program>(entity =>
+        {
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure GradeLevelProgram (composite PK junction)
+        builder.Entity<GradeLevelProgram>(entity =>
+        {
+            entity.HasKey(e => new { e.GradeLevelId, e.ProgramId });
+
+            entity.HasOne(e => e.GradeLevel)
+                .WithMany(g => g.GradeLevelPrograms)
+                .HasForeignKey(e => e.GradeLevelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Program)
+                .WithMany(p => p.GradeLevelPrograms)
+                .HasForeignKey(e => e.ProgramId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Section.ProgramId FK (required — US0060)
+        builder.Entity<Section>()
+            .HasOne(e => e.Program)
+            .WithMany(p => p.Sections)
+            .HasForeignKey(e => e.ProgramId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     public override int SaveChanges()

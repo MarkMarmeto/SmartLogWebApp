@@ -25,6 +25,10 @@ public class LogsModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? ProviderFilter { get; set; }
 
+    /// <summary>US0057: Filter by message type.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? MessageTypeFilter { get; set; }
+
     [BindProperty(SupportsGet = true)]
     public string? PhoneSearch { get; set; }
 
@@ -54,6 +58,11 @@ public class LogsModel : PageModel
         if (!string.IsNullOrWhiteSpace(ProviderFilter))
         {
             query = query.Where(l => l.Provider == ProviderFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(MessageTypeFilter))
+        {
+            query = query.Where(l => l.MessageType == MessageTypeFilter);
         }
 
         if (!string.IsNullOrWhiteSpace(PhoneSearch))

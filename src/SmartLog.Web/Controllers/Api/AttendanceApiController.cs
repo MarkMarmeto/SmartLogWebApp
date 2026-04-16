@@ -33,12 +33,13 @@ public class AttendanceApiController : ControllerBase
     public async Task<IActionResult> GetSummary(
         [FromQuery] DateTime? date = null,
         [FromQuery] string? grade = null,
-        [FromQuery] string? section = null)
+        [FromQuery] string? section = null,
+        [FromQuery] string? program = null)
     {
         try
         {
             var targetDate = date ?? DateTime.Today;
-            var summary = await _attendanceService.GetAttendanceSummaryAsync(targetDate, grade, section);
+            var summary = await _attendanceService.GetAttendanceSummaryAsync(targetDate, grade, section, program);
 
             return Ok(summary);
         }
@@ -60,17 +61,18 @@ public class AttendanceApiController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+        [FromQuery] int pageSize = 50,
+        [FromQuery] string? program = null)
     {
         try
         {
             pageSize = Math.Clamp(pageSize, 1, 200);
             var targetDate = date ?? DateTime.Today;
             var records = await _attendanceService.GetAttendanceListAsync(
-                targetDate, grade, section, search, status, page, pageSize);
+                targetDate, grade, section, search, status, page, pageSize, program);
 
             var totalCount = await _attendanceService.GetAttendanceCountAsync(
-                targetDate, grade, section, search, status);
+                targetDate, grade, section, search, status, program);
 
             return Ok(new
             {

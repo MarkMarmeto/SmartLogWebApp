@@ -20,7 +20,7 @@ public class BulkImportStudentsModel : PageModel
     }
 
     [BindProperty]
-    public IFormFile? CsvFile { get; set; }
+    public IFormFile? ExcelFile { get; set; }
 
     public ImportValidationResult? ValidationResult { get; set; }
     public ImportResult? ImportResultData { get; set; }
@@ -36,28 +36,28 @@ public class BulkImportStudentsModel : PageModel
     public IActionResult OnGetDownloadTemplate()
     {
         var bytes = _importService.GenerateStudentTemplate();
-        return File(bytes, "text/csv", "student_import_template.csv");
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "student_import_template.xlsx");
     }
 
     public async Task<IActionResult> OnPostValidateAsync()
     {
-        if (CsvFile == null || CsvFile.Length == 0)
+        if (ExcelFile == null || ExcelFile.Length == 0)
         {
-            ErrorMessage = "Please select a CSV file to upload.";
+            ErrorMessage = "Please select an Excel file to upload.";
             return Page();
         }
 
-        if (!CsvFile.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        var ext = Path.GetExtension(ExcelFile.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
         {
-            ErrorMessage = "Please upload a CSV file.";
+            ErrorMessage = "Please upload an Excel file (.xlsx or .xls).";
             return Page();
         }
 
-        using var stream = CsvFile.OpenReadStream();
-        ValidationResult = await _importService.ValidateStudentCsvAsync(stream);
+        using var stream = ExcelFile.OpenReadStream();
+        ValidationResult = await _importService.ValidateStudentXlsxAsync(stream);
         CurrentStep = "preview";
 
-        // Store valid rows in TempData for the import step
         if (ValidationResult.ValidCount > 0)
         {
             var validRows = ValidationResult.ValidStudentRows.Where(r => r.IsValid).Select(r => r.Row).ToList();
@@ -72,7 +72,7 @@ public class BulkImportStudentsModel : PageModel
         var rowsJson = TempData["ValidStudentRows"] as string;
         if (string.IsNullOrEmpty(rowsJson))
         {
-            ErrorMessage = "No validated data found. Please upload and validate your CSV file again.";
+            ErrorMessage = "No validated data found. Please upload and validate your Excel file again.";
             return Page();
         }
 

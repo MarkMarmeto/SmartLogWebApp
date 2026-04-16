@@ -41,7 +41,17 @@ public class EmergencyModel : PageModel
     [BindProperty]
     public List<string> AffectedGrades { get; set; } = new();
 
+    [BindProperty]
+    public List<string> AffectedPrograms { get; set; } = new();
+
+    /// <summary>
+    /// US0055: Per-broadcast gateway override. "GSM_MODEM", "SEMAPHORE", or null = system default.
+    /// </summary>
+    [BindProperty]
+    public string? PreferredProvider { get; set; }
+
     public List<string> AvailableGrades { get; set; } = new();
+    public List<Data.Entities.Program> AvailablePrograms { get; set; } = new();
     public int TotalActiveStudents { get; set; }
     public Dictionary<string, int> StudentCountByGrade { get; set; } = new();
     public string TemplatePrefixEn { get; set; } = "[ALERT]";
@@ -53,11 +63,30 @@ public class EmergencyModel : PageModel
     [TempData]
     public string? ErrorMessage { get; set; }
 
+    public async Task<IActionResult> OnGetRecipientCountAsync(
+        [FromQuery] List<string>? grades,
+        [FromQuery] List<string>? programs)
+    {
+        var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+        if (grades != null && grades.Any())
+            query = query.Where(s => grades.Contains(s.GradeLevel));
+        if (programs != null && programs.Any())
+            query = query.Where(s => s.Program != null && programs.Contains(s.Program));
+        var count = await query.CountAsync();
+        return new JsonResult(new { count });
+    }
+
     public async Task OnGetAsync()
     {
         AvailableGrades = await _context.GradeLevels
             .OrderBy(g => g.SortOrder)
             .Select(g => g.Code)
+            .ToListAsync();
+
+        AvailablePrograms = await _context.Programs
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Code)
             .ToListAsync();
 
         TotalActiveStudents = await _context.Students
@@ -100,13 +129,13 @@ public class EmergencyModel : PageModel
         var recipientQuery = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
         if (AffectedGrades.Any())
             recipientQuery = recipientQuery.Where(s => AffectedGrades.Contains(s.GradeLevel));
+        if (AffectedPrograms.Any())
+            recipientQuery = recipientQuery.Where(s => s.Program != null && AffectedPrograms.Contains(s.Program));
         var recipientCount = await recipientQuery.CountAsync();
 
         if (recipientCount == 0)
         {
-            ErrorMessage = AffectedGrades.Any()
-                ? $"No students with SMS enabled found in grades {string.Join(", ", AffectedGrades)}. Adjust the grade filter or check that students have SMS enabled."
-                : "No active students with SMS enabled were found. Enable SMS for students before sending a broadcast.";
+            ErrorMessage = "No students with SMS enabled match the selected filters. Adjust the grade/program filter or check that students have SMS enabled.";
             return RedirectToPage();
         }
 
@@ -117,19 +146,24 @@ public class EmergencyModel : PageModel
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : User.Identity?.Name;
 
-            // Queue emergency announcements
+            var provider = string.IsNullOrEmpty(PreferredProvider) ? null : PreferredProvider;
             await _smsService.QueueEmergencyAnnouncementAsync(
                 Message,
                 Language,
                 AffectedGrades.Any() ? AffectedGrades : null,
+                AffectedPrograms.Any() ? AffectedPrograms : null,
                 _userManager.GetUserId(User),
-                createdByName);
+                createdByName,
+                provider);
 
             var gradeText = AffectedGrades.Any()
                 ? $"grades {string.Join(", ", AffectedGrades)}"
                 : "all grades";
+            var programText = AffectedPrograms.Any()
+                ? $", programs {string.Join(", ", AffectedPrograms)}"
+                : string.Empty;
 
-            StatusMessage = $"Emergency broadcast queued successfully for {gradeText}.";
+            StatusMessage = $"Emergency broadcast queued successfully for {gradeText}{programText}.";
             _logger.LogWarning("Emergency broadcast sent by {User}: {Message} to {Grades}",
                 User.Identity?.Name, Message, gradeText);
 

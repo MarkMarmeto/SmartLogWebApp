@@ -80,6 +80,58 @@
         </div>
     </div>
 
+    <!-- No-Scan Alert Status -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-bell me-2"></i>No-Scan Alert</span>
+                    <div class="d-flex align-items-center gap-2">
+                        @if (Model.NoScanAlertRanToday)
+                        {
+                            <span class="badge bg-success">Ran Today</span>
+                            <form method="post" asp-page-handler="TriggerNoScanAlert" class="d-inline">
+                                <input type="hidden" name="force" value="true" />
+                                <button type="submit" class="btn btn-sm btn-outline-warning"
+                                        onclick="return confirm('Alert already ran today. Force re-run anyway? (Per-student duplicates will still be skipped.)')">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Re-run
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Not Run Today</span>
+                            <form method="post" asp-page-handler="TriggerNoScanAlert" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-play-fill me-1"></i>Run Now
+                                </button>
+                            </form>
+                        }
+                        <a asp-page="/Admin/Sms/Settings" class="btn btn-sm btn-outline-secondary">Configure</a>
+                    </div>
+                </div>
+                <div class="card-body py-2">
+                    @if (!Model.NoScanAlert.HasRun)
+                    {
+                        <span class="text-muted">Last Run: Never</span>
+                    }
+                    else if (Model.NoScanAlert.WasSuppressed)
+                    {
+                        <span class="badge bg-warning text-dark me-2">Suppressed</span>
+                        <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")
+                            — Suppressed (no scanner activity)</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success me-2">Success</span>
+                        <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</span>
+                        <span class="ms-3 text-muted">Alerts Sent: <strong>@Model.NoScanAlert.AlertsQueued</strong></span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">

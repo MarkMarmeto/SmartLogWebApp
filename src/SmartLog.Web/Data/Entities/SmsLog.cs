@@ -30,6 +30,12 @@ public class SmsLog
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
+    /// US0057: Message type copied from SmsQueue at send time (ATTENDANCE, NO_SCAN_ALERT, PERSONAL, etc.)
+    /// </summary>
+    [StringLength(50)]
+    public string? MessageType { get; set; }
+
+    /// <summary>
     /// Provider that handled the message
     /// </summary>
     [StringLength(50)]

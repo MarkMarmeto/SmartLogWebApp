@@ -35,4 +35,5 @@ public class GradeLevel
 
     // Navigation properties
     public virtual ICollection<Section> Sections { get; set; } = new List<Section>();
+    public virtual ICollection<GradeLevelProgram> GradeLevelPrograms { get; set; } = new List<GradeLevelProgram>();
 }
