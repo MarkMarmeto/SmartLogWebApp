@@ -47,7 +47,7 @@ public class StudentDetailsModel : PageModel
     }
 
     public Student Student { get; set; } = null!;
-    public QrCode? QrCode { get; set; }
+    public QrCode? QrCode => Student?.QrCodes.FirstOrDefault(q => q.IsValid);
     public string ProfilePictureUrl { get; set; } = string.Empty;
 
     [TempData]
@@ -56,7 +56,7 @@ public class StudentDetailsModel : PageModel
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var student = await _context.Students
-            .Include(s => s.QrCode)
+            .Include(s => s.QrCodes)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (student == null)
@@ -65,7 +65,6 @@ public class StudentDetailsModel : PageModel
         }
 
         Student = student;
-        QrCode = student.QrCode;
         ProfilePictureUrl = _fileUploadService.GetProfilePictureUrl(student.ProfilePicturePath);
 
         return Page();
@@ -83,7 +82,7 @@ public class StudentDetailsModel : PageModel
         }
 
         var student = await _context.Students
-            .Include(s => s.QrCode)
+            .Include(s => s.QrCodes)
             .FirstOrDefaultAsync(s => s.Id == studentId);
 
         if (student == null)
@@ -91,29 +90,31 @@ public class StudentDetailsModel : PageModel
             return NotFound();
         }
 
-        // Remove old QR code (one-to-one FK requires removal before creating new one)
-        string? oldQrPayload = null;
-        if (student.QrCode != null)
-        {
-            oldQrPayload = student.QrCode.Payload;
-            _context.QrCodes.Remove(student.QrCode);
-        }
-
-        // Generate new QR code
+        // Generate new QR code first so we have its ID
         var newQrCode = await _qrCodeService.GenerateQrCodeAsync(student.StudentId);
         newQrCode.StudentId = student.Id;
         _context.QrCodes.Add(newQrCode);
-
         await _context.SaveChangesAsync();
 
-        // Audit log — include old payload for audit trail since QR record is deleted
+        // Invalidate old QR codes — keep records for audit trail (US0079)
+        var oldQrCode = student.QrCodes.FirstOrDefault(q => q.IsValid && q.Id != newQrCode.Id);
+        string? oldQrPayload = null;
+        if (oldQrCode != null)
+        {
+            oldQrPayload = oldQrCode.Payload;
+            oldQrCode.IsValid = false;
+            oldQrCode.InvalidatedAt = DateTime.UtcNow;
+            oldQrCode.ReplacedByQrCodeId = newQrCode.Id;
+            await _context.SaveChangesAsync();
+        }
+
         var currentUser = User.Identity?.Name;
         var currentUserId = _userManager.GetUserId(User);
         await _auditService.LogAsync(
             action: "QrCodeRegenerated",
             userId: null,
             performedByUserId: currentUserId,
-            details: $"QR code regenerated for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}. Previous QR: {oldQrPayload ?? "none"}",
+            details: $"QR code regenerated for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}. Previous QR invalidated: {oldQrPayload ?? "none"}",
             ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
             userAgent: Request.Headers.UserAgent.ToString());
 
@@ -121,6 +122,55 @@ public class StudentDetailsModel : PageModel
             student.StudentId, currentUser);
 
         StatusMessage = "QR code regenerated successfully";
+        return RedirectToPage(new { id = studentId });
+    }
+
+    /// <summary>
+    /// US0081: Invalidate QR code without regenerating a new one (lost card, not yet replaced).
+    /// Old QR marked IsValid=false with audit trail. No new QR is created.
+    /// </summary>
+    public async Task<IActionResult> OnPostInvalidateQrAsync(Guid studentId)
+    {
+        var authResult = await _authorizationService.AuthorizeAsync(User, "CanManageStudents");
+        if (!authResult.Succeeded)
+        {
+            return Forbid();
+        }
+
+        var student = await _context.Students
+            .Include(s => s.QrCodes)
+            .FirstOrDefaultAsync(s => s.Id == studentId);
+
+        if (student == null)
+        {
+            return NotFound();
+        }
+
+        var activeQrCode = student.QrCodes.FirstOrDefault(q => q.IsValid);
+        if (activeQrCode == null)
+        {
+            StatusMessage = "No active QR code to invalidate.";
+            return RedirectToPage(new { id = studentId });
+        }
+
+        activeQrCode.IsValid = false;
+        activeQrCode.InvalidatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        var currentUser = User.Identity?.Name;
+        var currentUserId = _userManager.GetUserId(User);
+        await _auditService.LogAsync(
+            action: "QrCodeInvalidated",
+            userId: null,
+            performedByUserId: currentUserId,
+            details: $"QR code invalidated (no replacement) for student '{student.FullName}' (ID: {student.StudentId}) by {currentUser}. QR payload: {activeQrCode.Payload}",
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            userAgent: Request.Headers.UserAgent.ToString());
+
+        _logger.LogInformation("QR code invalidated (no replacement) for student {StudentId} by {User}",
+            student.StudentId, currentUser);
+
+        StatusMessage = "QR code invalidated. The student will need a new card printed.";
         return RedirectToPage(new { id = studentId });
     }
 

@@ -36,15 +36,26 @@ public class QrCode
     public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Whether this QR code is still valid (false if regenerated)
+    /// Whether this QR code is still valid (false if invalidated or replaced)
     /// </summary>
     public bool IsValid { get; set; } = true;
+
+    /// <summary>
+    /// When this QR code was invalidated (null if still valid)
+    /// </summary>
+    public DateTime? InvalidatedAt { get; set; }
+
+    /// <summary>
+    /// ID of the QR code that replaced this one (for audit trail linkage)
+    /// </summary>
+    public Guid? ReplacedByQrCodeId { get; set; }
 
     /// <summary>
     /// Base64 encoded QR code image (PNG)
     /// </summary>
     public string? QrImageBase64 { get; set; }
 
-    // Navigation property
+    // Navigation properties
     public virtual Student Student { get; set; } = null!;
+    public virtual QrCode? ReplacedByQrCode { get; set; }
 }

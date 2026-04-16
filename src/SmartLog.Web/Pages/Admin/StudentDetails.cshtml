@@ -152,17 +152,23 @@
                         <div class="d-grid gap-2 mt-3">
                             <a asp-page="/Admin/PrintQrCode" asp-route-id="@Model.Student.Id"
                                class="btn btn-primary" target="_blank">
-                                <i class="bi bi-printer me-1"></i>Print QR Code
+                                <i class="bi bi-printer me-1"></i>Print ID Card
+                            </a>
+                            <a asp-page="/Admin/PrintEnrollmentSticker"
+                               asp-page-handler="Student" asp-route-id="@Model.Student.Id"
+                               class="btn btn-outline-primary" target="_blank">
+                                <i class="bi bi-sticker me-1"></i>Print Enrollment Sticker
                             </a>
                             @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                             {
-                                <form method="post" asp-page-handler="RegenerateQr"
-                                      onsubmit="return confirm('This will invalidate the old QR code. Continue?');">
-                                    <input type="hidden" name="studentId" value="@Model.Student.Id" />
-                                    <button type="submit" class="btn btn-warning w-100">
-                                        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate QR Code
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-warning"
+                                        data-bs-toggle="modal" data-bs-target="#regenerateQrModal">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Replace Card (Regenerate QR)
+                                </button>
+                                <button type="button" class="btn btn-outline-danger"
+                                        data-bs-toggle="modal" data-bs-target="#invalidateQrModal">
+                                    <i class="bi bi-slash-circle me-1"></i>Invalidate QR (No Replacement)
+                                </button>
                             }
                         </div>
                     </div>
@@ -266,6 +272,78 @@
                     <button type="button" class="btn btn-primary" id="personalSmsSendBtn" onclick="sendPersonalSms()">
                         <i class="bi bi-send me-1"></i>Send
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* US0080: Regenerate QR confirmation modal *@
+@if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+{
+    <div class="modal fade" id="regenerateQrModal" tabindex="-1" aria-labelledby="regenerateQrModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning-subtle">
+                    <h5 class="modal-title" id="regenerateQrModalLabel">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Replace Student ID Card
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>This will invalidate the current physical card.</strong>
+                        The student's existing QR code will stop working immediately.
+                        You must print and issue a new ID card after regenerating.
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Use this only when the card is lost or damaged and needs to be replaced.
+                        The old QR record is kept for audit purposes.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" asp-page-handler="RegenerateQr" class="d-inline">
+                        <input type="hidden" name="studentId" value="@Model.Student.Id" />
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Regenerate QR Code
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* US0081: Invalidate QR without regeneration modal *@
+    <div class="modal fade" id="invalidateQrModal" tabindex="-1" aria-labelledby="invalidateQrModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger-subtle">
+                    <h5 class="modal-title" id="invalidateQrModalLabel">
+                        <i class="bi bi-slash-circle me-2"></i>Invalidate QR Code
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>This will immediately disable the current QR code.</strong>
+                        The student will not be able to scan in until a new QR code is generated.
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Use this when a card is reported lost and you are not issuing a replacement immediately.
+                        No new QR code will be created.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" asp-page-handler="InvalidateQr" class="d-inline">
+                        <input type="hidden" name="studentId" value="@Model.Student.Id" />
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-slash-circle me-1"></i>Invalidate QR Code
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

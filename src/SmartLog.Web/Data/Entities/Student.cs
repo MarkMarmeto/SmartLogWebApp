@@ -113,7 +113,7 @@ public class Student
     public Guid? CurrentEnrollmentId { get; set; }
 
     // Navigation properties
-    public virtual QrCode? QrCode { get; set; }
+    public virtual ICollection<QrCode> QrCodes { get; set; } = new List<QrCode>();
     public virtual StudentEnrollment? CurrentEnrollment { get; set; }
     public virtual ICollection<StudentEnrollment> Enrollments { get; set; } = new List<StudentEnrollment>();
 

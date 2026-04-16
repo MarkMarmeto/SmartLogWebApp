@@ -101,9 +101,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => new { e.IsValid, e.StudentId });
 
             entity.HasOne(e => e.Student)
-                .WithOne(s => s.QrCode)
-                .HasForeignKey<QrCode>(e => e.StudentId)
+                .WithMany(s => s.QrCodes)
+                .HasForeignKey(e => e.StudentId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ReplacedByQrCode)
+                .WithMany()
+                .HasForeignKey(e => e.ReplacedByQrCodeId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.Property(e => e.IssuedAt)
                 .HasDefaultValueSql("GETUTCDATE()");

@@ -121,7 +121,7 @@ public class ScansApiController : ControllerBase
 
         // US0031-AC4: Lookup student and QR code
         var student = await _context.Students
-            .Include(s => s.QrCode)
+            .Include(s => s.QrCodes)
             .FirstOrDefaultAsync(s => s.StudentId == studentIdStr);
 
         if (student == null)
@@ -135,8 +135,10 @@ public class ScansApiController : ControllerBase
             });
         }
 
+        var activeQrCode = student.QrCodes.FirstOrDefault(q => q.IsValid);
+
         // US0031-AC5: Check if QR code is still valid
-        if (student.QrCode == null || !student.QrCode.IsValid)
+        if (activeQrCode == null)
         {
             _logger.LogWarning("Invalidated QR code for student {StudentId}", studentIdStr);
             await LogRejectedScanAsync(device.Id, student.Id, request, "REJECTED_QR_INVALIDATED");
