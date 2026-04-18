@@ -229,7 +229,8 @@ public class ScansApiController : ControllerBase
             ScannedAt = scannedAtUtc,
             ReceivedAt = DateTime.UtcNow,
             ScanType = request.ScanType,
-            Status = "ACCEPTED"
+            Status = "ACCEPTED",
+            CameraIndex = request.CameraIndex
         };
 
         _context.Scans.Add(scan);
@@ -327,6 +328,12 @@ public class ScanSubmissionRequest
     [Required]
     [RegularExpression("^(ENTRY|EXIT)$")]
     public string ScanType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Zero-based index of the camera that captured this scan on a multi-camera device.
+    /// Omitted or null for single-camera devices and older scanner versions.
+    /// </summary>
+    public int? CameraIndex { get; set; }
 }
 
 /// <summary>

@@ -48,6 +48,12 @@ public class Scan
     /// </summary>
     public Guid? AcademicYearId { get; set; }
 
+    /// <summary>
+    /// Index of the camera (0-based) that captured this scan on a multi-camera device.
+    /// Null for scans from single-camera devices or older scanner versions that do not send this field.
+    /// </summary>
+    public int? CameraIndex { get; set; }
+
     // Navigation properties
     public virtual Device Device { get; set; } = null!;
     public virtual Student Student { get; set; } = null!;
