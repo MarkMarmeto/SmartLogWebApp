@@ -855,6 +855,13 @@ public static class DbInitializer
                 Value = "18:10",
                 Category = "Sms",
                 Description = "Time (HH:mm, 24-hour local) at which the end-of-day no-scan alert job runs."
+            },
+            new AppSettings
+            {
+                Key = "Visitor:MaxPasses",
+                Value = "20",
+                Category = "Visitor",
+                Description = "Maximum number of visitor passes to generate."
             }
         };
 

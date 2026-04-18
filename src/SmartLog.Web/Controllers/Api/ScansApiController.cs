@@ -91,7 +91,14 @@ public class ScansApiController : ControllerBase
         // Update device last seen
         device.LastSeenAt = DateTime.UtcNow;
 
-        // US0031-AC1, AC2: Parse and validate QR payload
+        // US0073-AC1: Route by QR prefix — SMARTLOG-V: for visitors, SMARTLOG: for students
+        var visitorParsed = _qrCodeService.ParseVisitorQrPayload(request.QrPayload);
+        if (visitorParsed != null)
+        {
+            return await HandleVisitorScanAsync(device, visitorParsed.Value, request);
+        }
+
+        // US0031-AC1, AC2: Parse and validate QR payload (student)
         var parsed = _qrCodeService.ParseQrPayload(request.QrPayload);
         if (parsed == null)
         {
@@ -268,6 +275,125 @@ public class ScansApiController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// US0073: Handle visitor QR scan — HMAC verify, pass lookup, duplicate check, create VisitorScan.
+    /// </summary>
+    private async Task<IActionResult> HandleVisitorScanAsync(
+        Device device,
+        (string Code, long Timestamp, string Signature) visitor,
+        ScanSubmissionRequest request)
+    {
+        // US0073-AC2: HMAC verification
+        if (!await _qrCodeService.VerifyVisitorQrAsync(visitor.Code, visitor.Timestamp, visitor.Signature))
+        {
+            _logger.LogWarning("Invalid visitor QR signature for {Code} from device {DeviceId}", visitor.Code, device.Id);
+            return BadRequest(new ErrorResponse
+            {
+                Error = "InvalidQrCode",
+                Message = "QR code signature is invalid",
+                Status = "REJECTED"
+            });
+        }
+
+        // US0073-AC3: Pass lookup
+        var pass = await _context.VisitorPasses.FirstOrDefaultAsync(p => p.Code == visitor.Code);
+        if (pass == null)
+        {
+            _logger.LogWarning("Visitor pass not found: {Code}", visitor.Code);
+            return BadRequest(new ErrorResponse
+            {
+                Error = "InvalidQrCode",
+                Message = "Visitor pass not found",
+                Status = "REJECTED"
+            });
+        }
+
+        // US0073-AC4: Active check
+        if (!pass.IsActive)
+        {
+            _logger.LogWarning("Inactive visitor pass scanned: {Code}", visitor.Code);
+            return BadRequest(new ErrorResponse
+            {
+                Error = "PassInactive",
+                Message = "Visitor pass has been deactivated",
+                Status = "REJECTED_PASS_INACTIVE"
+            });
+        }
+
+        var scannedAtUtc = request.ScannedAt.UtcDateTime;
+
+        // US0073-AC5: Duplicate detection (5-min window)
+        var duplicateScan = await CheckVisitorDuplicateScanAsync(pass.Id, request.ScanType, scannedAtUtc);
+        if (duplicateScan != null)
+        {
+            _logger.LogInformation("Duplicate visitor scan for {Code} on device {DeviceId}", visitor.Code, device.Id);
+            return Ok(new VisitorScanResponse
+            {
+                ScanId = duplicateScan.Id,
+                PassCode = pass.Code,
+                PassNumber = pass.PassNumber,
+                ScanType = request.ScanType,
+                ScannedAt = scannedAtUtc,
+                Status = "DUPLICATE",
+                Message = "Already scanned. Please proceed."
+            });
+        }
+
+        // US0073-AC6/AC7: Create VisitorScan and update pass status
+        var visitorScan = new VisitorScan
+        {
+            Id = Guid.NewGuid(),
+            VisitorPassId = pass.Id,
+            DeviceId = device.Id,
+            ScanType = request.ScanType,
+            ScannedAt = scannedAtUtc,
+            ReceivedAt = DateTime.UtcNow,
+            Status = "ACCEPTED"
+        };
+
+        // Set current academic year if available
+        var currentAy = await _context.AcademicYears.FirstOrDefaultAsync(a => a.IsCurrent);
+        if (currentAy != null)
+            visitorScan.AcademicYearId = currentAy.Id;
+
+        // Update pass status based on scan type
+        pass.CurrentStatus = request.ScanType == "ENTRY" ? "InUse" : "Available";
+
+        _context.VisitorScans.Add(visitorScan);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Visitor scan accepted: {Code} {ScanType} on device {DeviceId}",
+            visitor.Code, request.ScanType, device.Id);
+
+        // US0073-AC8: No SMS notification for visitors
+
+        // US0073-AC9: Return visitor-specific response
+        return Ok(new VisitorScanResponse
+        {
+            ScanId = visitorScan.Id,
+            PassCode = pass.Code,
+            PassNumber = pass.PassNumber,
+            ScanType = request.ScanType,
+            ScannedAt = scannedAtUtc,
+            Status = "ACCEPTED"
+        });
+    }
+
+    private async Task<VisitorScan?> CheckVisitorDuplicateScanAsync(Guid visitorPassId, string scanType, DateTime scannedAt)
+    {
+        var windowMinutes = await _appSettingsService.GetAsync("QRCode.DuplicateScanWindowMinutes", 5);
+        var windowStart = scannedAt.AddMinutes(-windowMinutes);
+
+        return await _context.VisitorScans
+            .Where(s => s.VisitorPassId == visitorPassId &&
+                       s.ScanType == scanType &&
+                       s.ScannedAt >= windowStart &&
+                       s.ScannedAt <= scannedAt &&
+                       s.Status == "ACCEPTED")
+            .OrderByDescending(s => s.ScannedAt)
+            .FirstOrDefaultAsync();
+    }
+
     private async Task<Device?> AuthenticateDeviceAsync(string apiKey)
     {
         var keyHash = _deviceService.HashApiKey(apiKey);
@@ -351,6 +477,20 @@ public class ScanResponse
     public DateTime ScannedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public Guid? OriginalScanId { get; set; }
+    public string? Message { get; set; }
+}
+
+/// <summary>
+/// Response model for visitor scan submission (US0073-AC9).
+/// </summary>
+public class VisitorScanResponse
+{
+    public Guid ScanId { get; set; }
+    public string PassCode { get; set; } = string.Empty;
+    public int PassNumber { get; set; }
+    public string ScanType { get; set; } = string.Empty;
+    public DateTime ScannedAt { get; set; }
+    public string Status { get; set; } = string.Empty;
     public string? Message { get; set; }
 }
 

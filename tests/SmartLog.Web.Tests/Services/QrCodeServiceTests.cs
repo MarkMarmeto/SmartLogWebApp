@@ -113,4 +113,96 @@ public class QrCodeServiceTests
         var result = service.ParseQrPayload("SMARTLOG:2026-07-0001:notanumber:SIG");
         Assert.Null(result);
     }
+
+    // --- Visitor QR Tests ---
+
+    [Fact]
+    public void ParseVisitorQrPayload_ValidPayload_ReturnsParsedComponents()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG-V:VISITOR-001:1739512547:BASE64HMAC");
+
+        Assert.NotNull(result);
+        Assert.Equal("VISITOR-001", result.Value.Code);
+        Assert.Equal(1739512547L, result.Value.Timestamp);
+        Assert.Equal("BASE64HMAC", result.Value.Signature);
+    }
+
+    [Fact]
+    public void ParseVisitorQrPayload_WrongPrefix_ReturnsNull()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG:VISITOR-001:1739512547:SIG");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ParseVisitorQrPayload_TooFewParts_ReturnsNull()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG-V:VISITOR-001");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ParseVisitorQrPayload_NonNumericTimestamp_ReturnsNull()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG-V:VISITOR-001:notanumber:SIG");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ParseVisitorQrPayload_InvalidCodeCharacters_ReturnsNull()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG-V:VISITOR@001:1739512547:SIG");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ParseVisitorQrPayload_EmptyCode_ReturnsNull()
+    {
+        var service = CreateService();
+        var result = service.ParseVisitorQrPayload("SMARTLOG-V::1739512547:SIG");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task VerifyVisitorQrAsync_ValidSignature_ReturnsTrue()
+    {
+        var service = CreateService();
+
+        // Compute a valid HMAC for known data
+        var code = "VISITOR-001";
+        var timestamp = 1739512547L;
+        // Generate QR via the service to get a valid signature
+        // We use the same HMAC logic: HMAC-SHA256("{code}:{timestamp}")
+        using var hmac = new System.Security.Cryptography.HMACSHA256(
+            System.Text.Encoding.UTF8.GetBytes(TestHmacKey));
+        var hash = hmac.ComputeHash(
+            System.Text.Encoding.UTF8.GetBytes($"{code}:{timestamp}"));
+        var validSignature = Convert.ToBase64String(hash);
+
+        var result = await service.VerifyVisitorQrAsync(code, timestamp, validSignature);
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task VerifyVisitorQrAsync_InvalidSignature_ReturnsFalse()
+    {
+        var service = CreateService();
+
+        var result = await service.VerifyVisitorQrAsync("VISITOR-001", 1739512547, "InvalidBase64Sig==");
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task VerifyVisitorQrAsync_MalformedBase64_ReturnsFalse()
+    {
+        var service = CreateService();
+
+        var result = await service.VerifyVisitorQrAsync("VISITOR-001", 1739512547, "not-valid-base64!!!");
+        Assert.False(result);
+    }
 }

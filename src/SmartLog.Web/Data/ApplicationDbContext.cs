@@ -35,6 +35,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Broadcast> Broadcasts => Set<Broadcast>();
     public DbSet<Entities.Program> Programs => Set<Entities.Program>();
     public DbSet<GradeLevelProgram> GradeLevelPrograms => Set<GradeLevelProgram>();
+    public DbSet<VisitorPass> VisitorPasses => Set<VisitorPass>();
+    public DbSet<VisitorScan> VisitorScans => Set<VisitorScan>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -420,6 +422,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(p => p.Sections)
             .HasForeignKey(e => e.ProgramId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Configure VisitorPass (US0072)
+        builder.Entity<VisitorPass>(entity =>
+        {
+            entity.HasIndex(e => e.PassNumber).IsUnique();
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.CurrentStatus);
+
+            entity.Property(e => e.IssuedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure VisitorScan (US0072)
+        builder.Entity<VisitorScan>(entity =>
+        {
+            entity.HasIndex(e => new { e.VisitorPassId, e.ScannedAt });
+            entity.HasIndex(e => e.ScannedAt);
+            entity.HasIndex(e => e.Status);
+
+            entity.HasOne(e => e.VisitorPass)
+                .WithMany(p => p.VisitorScans)
+                .HasForeignKey(e => e.VisitorPassId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.AcademicYear)
+                .WithMany()
+                .HasForeignKey(e => e.AcademicYearId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.ReceivedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
     }
 
     public override int SaveChanges()

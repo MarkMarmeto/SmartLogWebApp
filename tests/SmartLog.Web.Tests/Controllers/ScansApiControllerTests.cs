@@ -76,11 +76,14 @@ public class ScansApiControllerTests
             GuardianRelationship = "Mother",
             ParentPhone = "09171234567",
             IsActive = true,
-            QrCode = new QrCode
+            QrCodes = new List<QrCode>
             {
-                Payload = ValidQrPayload,
-                HmacSignature = "BASE64HMAC",
-                IsValid = true
+                new QrCode
+                {
+                    Payload = ValidQrPayload,
+                    HmacSignature = "BASE64HMAC",
+                    IsValid = true
+                }
             }
         };
         _context.Students.Add(_activeStudent);
@@ -238,7 +241,7 @@ public class ScansApiControllerTests
     [Fact]
     public async Task SubmitScan_InvalidatedQrCode_Returns400()
     {
-        _activeStudent.QrCode!.IsValid = false;
+        _activeStudent.QrCodes.First().IsValid = false;
         _context.SaveChanges();
 
         var controller = CreateController();
@@ -438,4 +441,274 @@ public class ScansApiControllerTests
             Times.Never);
     }
 
+    // ========== US0073: Visitor Scan Tests ==========
+
+    private const string VisitorQrPayload = "SMARTLOG-V:VISITOR-005:1739512547:VISITOR_HMAC";
+    private const string VisitorCode = "VISITOR-005";
+
+    private VisitorPass SeedVisitorPass(string code = VisitorCode, bool isActive = true, string status = "Available")
+    {
+        var pass = new VisitorPass
+        {
+            Id = Guid.NewGuid(),
+            PassNumber = 5,
+            Code = code,
+            QrPayload = VisitorQrPayload,
+            HmacSignature = "VISITOR_HMAC",
+            QrImageBase64 = "base64img",
+            IsActive = isActive,
+            IssuedAt = DateTime.UtcNow,
+            CurrentStatus = status
+        };
+        _context.VisitorPasses.Add(pass);
+        _context.SaveChanges();
+        return pass;
+    }
+
+    private void SetupVisitorMocks(bool hmacValid = true)
+    {
+        _qrCodeService.Setup(q => q.ParseVisitorQrPayload(VisitorQrPayload))
+            .Returns((VisitorCode, 1739512547L, "VISITOR_HMAC"));
+        _qrCodeService.Setup(q => q.VerifyVisitorQrAsync(VisitorCode, 1739512547L, "VISITOR_HMAC"))
+            .ReturnsAsync(hmacValid);
+    }
+
+    private static ScanSubmissionRequest CreateVisitorRequest(string scanType = "ENTRY", DateTime? scannedAt = null) => new()
+    {
+        QrPayload = VisitorQrPayload,
+        ScannedAt = scannedAt ?? DateTime.UtcNow,
+        ScanType = scanType
+    };
+
+    [Fact]
+    public async Task SubmitScan_VisitorPrefix_RoutesToVisitorHandler()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<VisitorScanResponse>(ok.Value);
+    }
+
+    [Fact]
+    public async Task SubmitScan_StudentPrefix_StillRoutesToStudentHandler()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<ScanResponse>(ok.Value);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorInvalidHmac_ReturnsRejected()
+    {
+        SetupVisitorMocks(hmacValid: false);
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("InvalidQrCode", error.Error);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorPassNotFound_ReturnsRejected()
+    {
+        SetupVisitorMocks();
+        // Don't seed any visitor pass
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("InvalidQrCode", error.Error);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorPassInactive_ReturnsRejected()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(isActive: false);
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("PassInactive", error.Error);
+        Assert.Equal("REJECTED_PASS_INACTIVE", error.Status);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorDuplicate_ReturnsDuplicate()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var scannedAt = DateTime.UtcNow;
+
+        // Seed an existing accepted visitor scan within 5-min window
+        _context.VisitorScans.Add(new VisitorScan
+        {
+            Id = Guid.NewGuid(),
+            VisitorPassId = pass.Id,
+            DeviceId = _activeDevice.Id,
+            ScanType = "ENTRY",
+            ScannedAt = scannedAt.AddMinutes(-2),
+            ReceivedAt = DateTime.UtcNow,
+            Status = "ACCEPTED"
+        });
+        _context.SaveChanges();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest(scannedAt: scannedAt);
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("DUPLICATE", response.Status);
+        Assert.Equal(VisitorCode, response.PassCode);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorEntry_SetsPassToInUse()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass(status: "Available");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("ENTRY");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        Assert.Equal("ENTRY", response.ScanType);
+
+        var updatedPass = _context.VisitorPasses.Find(pass.Id);
+        Assert.Equal("InUse", updatedPass!.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorExit_SetsPassToAvailable()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass(status: "InUse");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("EXIT");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        Assert.Equal("EXIT", response.ScanType);
+
+        var updatedPass = _context.VisitorPasses.Find(pass.Id);
+        Assert.Equal("Available", updatedPass!.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_NoSmsQueued()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        await controller.SubmitScan(request);
+
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_ResponseHasPassFields()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal(VisitorCode, response.PassCode);
+        Assert.Equal(5, response.PassNumber);
+        Assert.NotEqual(Guid.Empty, response.ScanId);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_CreatesVisitorScanRecord()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        await controller.SubmitScan(request);
+
+        var scan = _context.VisitorScans.FirstOrDefault(s => s.VisitorPassId == pass.Id);
+        Assert.NotNull(scan);
+        Assert.Equal("ENTRY", scan.ScanType);
+        Assert.Equal("ACCEPTED", scan.Status);
+        Assert.Equal(_activeDevice.Id, scan.DeviceId);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorExitWhenAvailable_StillAccepted()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(status: "Available");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("EXIT");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorEntryWhenInUse_StillAccepted()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(status: "InUse");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("ENTRY");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+    }
 }
