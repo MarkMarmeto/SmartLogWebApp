@@ -41,19 +41,37 @@ public static class TestDbContextFactory
         context.SaveChanges();
     }
 
+    public static void SeedPrograms(ApplicationDbContext context)
+    {
+        if (context.Programs.Any()) return;
+
+        context.Programs.Add(new Data.Entities.Program
+        {
+            Code = "REGULAR",
+            Name = "Regular Program",
+            IsActive = true,
+            SortOrder = 0
+        });
+        context.SaveChanges();
+    }
+
     public static void SeedSections(ApplicationDbContext context)
     {
         SeedGradeLevels(context);
+        SeedPrograms(context);
 
         if (context.Sections.Any()) return;
 
         var gradeLevels = context.GradeLevels.ToList();
+        var regularProgram = context.Programs.First(p => p.Code == "REGULAR");
+
         foreach (var gl in gradeLevels)
         {
             context.Sections.Add(new Section
             {
                 Name = "Section A",
                 GradeLevelId = gl.Id,
+                ProgramId = regularProgram.Id,
                 Capacity = 40,
                 IsActive = true
             });
@@ -61,6 +79,7 @@ public static class TestDbContextFactory
             {
                 Name = "Section B",
                 GradeLevelId = gl.Id,
+                ProgramId = regularProgram.Id,
                 Capacity = 40,
                 IsActive = true
             });

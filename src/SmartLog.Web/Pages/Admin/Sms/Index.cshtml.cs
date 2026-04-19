@@ -79,14 +79,19 @@ public class IndexModel : PageModel
 
         // Next Run display
         IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
+        var alertEnabledStr = await _appSettingsService.GetAsync("Sms:NoScanAlertEnabled");
+        var isAlertEnabled = alertEnabledStr == null || !alertEnabledStr.Equals("false", StringComparison.OrdinalIgnoreCase);
         var alertTimeStr = await _appSettingsService.GetAsync("Sms:NoScanAlertTime") ?? "18:10";
-        NextRunDisplay = ComputeNextRunDisplay(IsSmsEnabled, NoScanAlertRanToday, alertTimeStr);
+        NextRunDisplay = ComputeNextRunDisplay(IsSmsEnabled, isAlertEnabled, NoScanAlertRanToday, alertTimeStr);
     }
 
-    internal static string ComputeNextRunDisplay(bool isSmsEnabled, bool ranToday, string alertTimeStr)
+    internal static string ComputeNextRunDisplay(bool isSmsEnabled, bool isAlertEnabled, bool ranToday, string alertTimeStr)
     {
         if (!isSmsEnabled)
-            return "Disabled";
+            return "Disabled (SMS off)";
+
+        if (!isAlertEnabled)
+            return "Disabled (alert off)";
 
         if (!TimeOnly.TryParse(alertTimeStr, out var alertTime))
             alertTime = new TimeOnly(18, 10);

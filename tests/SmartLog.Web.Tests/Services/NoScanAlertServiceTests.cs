@@ -35,7 +35,8 @@ public class NoScanAlertServiceTests
         Data.ApplicationDbContext? context = null,
         Mock<ICalendarService>? calendarService = null,
         Mock<ISmsTemplateService>? templateService = null,
-        Mock<ISmsSettingsService>? smsSettings = null)
+        Mock<ISmsSettingsService>? smsSettings = null,
+        Mock<IAppSettingsService>? appSettings = null)
     {
         var services = new ServiceCollection();
 
@@ -43,19 +44,15 @@ public class NoScanAlertServiceTests
         services.AddSingleton(context);
 
         var cal = calendarService ?? DefaultCalendar(isSchoolDay: true);
-        services.AddSingleton(cal.Object);
-        services.AddSingleton<ICalendarService>(sp => sp.GetRequiredService<ICalendarService>());
-
         var tmpl = templateService ?? DefaultTemplate();
-        services.AddSingleton(tmpl.Object);
-
         var smsSvc = smsSettings ?? DefaultSmsSettings(enabled: true);
-        services.AddSingleton(smsSvc.Object);
+        var appSvc = appSettings ?? DefaultAppSettings();
 
         // Register interfaces pointing to mock instances
         services.AddSingleton<ICalendarService>(cal.Object);
         services.AddSingleton<ISmsTemplateService>(tmpl.Object);
         services.AddSingleton<ISmsSettingsService>(smsSvc.Object);
+        services.AddSingleton<IAppSettingsService>(appSvc.Object);
 
         return services.BuildServiceProvider();
     }
@@ -87,6 +84,16 @@ public class NoScanAlertServiceTests
     {
         var mock = new Mock<ISmsSettingsService>();
         mock.Setup(m => m.IsSmsEnabledAsync()).ReturnsAsync(enabled);
+        return mock;
+    }
+
+    private static Mock<IAppSettingsService> DefaultAppSettings(bool alertEnabled = true, string? alertProvider = null)
+    {
+        var mock = new Mock<IAppSettingsService>();
+        mock.Setup(m => m.GetAsync("Sms:NoScanAlertEnabled"))
+            .ReturnsAsync(alertEnabled ? "true" : "false");
+        mock.Setup(m => m.GetAsync("Sms:NoScanAlertProvider"))
+            .ReturnsAsync(alertProvider);
         return mock;
     }
 
@@ -250,6 +257,39 @@ public class NoScanAlertServiceTests
         await service.InvokeAlertForTestAsync();
 
         Assert.Equal(0, context.SmsQueues.Count());
+    }
+
+    [Fact]
+    public async Task Alert_AlertToggleDisabled_SkipsWithoutQueueing()
+    {
+        var context = TestDbContextFactory.Create();
+        var appSettings = DefaultAppSettings(alertEnabled: false);
+        var sp = BuildServiceProvider(context: context, appSettings: appSettings);
+
+        var service = CreateService(serviceProvider: sp);
+        await service.InvokeAlertForTestAsync();
+
+        Assert.Equal(0, context.SmsQueues.Count());
+    }
+
+    [Fact]
+    public async Task Alert_AlertProviderSet_QueuesWithProvider()
+    {
+        var context = TestDbContextFactory.Create();
+        var year = SeedCurrentYear(context);
+        var student = SeedStudent(context, year, firstName: "Maria");
+
+        var otherStudent = SeedStudent(context, year, firstName: "Pedro");
+        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+
+        var appSettings = DefaultAppSettings(alertEnabled: true, alertProvider: "GSM_MODEM");
+        var sp = BuildServiceProvider(context: context, appSettings: appSettings);
+        var service = CreateService(serviceProvider: sp);
+        await service.InvokeAlertForTestAsync();
+
+        var queued = context.SmsQueues.ToList();
+        Assert.Single(queued);
+        Assert.Equal("GSM_MODEM", queued[0].Provider);
     }
 
     [Fact]

@@ -17,6 +17,7 @@ public class AnnouncementModel : PageModel
     private readonly ISmsService _smsService;
     private readonly ISmsTemplateService _templateService;
     private readonly IAppSettingsService _appSettingsService;
+    private readonly ISmsSettingsService _smsSettingsService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<AnnouncementModel> _logger;
 
@@ -29,6 +30,7 @@ public class AnnouncementModel : PageModel
         ISmsService smsService,
         ISmsTemplateService templateService,
         IAppSettingsService appSettingsService,
+        ISmsSettingsService smsSettingsService,
         UserManager<ApplicationUser> userManager,
         ILogger<AnnouncementModel> logger)
     {
@@ -36,6 +38,7 @@ public class AnnouncementModel : PageModel
         _smsService = smsService;
         _templateService = templateService;
         _appSettingsService = appSettingsService;
+        _smsSettingsService = smsSettingsService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -58,11 +61,7 @@ public class AnnouncementModel : PageModel
     [BindProperty]
     public string? ScheduledAtLocal { get; set; }
 
-    /// <summary>
-    /// US0055: Per-broadcast gateway override. "GSM_MODEM", "SEMAPHORE", or null = system default.
-    /// </summary>
-    [BindProperty]
-    public string? PreferredProvider { get; set; }
+    public bool IsSmsEnabled { get; set; }
 
     public List<string> AvailableGrades { get; set; } = new();
     public List<Data.Entities.Program> AvailablePrograms { get; set; } = new();
@@ -81,6 +80,7 @@ public class AnnouncementModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
         await LoadPageDataAsync();
     }
 
@@ -156,7 +156,7 @@ public class AnnouncementModel : PageModel
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : User.Identity?.Name;
 
-            var provider = string.IsNullOrEmpty(PreferredProvider) ? null : PreferredProvider;
+            var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
             var broadcastId = await _smsService.QueueAnnouncementAsync(
                 Message,
                 Language,

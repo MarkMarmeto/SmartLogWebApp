@@ -858,6 +858,20 @@ public static class DbInitializer
             },
             new AppSettings
             {
+                Key = "Sms:NoScanAlertEnabled",
+                Value = "true",
+                Category = "Sms",
+                Description = "Enable/disable the end-of-day no-scan alert. Independent of global SMS toggle."
+            },
+            new AppSettings
+            {
+                Key = "Sms:NoScanAlertProvider",
+                Value = "SEMAPHORE",
+                Category = "Sms",
+                Description = "SMS provider for no-scan alerts (SEMAPHORE or GSM_MODEM)."
+            },
+            new AppSettings
+            {
                 Key = "Visitor:MaxPasses",
                 Value = "20",
                 Category = "Visitor",

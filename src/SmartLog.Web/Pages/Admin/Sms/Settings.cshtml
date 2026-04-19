@@ -29,29 +29,37 @@
     }
 
     <form method="post">
-        <!-- General Settings -->
+        <!-- Global SMS -->
         <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-sliders me-2"></i>General Settings
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-power me-2"></i>Global SMS
             </div>
             <div class="card-body">
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="smsEnabled"
+                <div class="mb-3 form-check form-switch">
+                    <input type="checkbox" class="form-check-input" id="smsEnabled" role="switch"
                            name="SmsEnabled" value="true" checked="@(Model.SmsEnabled ? "checked" : null)" />
                     <label class="form-check-label" for="smsEnabled">
-                        <strong>Enable SMS Notifications</strong>
+                        <strong>Enable SMS Sending</strong>
                     </label>
                     <input type="hidden" name="SmsEnabled" value="false" />
-                    <div class="form-text">Turn SMS notifications on or off globally</div>
+                    <div class="form-text">Master switch — when disabled, no SMS messages will be sent (broadcasts, alerts, notifications). Messages will still be queued.</div>
                 </div>
+            </div>
+        </div>
 
+        <!-- Default Broadcast Provider -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-broadcast me-2"></i>Default Broadcast Provider
+            </div>
+            <div class="card-body">
                 <div class="mb-3">
-                    <label for="defaultProvider" class="form-label">Default Provider</label>
+                    <label for="defaultProvider" class="form-label">Provider</label>
                     <select class="form-select" id="defaultProvider" name="DefaultProvider">
                         <option value="GSM_MODEM" selected="@(Model.DefaultProvider == "GSM_MODEM" ? "selected" : null)">GSM Modem (Offline)</option>
                         <option value="SEMAPHORE" selected="@(Model.DefaultProvider == "SEMAPHORE" ? "selected" : null)">Semaphore (Cloud)</option>
                     </select>
-                    <div class="form-text">Primary SMS gateway to use</div>
+                    <div class="form-text">Default gateway for Announcement, Emergency, and Bulk Send broadcasts</div>
                 </div>
 
                 <div class="mb-3 form-check">
@@ -208,11 +216,30 @@
                 <i class="bi bi-bell me-2"></i>No-Scan Alert Settings
             </div>
             <div class="card-body">
-                <div class="col-md-4 mb-3">
-                    <label for="noScanAlertTime" class="form-label">Alert Time</label>
-                    <input type="time" class="form-control" id="noScanAlertTime"
-                           name="NoScanAlertTime" value="@Model.NoScanAlertTime" />
-                    <div class="form-text">Time to send end-of-day no-scan alerts (24-hour local time, default 18:10)</div>
+                <div class="mb-3 form-check form-switch">
+                    <input type="checkbox" class="form-check-input" id="noScanAlertEnabled" role="switch"
+                           name="NoScanAlertEnabled" value="true" checked="@(Model.NoScanAlertEnabled ? "checked" : null)" />
+                    <label class="form-check-label" for="noScanAlertEnabled">
+                        <strong>Enable No-Scan Alert</strong>
+                    </label>
+                    <input type="hidden" name="NoScanAlertEnabled" value="false" />
+                    <div class="form-text">Send end-of-day SMS to parents of students with no attendance record. Can be disabled independently of global SMS.</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="noScanAlertTime" class="form-label">Alert Time</label>
+                        <input type="time" class="form-control" id="noScanAlertTime"
+                               name="NoScanAlertTime" value="@Model.NoScanAlertTime" />
+                        <div class="form-text">Time to run the alert (24-hour local time, default 18:10)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="noScanAlertProvider" class="form-label">Alert Provider</label>
+                        <select class="form-select" id="noScanAlertProvider" name="NoScanAlertProvider">
+                            <option value="GSM_MODEM" selected="@(Model.NoScanAlertProvider == "GSM_MODEM" ? "selected" : null)">GSM Modem (Offline)</option>
+                            <option value="SEMAPHORE" selected="@(Model.NoScanAlertProvider == "SEMAPHORE" ? "selected" : null)">Semaphore (Cloud)</option>
+                        </select>
+                        <div class="form-text">SMS gateway for no-scan alert messages</div>
+                    </div>
                 </div>
             </div>
         </div>

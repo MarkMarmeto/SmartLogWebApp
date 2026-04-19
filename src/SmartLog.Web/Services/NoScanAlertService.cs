@@ -192,6 +192,18 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
             return 0;
         }
 
+        // Guard: No-scan alert specifically disabled
+        var appSettingsService = scope.ServiceProvider.GetRequiredService<IAppSettingsService>();
+        var alertEnabledStr = await appSettingsService.GetAsync("Sms:NoScanAlertEnabled");
+        if (alertEnabledStr != null && alertEnabledStr.Equals("false", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("No-scan alert skipped: alert is disabled in settings");
+            return 0;
+        }
+
+        // Read alert-specific provider
+        var alertProvider = await appSettingsService.GetAsync("Sms:NoScanAlertProvider");
+
         // Guard: not a school day
         if (!await calendarService.IsSchoolDayAsync(DateTime.Today))
         {
@@ -310,6 +322,7 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
                     Priority = SmsPriority.Normal,
                     MessageType = "NO_SCAN_ALERT",
                     StudentId = student.Id,
+                    Provider = string.IsNullOrEmpty(alertProvider) ? null : alertProvider,
                     RetryCount = 0,
                     MaxRetries = 3,
                     CreatedAt = DateTime.UtcNow

@@ -67,6 +67,12 @@ public class SettingsModel : PageModel
     public string NoScanAlertTime { get; set; } = "18:10";
 
     [BindProperty]
+    public bool NoScanAlertEnabled { get; set; } = true;
+
+    [BindProperty]
+    public string NoScanAlertProvider { get; set; } = "SEMAPHORE";
+
+    [BindProperty]
     public string? TestPhoneNumber { get; set; }
 
     public GatewayHealthStatus GsmHealth { get; set; } = new();
@@ -106,6 +112,11 @@ public class SettingsModel : PageModel
         PollingInterval = _configuration.GetValue<int>("Sms:Queue:PollingIntervalSeconds", 5);
 
         NoScanAlertTime = await _appSettingsService.GetAsync("Sms:NoScanAlertTime") ?? "18:10";
+
+        var alertEnabledStr = await _appSettingsService.GetAsync("Sms:NoScanAlertEnabled");
+        NoScanAlertEnabled = alertEnabledStr == null || !alertEnabledStr.Equals("false", StringComparison.OrdinalIgnoreCase);
+
+        NoScanAlertProvider = await _appSettingsService.GetAsync("Sms:NoScanAlertProvider") ?? "SEMAPHORE";
 
         // Also check database settings
         var dbEnabled = await _settingsService.GetSettingAsync("Sms.Enabled");
@@ -198,6 +209,8 @@ public class SettingsModel : PageModel
             await _settingsService.SetSettingAsync("Sms.Queue.PollingIntervalSeconds", PollingInterval.ToString(), "General");
 
             await _appSettingsService.SetAsync("Sms:NoScanAlertTime", NoScanAlertTime, "Sms", null);
+            await _appSettingsService.SetAsync("Sms:NoScanAlertEnabled", NoScanAlertEnabled.ToString().ToLower(), "Sms", null);
+            await _appSettingsService.SetAsync("Sms:NoScanAlertProvider", NoScanAlertProvider, "Sms", null);
 
             StatusMessage = "Settings saved successfully. Note: Some settings require application restart to take effect.";
             _logger.LogInformation("SMS settings updated");

@@ -15,6 +15,7 @@ public class EmergencyModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly ISmsService _smsService;
     private readonly ISmsTemplateService _templateService;
+    private readonly ISmsSettingsService _smsSettingsService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<EmergencyModel> _logger;
 
@@ -22,12 +23,14 @@ public class EmergencyModel : PageModel
         ApplicationDbContext context,
         ISmsService smsService,
         ISmsTemplateService templateService,
+        ISmsSettingsService smsSettingsService,
         UserManager<ApplicationUser> userManager,
         ILogger<EmergencyModel> logger)
     {
         _context = context;
         _smsService = smsService;
         _templateService = templateService;
+        _smsSettingsService = smsSettingsService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -44,11 +47,7 @@ public class EmergencyModel : PageModel
     [BindProperty]
     public List<string> AffectedPrograms { get; set; } = new();
 
-    /// <summary>
-    /// US0055: Per-broadcast gateway override. "GSM_MODEM", "SEMAPHORE", or null = system default.
-    /// </summary>
-    [BindProperty]
-    public string? PreferredProvider { get; set; }
+    public bool IsSmsEnabled { get; set; }
 
     public List<string> AvailableGrades { get; set; } = new();
     public List<Data.Entities.Program> AvailablePrograms { get; set; } = new();
@@ -78,6 +77,8 @@ public class EmergencyModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
+
         AvailableGrades = await _context.GradeLevels
             .OrderBy(g => g.SortOrder)
             .Select(g => g.Code)
@@ -146,7 +147,7 @@ public class EmergencyModel : PageModel
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : User.Identity?.Name;
 
-            var provider = string.IsNullOrEmpty(PreferredProvider) ? null : PreferredProvider;
+            var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
             await _smsService.QueueEmergencyAnnouncementAsync(
                 Message,
                 Language,

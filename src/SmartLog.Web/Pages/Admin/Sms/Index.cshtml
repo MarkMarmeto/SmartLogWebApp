@@ -135,14 +135,13 @@
                             }
                         </div>
                         <div>
-                            @if (Model.IsSmsEnabled)
+                            @if (Model.NextRunDisplay.StartsWith("Disabled"))
                             {
-                                <span>Next Run: <strong>@Model.NextRunDisplay</strong></span>
+                                <span class="text-muted">Next Run: <strong>@Model.NextRunDisplay</strong></span>
                             }
                             else
                             {
-                                <span class="text-muted">Next Run: <strong>Disabled</strong></span>
-                                <small class="text-muted d-block">SMS sending is disabled in Settings</small>
+                                <span>Next Run: <strong>@Model.NextRunDisplay</strong></span>
                             }
                         </div>
                     </div>

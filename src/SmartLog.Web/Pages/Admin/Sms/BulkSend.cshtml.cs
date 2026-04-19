@@ -13,15 +13,18 @@ public class BulkSendModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly ISmsService _smsService;
+    private readonly ISmsSettingsService _smsSettingsService;
     private readonly ILogger<BulkSendModel> _logger;
 
     public BulkSendModel(
         ApplicationDbContext context,
         ISmsService smsService,
+        ISmsSettingsService smsSettingsService,
         ILogger<BulkSendModel> logger)
     {
         _context = context;
         _smsService = smsService;
+        _smsSettingsService = smsSettingsService;
         _logger = logger;
     }
 
@@ -40,11 +43,7 @@ public class BulkSendModel : PageModel
     [BindProperty]
     public bool ActiveOnly { get; set; } = true;
 
-    /// <summary>
-    /// US0055: Per-broadcast gateway override. "GSM_MODEM", "SEMAPHORE", or null = system default.
-    /// </summary>
-    [BindProperty]
-    public string? PreferredProvider { get; set; }
+    public bool IsSmsEnabled { get; set; }
 
     public List<string> AvailableGrades { get; set; } = new();
     public List<Data.Entities.Program> AvailablePrograms { get; set; } = new();
@@ -60,6 +59,7 @@ public class BulkSendModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
         await LoadFormDataAsync();
     }
 
@@ -124,7 +124,7 @@ public class BulkSendModel : PageModel
                 .Distinct()
                 .ToListAsync();
 
-            var provider = string.IsNullOrEmpty(PreferredProvider) ? null : PreferredProvider;
+            var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
             int queuedCount = 0;
             foreach (var phone in students)
             {

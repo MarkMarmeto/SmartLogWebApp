@@ -28,6 +28,15 @@
         </div>
     }
 
+    @if (!Model.IsSmsEnabled)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>SMS sending is globally disabled.</strong> Messages will be queued but not sent until SMS is re-enabled in
+            <a asp-page="/Admin/Sms/Settings" class="alert-link">Settings</a>.
+        </div>
+    }
+
     <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>
         Use this for general reminders and announcements — school events, upcoming activities, reminders, etc.
@@ -58,16 +67,6 @@
                         <option value="FIL">Filipino only</option>
                     </select>
                     <div class="form-text">Choose a specific language or let students receive in their preferred language</div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="preferredProvider" class="form-label">Send via</label>
-                    <select class="form-select" id="preferredProvider" name="PreferredProvider">
-                        <option value="">System default</option>
-                        <option value="SEMAPHORE">Online (Semaphore)</option>
-                        <option value="GSM_MODEM">Offline (GSM Modem)</option>
-                    </select>
-                    <div class="form-text">Override the system default gateway for this broadcast only.</div>
                 </div>
 
                 <div class="mb-3">
