@@ -18,6 +18,8 @@ public class IndexModel : PageModel
     private readonly GsmModemGateway _gsmGateway;
     private readonly SemaphoreGateway _semaphoreGateway;
     private readonly INoScanAlertService _noScanAlertService;
+    private readonly ISmsSettingsService _smsSettingsService;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -26,6 +28,8 @@ public class IndexModel : PageModel
         GsmModemGateway gsmGateway,
         SemaphoreGateway semaphoreGateway,
         INoScanAlertService noScanAlertService,
+        ISmsSettingsService smsSettingsService,
+        IAppSettingsService appSettingsService,
         ILogger<IndexModel> logger)
     {
         _smsService = smsService;
@@ -33,6 +37,8 @@ public class IndexModel : PageModel
         _gsmGateway = gsmGateway;
         _semaphoreGateway = semaphoreGateway;
         _noScanAlertService = noScanAlertService;
+        _smsSettingsService = smsSettingsService;
+        _appSettingsService = appSettingsService;
         _logger = logger;
     }
 
@@ -41,6 +47,8 @@ public class IndexModel : PageModel
     public List<SmsLog> RecentLogs { get; set; } = new();
     public NoScanAlertRunStatus NoScanAlert { get; set; } = new();
     public bool NoScanAlertRanToday { get; set; }
+    public bool IsSmsEnabled { get; set; }
+    public string NextRunDisplay { get; set; } = "";
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -68,6 +76,25 @@ public class IndexModel : PageModel
             .FirstOrDefaultAsync();
         NoScanAlert = NoScanAlertRunStatus.FromAuditLog(lastRun);
         NoScanAlertRanToday = await _noScanAlertService.HasRunTodayAsync();
+
+        // Next Run display
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
+        var alertTimeStr = await _appSettingsService.GetAsync("Sms:NoScanAlertTime") ?? "18:10";
+        NextRunDisplay = ComputeNextRunDisplay(IsSmsEnabled, NoScanAlertRanToday, alertTimeStr);
+    }
+
+    internal static string ComputeNextRunDisplay(bool isSmsEnabled, bool ranToday, string alertTimeStr)
+    {
+        if (!isSmsEnabled)
+            return "Disabled";
+
+        if (!TimeOnly.TryParse(alertTimeStr, out var alertTime))
+            alertTime = new TimeOnly(18, 10);
+
+        var timeFormatted = alertTime.ToString("h:mm tt");
+        return ranToday
+            ? $"Tomorrow at {timeFormatted}"
+            : $"Today at {timeFormatted}";
     }
 
     /// <summary>

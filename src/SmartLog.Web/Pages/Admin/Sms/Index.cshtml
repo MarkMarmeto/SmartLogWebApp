@@ -93,6 +93,8 @@
                             <form method="post" asp-page-handler="TriggerNoScanAlert" class="d-inline">
                                 <input type="hidden" name="force" value="true" />
                                 <button type="submit" class="btn btn-sm btn-outline-warning"
+                                        @(!Model.IsSmsEnabled ? "disabled" : "")
+                                        title="@(!Model.IsSmsEnabled ? "SMS sending is disabled" : "")"
                                         onclick="return confirm('Alert already ran today. Force re-run anyway? (Per-student duplicates will still be skipped.)')">
                                     <i class="bi bi-arrow-clockwise me-1"></i>Re-run
                                 </button>
@@ -102,7 +104,9 @@
                         {
                             <span class="badge bg-secondary">Not Run Today</span>
                             <form method="post" asp-page-handler="TriggerNoScanAlert" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-primary">
+                                <button type="submit" class="btn btn-sm btn-primary"
+                                        @(!Model.IsSmsEnabled ? "disabled" : "")
+                                        title="@(!Model.IsSmsEnabled ? "SMS sending is disabled" : "")">
                                     <i class="bi bi-play-fill me-1"></i>Run Now
                                 </button>
                             </form>
@@ -111,22 +115,37 @@
                     </div>
                 </div>
                 <div class="card-body py-2">
-                    @if (!Model.NoScanAlert.HasRun)
-                    {
-                        <span class="text-muted">Last Run: Never</span>
-                    }
-                    else if (Model.NoScanAlert.WasSuppressed)
-                    {
-                        <span class="badge bg-warning text-dark me-2">Suppressed</span>
-                        <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")
-                            — Suppressed (no scanner activity)</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-success me-2">Success</span>
-                        <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</span>
-                        <span class="ms-3 text-muted">Alerts Sent: <strong>@Model.NoScanAlert.AlertsQueued</strong></span>
-                    }
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            @if (!Model.NoScanAlert.HasRun)
+                            {
+                                <span class="text-muted">Last Run: Never</span>
+                            }
+                            else if (Model.NoScanAlert.WasSuppressed)
+                            {
+                                <span class="badge bg-warning text-dark me-2">Suppressed</span>
+                                <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")
+                                    — Suppressed (no scanner activity)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success me-2">Success</span>
+                                <span>Last Run: @Model.NoScanAlert.RunAt!.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</span>
+                                <span class="ms-3 text-muted">Alerts Sent: <strong>@Model.NoScanAlert.AlertsQueued</strong></span>
+                            }
+                        </div>
+                        <div>
+                            @if (Model.IsSmsEnabled)
+                            {
+                                <span>Next Run: <strong>@Model.NextRunDisplay</strong></span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Next Run: <strong>Disabled</strong></span>
+                                <small class="text-muted d-block">SMS sending is disabled in Settings</small>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
