@@ -204,8 +204,9 @@ else {
     Write-Success "Application backed up ($($backupSize) MB) → $backupPath"
 
     # Clean up old app backups (keep last 5)
-    $oldBackups = Get-ChildItem $Script:BackupDir -Directory -Filter "smartlog-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5
-    if ($oldBackups) {
+    # @() forces an array so .Count is always available even when only one item is returned
+    $oldBackups = @(Get-ChildItem $Script:BackupDir -Directory -Filter "smartlog-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5)
+    if ($oldBackups.Count -gt 0) {
         $oldBackups | Remove-Item -Recurse -Force
         Write-Detail "Cleaned up $($oldBackups.Count) old app backup(s)"
     }
@@ -262,8 +263,9 @@ else {
                 Write-Success "Database backed up ($($dbSize) MB) → $dbBackupFile"
 
                 # Keep last 5 database backups
-                $oldDbBackups = Get-ChildItem $dbBackupDir -Filter "*.bak" | Sort-Object Name -Descending | Select-Object -Skip 5
-                if ($oldDbBackups) {
+                # @() forces an array so .Count is always available even when only one item is returned
+                $oldDbBackups = @(Get-ChildItem $dbBackupDir -Filter "*.bak" | Sort-Object Name -Descending | Select-Object -Skip 5)
+                if ($oldDbBackups.Count -gt 0) {
                     $oldDbBackups | Remove-Item -Force
                     Write-Detail "Cleaned up $($oldDbBackups.Count) old DB backup(s)"
                 }

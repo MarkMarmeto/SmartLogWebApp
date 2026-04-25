@@ -1,9 +1,11 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 
 namespace SmartLog.Web.Pages.Admin.Sms;
@@ -15,6 +17,9 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly GsmModemGateway _gsmGateway;
     private readonly SemaphoreGateway _semaphoreGateway;
+    private readonly INoScanAlertService _noScanAlertService;
+    private readonly ISmsSettingsService _smsSettingsService;
+    private readonly IAppSettingsService _appSettingsService;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -22,18 +27,28 @@ public class IndexModel : PageModel
         ApplicationDbContext context,
         GsmModemGateway gsmGateway,
         SemaphoreGateway semaphoreGateway,
+        INoScanAlertService noScanAlertService,
+        ISmsSettingsService smsSettingsService,
+        IAppSettingsService appSettingsService,
         ILogger<IndexModel> logger)
     {
         _smsService = smsService;
         _context = context;
         _gsmGateway = gsmGateway;
         _semaphoreGateway = semaphoreGateway;
+        _noScanAlertService = noScanAlertService;
+        _smsSettingsService = smsSettingsService;
+        _appSettingsService = appSettingsService;
         _logger = logger;
     }
 
     public SmsStatistics Stats { get; set; } = new();
     public GatewayHealthStatus GsmHealth { get; set; } = new();
     public List<SmsLog> RecentLogs { get; set; } = new();
+    public NoScanAlertRunStatus NoScanAlert { get; set; } = new();
+    public bool NoScanAlertRanToday { get; set; }
+    public bool IsSmsEnabled { get; set; }
+    public string NextRunDisplay { get; set; } = "";
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -53,6 +68,60 @@ public class IndexModel : PageModel
             .OrderByDescending(l => l.CreatedAt)
             .Take(10)
             .ToListAsync();
+
+        // No-scan alert last run status
+        var lastRun = await _context.AuditLogs
+            .Where(a => a.Action == "NO_SCAN_ALERT_EXECUTED" || a.Action == "NO_SCAN_ALERT_SUPPRESSED")
+            .OrderByDescending(a => a.Timestamp)
+            .FirstOrDefaultAsync();
+        NoScanAlert = NoScanAlertRunStatus.FromAuditLog(lastRun);
+        NoScanAlertRanToday = await _noScanAlertService.HasRunTodayAsync();
+
+        // Next Run display
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
+        var alertEnabledStr = await _appSettingsService.GetAsync("Sms:NoScanAlertEnabled");
+        var isAlertEnabled = alertEnabledStr == null || !alertEnabledStr.Equals("false", StringComparison.OrdinalIgnoreCase);
+        var alertTimeStr = await _appSettingsService.GetAsync("Sms:NoScanAlertTime") ?? "18:10";
+        NextRunDisplay = ComputeNextRunDisplay(IsSmsEnabled, isAlertEnabled, NoScanAlertRanToday, alertTimeStr);
+    }
+
+    internal static string ComputeNextRunDisplay(bool isSmsEnabled, bool isAlertEnabled, bool ranToday, string alertTimeStr)
+    {
+        if (!isSmsEnabled)
+            return "Disabled (SMS off)";
+
+        if (!isAlertEnabled)
+            return "Disabled (alert off)";
+
+        if (!TimeOnly.TryParse(alertTimeStr, out var alertTime))
+            alertTime = new TimeOnly(18, 10);
+
+        var timeFormatted = alertTime.ToString("h:mm tt");
+        return ranToday
+            ? $"Tomorrow at {timeFormatted}"
+            : $"Today at {timeFormatted}";
+    }
+
+    /// <summary>
+    /// POST ?handler=TriggerNoScanAlert — manually runs the no-scan alert for today.
+    /// Accepts force=true to re-run even if it already ran.
+    /// </summary>
+    public async Task<IActionResult> OnPostTriggerNoScanAlertAsync(bool force = false)
+    {
+        try
+        {
+            var result = await _noScanAlertService.TriggerNowAsync(force);
+            StatusMessage = result.WasSkipped
+                ? $"Skipped: {result.Reason}"
+                : $"Done — {result.AlertsQueued} alert(s) queued.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manual no-scan alert trigger failed");
+            StatusMessage = "Error: Could not trigger no-scan alert. Check logs.";
+        }
+
+        return RedirectToPage();
     }
 
     /// <summary>
@@ -83,5 +152,49 @@ public class IndexModel : PageModel
                 checkedAt = DateTime.Now.ToString("MMM d, yyyy h:mm:ss tt")
             });
         }
+    }
+}
+
+public class NoScanAlertRunStatus
+{
+    public bool HasRun { get; init; }
+    public bool WasSuppressed { get; init; }
+    public string? SuppressReason { get; init; }
+    public string? SuppressedGrades { get; init; }
+    public DateTime? RunAt { get; init; }
+    public int AlertsQueued { get; init; }
+
+    public static NoScanAlertRunStatus FromAuditLog(AuditLog? log)
+    {
+        if (log == null) return new NoScanAlertRunStatus();
+
+        var suppressed = log.Action == "NO_SCAN_ALERT_SUPPRESSED";
+        var count = 0;
+        string? suppressReason = null;
+        string? suppressedGrades = null;
+
+        if (suppressed && log.Details != null)
+        {
+            var reasonMatch = Regex.Match(log.Details, @"Suppressed by calendar event: (.+)\.");
+            if (reasonMatch.Success) suppressReason = reasonMatch.Groups[1].Value;
+        }
+        else if (log.Details != null)
+        {
+            var countMatch = Regex.Match(log.Details, @"Alerts queued: (\d+)");
+            if (countMatch.Success) int.TryParse(countMatch.Groups[1].Value, out count);
+
+            var gradesMatch = Regex.Match(log.Details, @"Grades suppressed by calendar: (.+)\.");
+            if (gradesMatch.Success) suppressedGrades = gradesMatch.Groups[1].Value;
+        }
+
+        return new NoScanAlertRunStatus
+        {
+            HasRun = true,
+            WasSuppressed = suppressed,
+            SuppressReason = suppressReason,
+            SuppressedGrades = suppressedGrades,
+            RunAt = log.Timestamp,
+            AlertsQueued = count
+        };
     }
 }

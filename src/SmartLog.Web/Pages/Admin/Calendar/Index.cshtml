@@ -182,7 +182,13 @@
                                             <span> - @evt.EndDate.ToString("MMM dd")</span>
                                         }
                                     </td>
-                                    <td><strong>@evt.Title</strong></td>
+                                    <td>
+                                        <strong>@evt.Title</strong>
+                                        @if (evt.EventType == SmartLog.Web.Data.Entities.EventType.Event && evt.SuppressesNoScanAlert == true)
+                                        {
+                                            <span class="badge bg-secondary ms-1" title="No-Scan Alert suppressed for this event">Alert: Off</span>
+                                        }
+                                    </td>
                                     <td><span class="badge @badgeClass">@evt.EventType</span></td>
                                     <td>@evt.Category</td>
                                     <td>

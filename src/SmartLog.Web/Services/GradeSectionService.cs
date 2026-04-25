@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using Entities = SmartLog.Web.Data.Entities;
 
 namespace SmartLog.Web.Services;
 
@@ -86,14 +87,32 @@ public class GradeSectionService : IGradeSectionService
     {
         var gradeLevel = await GetGradeLevelByIdAsync(id);
         if (gradeLevel == null)
-        {
             throw new InvalidOperationException($"Grade level with ID {id} not found.");
-        }
 
         gradeLevel.IsActive = false;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Deactivated grade level: {Code} (ID: {Id})", gradeLevel.Code, id);
+    }
+
+    public async Task DeleteGradeLevelAsync(Guid id)
+    {
+        var gradeLevel = await _context.GradeLevels
+            .Include(g => g.Sections)
+            .FirstOrDefaultAsync(g => g.Id == id);
+        if (gradeLevel == null)
+            throw new InvalidOperationException("Grade level not found.");
+
+        if (gradeLevel.Sections.Count > 0)
+            throw new InvalidOperationException($"Cannot delete '{gradeLevel.Name}': it has {gradeLevel.Sections.Count} section(s). Remove them first.");
+
+        var hasStudents = await _context.Students.AnyAsync(s => s.GradeLevel == gradeLevel.Code);
+        if (hasStudents)
+            throw new InvalidOperationException($"Cannot delete '{gradeLevel.Name}': students are assigned to this grade level.");
+
+        _context.GradeLevels.Remove(gradeLevel);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Deleted grade level: {Code} (ID: {Id})", gradeLevel.Code, id);
     }
 
     #endregion
@@ -105,15 +124,15 @@ public class GradeSectionService : IGradeSectionService
         var query = _context.Sections
             .Include(s => s.GradeLevel)
             .Include(s => s.Adviser)
+            .Include(s => s.Program)
             .AsQueryable();
 
         if (activeOnly)
-        {
             query = query.Where(s => s.IsActive);
-        }
 
         return await query
             .OrderBy(s => s.GradeLevel.SortOrder)
+            .ThenBy(s => s.Program.SortOrder)
             .ThenBy(s => s.Name)
             .ToListAsync();
     }
@@ -123,15 +142,15 @@ public class GradeSectionService : IGradeSectionService
         var query = _context.Sections
             .Include(s => s.GradeLevel)
             .Include(s => s.Adviser)
+            .Include(s => s.Program)
             .Where(s => s.GradeLevelId == gradeLevelId);
 
         if (activeOnly)
-        {
             query = query.Where(s => s.IsActive);
-        }
 
         return await query
-            .OrderBy(s => s.Name)
+            .OrderBy(s => s.Program.SortOrder)
+            .ThenBy(s => s.Name)
             .ToListAsync();
     }
 
@@ -140,30 +159,32 @@ public class GradeSectionService : IGradeSectionService
         return await _context.Sections
             .Include(s => s.GradeLevel)
             .Include(s => s.Adviser)
+            .Include(s => s.Program)
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
-    public async Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid? adviserId = null, int capacity = 40)
+    public async Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid programId, Guid? adviserId = null, int capacity = 40)
     {
         var gradeLevel = await _context.GradeLevels.FindAsync(gradeLevelId);
         if (gradeLevel == null)
-        {
             throw new InvalidOperationException($"Grade level with ID {gradeLevelId} not found.");
-        }
 
         if (adviserId.HasValue)
         {
             var adviser = await _context.Faculties.FindAsync(adviserId.Value);
             if (adviser == null)
-            {
                 throw new InvalidOperationException($"Faculty with ID {adviserId.Value} not found.");
-            }
         }
+
+        var program = await _context.Programs.FindAsync(programId);
+        if (program == null)
+            throw new InvalidOperationException($"Program with ID {programId} not found.");
 
         var section = new Section
         {
             Name = name,
             GradeLevelId = gradeLevelId,
+            ProgramId = programId,
             AdviserId = adviserId,
             Capacity = capacity,
             IsActive = true,
@@ -173,10 +194,24 @@ public class GradeSectionService : IGradeSectionService
         _context.Sections.Add(section);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Created section: {Grade} - {Section} (ID: {Id})",
-            gradeLevel.Name, name, section.Id);
+        _logger.LogInformation("Created section: {Grade} - {Program} - {Section} (ID: {Id})",
+            gradeLevel.Name, program.Code, name, section.Id);
 
         return section;
+    }
+
+    public async Task<List<Entities.Program>> GetProgramsForGradeAsync(Guid gradeLevelId)
+    {
+        var linkedProgramIds = await _context.GradeLevelPrograms
+            .Where(glp => glp.GradeLevelId == gradeLevelId)
+            .Select(glp => glp.ProgramId)
+            .ToListAsync();
+
+        return await _context.Programs
+            .Where(p => linkedProgramIds.Contains(p.Id) && p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Code)
+            .ToListAsync();
     }
 
     public async Task UpdateSectionAsync(Section section)
@@ -191,14 +226,123 @@ public class GradeSectionService : IGradeSectionService
     {
         var section = await GetSectionByIdAsync(id);
         if (section == null)
-        {
             throw new InvalidOperationException($"Section with ID {id} not found.");
-        }
 
         section.IsActive = false;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Deactivated section: {Section} (ID: {Id})", section.Name, id);
+    }
+
+    public async Task DeleteSectionAsync(Guid id)
+    {
+        var section = await _context.Sections
+            .Include(s => s.GradeLevel)
+            .Include(s => s.Program)
+            .FirstOrDefaultAsync(s => s.Id == id);
+        if (section == null)
+            throw new InvalidOperationException("Section not found.");
+
+        var enrollmentCount = await _context.StudentEnrollments.CountAsync(e => e.SectionId == id);
+        if (enrollmentCount > 0)
+            throw new InvalidOperationException($"Cannot delete '{section.Name}': it has {enrollmentCount} enrollment record(s). Withdraw students first.");
+
+        _context.Sections.Remove(section);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Deleted section: {Grade} - {Section} (ID: {Id})", section.GradeLevel.Name, section.Name, id);
+    }
+
+    public async Task<List<Entities.Program>> GetAllProgramsAsync(bool activeOnly = false)
+    {
+        var query = _context.Programs
+            .Include(p => p.Sections)
+            .Include(p => p.GradeLevelPrograms)
+                .ThenInclude(glp => glp.GradeLevel)
+            .AsQueryable();
+
+        if (activeOnly)
+            query = query.Where(p => p.IsActive);
+
+        return await query
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Code)
+            .ToListAsync();
+    }
+
+    public async Task<Entities.Program?> GetProgramByIdAsync(Guid id)
+    {
+        return await _context.Programs
+            .Include(p => p.GradeLevelPrograms)
+                .ThenInclude(glp => glp.GradeLevel)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    public async Task<Entities.Program> CreateProgramAsync(string code, string name, string? description,
+        int sortOrder, IEnumerable<Guid> gradeLevelIds)
+    {
+        if (await _context.Programs.AnyAsync(p => p.Code == code))
+            throw new InvalidOperationException($"Program code '{code}' is already in use.");
+
+        var program = new Entities.Program
+        {
+            Code = code.ToUpperInvariant().Trim(),
+            Name = name.Trim(),
+            Description = description?.Trim(),
+            SortOrder = sortOrder,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Programs.Add(program);
+        await _context.SaveChangesAsync();
+
+        // Add grade level links
+        foreach (var glId in gradeLevelIds.Distinct())
+        {
+            _context.GradeLevelPrograms.Add(new GradeLevelProgram { GradeLevelId = glId, ProgramId = program.Id });
+        }
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Created program: {Code} (ID: {Id})", program.Code, program.Id);
+        return program;
+    }
+
+    public async Task UpdateProgramAsync(Entities.Program program, IEnumerable<Guid> gradeLevelIds)
+    {
+        _context.Programs.Update(program);
+
+        // Replace grade level links
+        var existingLinks = await _context.GradeLevelPrograms
+            .Where(glp => glp.ProgramId == program.Id)
+            .ToListAsync();
+        _context.GradeLevelPrograms.RemoveRange(existingLinks);
+
+        foreach (var glId in gradeLevelIds.Distinct())
+        {
+            _context.GradeLevelPrograms.Add(new GradeLevelProgram { GradeLevelId = glId, ProgramId = program.Id });
+        }
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Updated program: {Code} (ID: {Id})", program.Code, program.Id);
+    }
+
+    public async Task DeleteProgramAsync(Guid id)
+    {
+        var program = await _context.Programs
+            .Include(p => p.Sections)
+            .Include(p => p.GradeLevelPrograms)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (program == null)
+            throw new InvalidOperationException("Program not found.");
+
+        if (program.Sections.Count > 0)
+            throw new InvalidOperationException($"Cannot delete '{program.Code}': it is assigned to {program.Sections.Count} section(s). Reassign them first.");
+
+        _context.GradeLevelPrograms.RemoveRange(program.GradeLevelPrograms);
+        _context.Programs.Remove(program);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Deleted program: {Code} (ID: {Id})", program.Code, id);
     }
 
     #endregion
@@ -215,6 +359,7 @@ public class GradeSectionService : IGradeSectionService
 
         var section = await _context.Sections
             .Include(s => s.GradeLevel)
+            .Include(s => s.Program)
             .FirstOrDefaultAsync(s => s.Id == sectionId);
         if (section == null)
         {
@@ -258,6 +403,7 @@ public class GradeSectionService : IGradeSectionService
         // Update denormalized fields for backward compatibility
         student.GradeLevel = section.GradeLevel.Code;
         student.Section = section.Name;
+        student.Program = section.Program?.Code;
 
         await _context.SaveChangesAsync();
 
@@ -287,6 +433,7 @@ public class GradeSectionService : IGradeSectionService
         // Create new enrollment
         var newSection = await _context.Sections
             .Include(s => s.GradeLevel)
+            .Include(s => s.Program)
             .FirstOrDefaultAsync(s => s.Id == newSectionId);
 
         if (newSection == null)
@@ -312,6 +459,7 @@ public class GradeSectionService : IGradeSectionService
         {
             student.CurrentEnrollmentId = newEnrollment.Id;
             student.Section = newSection.Name;
+            student.Program = newSection.Program?.Code;
             await _context.SaveChangesAsync();
         }
 

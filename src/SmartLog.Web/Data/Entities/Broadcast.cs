@@ -36,6 +36,12 @@ public class Broadcast
     public string? AffectedGrades { get; set; }
 
     /// <summary>
+    /// JSON array of program codes, null = all programs
+    /// </summary>
+    [StringLength(500)]
+    public string? AffectedPrograms { get; set; }
+
+    /// <summary>
     /// Scheduled delivery time in UTC; null = immediate
     /// </summary>
     public DateTime? ScheduledAt { get; set; }
@@ -56,6 +62,12 @@ public class Broadcast
     /// </summary>
     [StringLength(200)]
     public string? CreatedByName { get; set; }
+
+    /// <summary>
+    /// US0055: Override gateway for this broadcast. "GSM_MODEM" or "SEMAPHORE". Null = use system default.
+    /// </summary>
+    [StringLength(20)]
+    public string? PreferredProvider { get; set; }
 
     public BroadcastStatus Status { get; set; } = BroadcastStatus.Pending;
 

@@ -1,0 +1,228 @@
+@page
+@model SmartLog.Web.Pages.Admin.VisitorPassesModel
+@{
+    ViewData["Title"] = "Visitor Passes";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-person-badge me-2"></i>Visitor Passes</h1>
+        <div class="d-flex gap-2">
+            <a asp-page="/Admin/VisitorScanLog" class="btn btn-outline-info">
+                <i class="bi bi-clock-history me-1"></i>Scan Log
+            </a>
+            <a asp-page="/Admin/PrintVisitorPasses" class="btn btn-outline-secondary">
+                <i class="bi bi-printer me-1"></i>Print Cards
+            </a>
+            <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#settingsPanel">
+                <i class="bi bi-gear me-1"></i>Settings
+            </button>
+            @if (Model.AvailableToGenerate > 0)
+            {
+                <form method="post" asp-page-handler="Generate" class="d-inline">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Generate Passes
+                        <span class="badge bg-light text-primary ms-1">@Model.AvailableToGenerate new</span>
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Settings Panel -->
+    <div class="collapse mb-3" id="settingsPanel">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Visitor Pass Settings</h5>
+                <form method="post" asp-page-handler="Settings" class="row g-3 align-items-end">
+                    <div class="col-auto">
+                        <label for="maxPasses" class="form-label">Maximum Passes</label>
+                        <input type="number" class="form-control" id="maxPasses" name="maxPasses"
+                               value="@Model.MaxPasses" min="1" max="999" required style="width: 120px;" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Save
+                        </button>
+                    </div>
+                    <div class="col">
+                        <small class="text-muted">
+                            Currently @Model.TotalCount of @Model.MaxPasses passes exist.
+                            Reducing this number will deactivate the highest-numbered excess passes.
+                        </small>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Total</div>
+                    <div class="fs-4 fw-bold">@Model.TotalCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Available</div>
+                    <div class="fs-4 fw-bold text-success">@Model.AvailableCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-warning">
+                <div class="card-body py-2">
+                    <div class="text-muted small">In Use</div>
+                    <div class="fs-4 fw-bold text-warning">@Model.InUseCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center border-danger">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Deactivated</div>
+                    <div class="fs-4 fw-bold text-danger">@Model.DeactivatedCount</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.AvailableCount == 0 && Model.InUseCount > 0)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-1"></i>All passes are currently in use. Consider generating more passes.
+        </div>
+    }
+
+    <!-- Pass Table -->
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-list me-2"></i>Visitor Passes
+        </div>
+        <div class="card-body">
+            @if (Model.Passes.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Pass #</th>
+                                <th>Code</th>
+                                <th>Status</th>
+                                <th>Last Entry</th>
+                                <th>Last Exit</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pass in Model.Passes)
+                            {
+                                <tr>
+                                    <td>@pass.PassNumber</td>
+                                    <td><code>@pass.Code</code></td>
+                                    <td>
+                                        @if (pass.CurrentStatus == "Available" && pass.IsActive)
+                                        {
+                                            <span class="badge bg-success">Available</span>
+                                        }
+                                        else if (pass.CurrentStatus == "InUse" && pass.IsActive)
+                                        {
+                                            <span class="badge bg-warning text-dark">In Use</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Deactivated</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (pass.LastEntry.HasValue)
+                                        {
+                                            <span title="@pass.LastEntry.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
+                                                @pass.LastEntry.Value.ToString("MMM dd, HH:mm")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (pass.LastExit.HasValue)
+                                        {
+                                            <span title="@pass.LastExit.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
+                                                @pass.LastExit.Value.ToString("MMM dd, HH:mm")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (pass.IsActive)
+                                        {
+                                            <form method="post" asp-page-handler="Deactivate" class="d-inline">
+                                                <input type="hidden" name="id" value="@pass.Id" />
+                                                @if (pass.CurrentStatus == "InUse")
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            onclick="return confirm('This pass is currently in use. Deactivate anyway?')">
+                                                        <i class="bi bi-x-circle"></i> Deactivate
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-x-circle"></i> Deactivate
+                                                    </button>
+                                                }
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form method="post" asp-page-handler="Activate" class="d-inline">
+                                                <input type="hidden" name="id" value="@pass.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-check-circle"></i> Activate
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-person-badge fs-1"></i>
+                    <p class="mt-2">No visitor passes generated yet.</p>
+                    <p>Click "Generate Passes" to create visitor QR cards.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

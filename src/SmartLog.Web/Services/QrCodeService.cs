@@ -132,6 +132,54 @@ public class QrCodeService : IQrCodeService
         return (parts[1], timestamp, parts[3]);
     }
 
+    /// <summary>
+    /// Parse visitor QR payload: SMARTLOG-V:{code}:{timestamp}:{hmac}
+    /// </summary>
+    public (string Code, long Timestamp, string Signature)? ParseVisitorQrPayload(string payload)
+    {
+        var parts = payload.Split(':');
+        if (parts.Length != 4 || parts[0] != "SMARTLOG-V")
+        {
+            return null;
+        }
+
+        if (!long.TryParse(parts[2], out var timestamp))
+        {
+            return null;
+        }
+
+        // Validate code format: alphanumeric + hyphen only
+        var code = parts[1];
+        if (string.IsNullOrEmpty(code) || !code.All(c => char.IsLetterOrDigit(c) || c == '-'))
+        {
+            return null;
+        }
+
+        return (code, timestamp, parts[3]);
+    }
+
+    /// <summary>
+    /// Verify visitor QR HMAC: HMAC-SHA256("{code}:{timestamp}") with constant-time comparison.
+    /// </summary>
+    public async Task<bool> VerifyVisitorQrAsync(string code, long timestamp, string signature)
+    {
+        var secretKey = await GetSecretKeyAsync();
+
+        var dataToVerify = $"{code}:{timestamp}";
+        var expectedHmac = ComputeHmac(dataToVerify, secretKey);
+
+        try
+        {
+            var expectedBytes = Convert.FromBase64String(expectedHmac);
+            var providedBytes = Convert.FromBase64String(signature);
+            return CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static string ComputeHmac(string data, string secretKey)
     {
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));

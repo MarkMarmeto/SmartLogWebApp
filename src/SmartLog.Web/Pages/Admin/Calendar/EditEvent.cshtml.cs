@@ -80,6 +80,9 @@ public class EditEventModel : PageModel
         [StringLength(200)]
         public string? Location { get; set; }
 
+        [Display(Name = "Suppress No-Scan Alert")]
+        public bool SuppressesNoScanAlert { get; set; }
+
         [Required]
         [Display(Name = "Academic Year")]
         public Guid AcademicYearId { get; set; }
@@ -109,6 +112,7 @@ public class EditEventModel : PageModel
             AffectsAttendance = calendarEvent.AffectsAttendance,
             AffectsClasses = calendarEvent.AffectsClasses,
             Location = calendarEvent.Location,
+            SuppressesNoScanAlert = calendarEvent.SuppressesNoScanAlert ?? false,
             AcademicYearId = calendarEvent.AcademicYearId,
             IsActive = calendarEvent.IsActive
         };
@@ -160,6 +164,7 @@ public class EditEventModel : PageModel
             existingEvent.AffectsAttendance = Input.AffectsAttendance;
             existingEvent.AffectsClasses = Input.AffectsClasses;
             existingEvent.Location = Input.Location;
+            existingEvent.SuppressesNoScanAlert = Input.EventType == EventType.Event ? Input.SuppressesNoScanAlert : null;
             existingEvent.AcademicYearId = Input.AcademicYearId;
             existingEvent.IsActive = Input.IsActive;
             existingEvent.UpdatedBy = user.Id;

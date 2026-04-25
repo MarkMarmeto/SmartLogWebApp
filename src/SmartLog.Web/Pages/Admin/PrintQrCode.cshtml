@@ -54,7 +54,8 @@
 
         /* ── Card wrapper ── */
         .card-wrap {
-            max-width: 380px;
+            /* CR80 standard: 85.6mm × 53.98mm — display at 3× screen scale */
+            max-width: 324px; /* 85.6mm × 3.787px/mm ≈ 324px */
             margin: 0 auto;
         }
 
@@ -248,14 +249,21 @@
                 print-color-adjust: exact !important;
             }
 
-            body { background: #fff; padding: 10mm; }
+            body { background: #fff; padding: 0; margin: 0; }
             .controls { display: none; }
+
+            .card-wrap {
+                /* CR80 physical dimensions for print */
+                width: 85.6mm;
+                max-width: 85.6mm;
+                margin: 0 auto;
+            }
 
             .id-card {
                 box-shadow: none;
                 border: 1px solid #ccc;
-                max-width: 380px;
-                margin: 0 auto;
+                height: 53.98mm;
+                overflow: hidden;
             }
         }
     </style>
@@ -288,10 +296,6 @@
                     <div class="school-name">@Model.SchoolName</div>
                     <div class="card-label">Student ID Card</div>
                 </div>
-                @if (!string.IsNullOrEmpty(Model.AcademicYear))
-                {
-                    <div class="academic-year">S.Y. @Model.AcademicYear</div>
-                }
             </div>
 
             <!-- Student info -->
@@ -308,10 +312,6 @@
                 </div>
                 <div class="student-details">
                     <div class="student-name">@Model.Student.FullName</div>
-                    <div class="badge-row">
-                        <span class="badge">Grade @Model.Student.GradeLevel</span>
-                        <span class="badge">@Model.Student.Section</span>
-                    </div>
                     <div class="detail-row">
                         <span class="detail-label">ID</span>
                         <span class="detail-value">@Model.Student.StudentId</span>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data.Entities;
+using Entities = SmartLog.Web.Data.Entities;
 
 namespace SmartLog.Web.Data;
 
@@ -32,6 +33,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SmsSettings> SmsSettings => Set<SmsSettings>();
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
     public DbSet<Broadcast> Broadcasts => Set<Broadcast>();
+    public DbSet<Entities.Program> Programs => Set<Entities.Program>();
+    public DbSet<GradeLevelProgram> GradeLevelPrograms => Set<GradeLevelProgram>();
+    public DbSet<VisitorPass> VisitorPasses => Set<VisitorPass>();
+    public DbSet<VisitorScan> VisitorScans => Set<VisitorScan>();
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
+    public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -98,9 +105,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => new { e.IsValid, e.StudentId });
 
             entity.HasOne(e => e.Student)
-                .WithOne(s => s.QrCode)
-                .HasForeignKey<QrCode>(e => e.StudentId)
+                .WithMany(s => s.QrCodes)
+                .HasForeignKey(e => e.StudentId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ReplacedByQrCode)
+                .WithMany()
+                .HasForeignKey(e => e.ReplacedByQrCodeId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.Property(e => e.IssuedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
@@ -150,6 +162,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.AcademicYearId);
 
+            // Composite index for report queries filtering by status + date range
+            entity.HasIndex(e => new { e.Status, e.ScannedAt })
+                .HasDatabaseName("IX_Scans_Status_ScannedAt");
+
+            // Unique filtered index to prevent concurrent duplicate scans
+            // Only enforced for ACCEPTED scans (duplicates are allowed for rejected/duplicate statuses)
+            entity.HasIndex(e => new { e.StudentId, e.ScanType, e.ScannedAt })
+                .HasFilter("[Status] = 'ACCEPTED'")
+                .IsUnique()
+                .HasDatabaseName("IX_Scans_NoDuplicateAccepted");
+
             entity.HasOne(e => e.Device)
                 .WithMany(d => d.Scans)
                 .HasForeignKey(e => e.DeviceId)
@@ -167,6 +190,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(e => e.ReceivedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.CameraName)
+                .HasMaxLength(100);
         });
 
         // Configure GradeLevel
@@ -367,6 +393,98 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure Program
+        builder.Entity<Entities.Program>(entity =>
+        {
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure GradeLevelProgram (composite PK junction)
+        builder.Entity<GradeLevelProgram>(entity =>
+        {
+            entity.HasKey(e => new { e.GradeLevelId, e.ProgramId });
+
+            entity.HasOne(e => e.GradeLevel)
+                .WithMany(g => g.GradeLevelPrograms)
+                .HasForeignKey(e => e.GradeLevelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Program)
+                .WithMany(p => p.GradeLevelPrograms)
+                .HasForeignKey(e => e.ProgramId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Section.ProgramId FK (required — US0060)
+        builder.Entity<Section>()
+            .HasOne(e => e.Program)
+            .WithMany(p => p.Sections)
+            .HasForeignKey(e => e.ProgramId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Configure VisitorPass (US0072)
+        builder.Entity<VisitorPass>(entity =>
+        {
+            entity.HasIndex(e => e.PassNumber).IsUnique();
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.CurrentStatus);
+
+            entity.Property(e => e.IssuedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure VisitorScan (US0072)
+        builder.Entity<VisitorScan>(entity =>
+        {
+            entity.HasIndex(e => new { e.VisitorPassId, e.ScannedAt });
+            entity.HasIndex(e => e.ScannedAt);
+            entity.HasIndex(e => e.Status);
+
+            entity.HasOne(e => e.VisitorPass)
+                .WithMany(p => p.VisitorScans)
+                .HasForeignKey(e => e.VisitorPassId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.AcademicYear)
+                .WithMany()
+                .HasForeignKey(e => e.AcademicYearId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(e => e.ReceivedAt)
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.CameraName)
+                .HasMaxLength(100);
+        });
+
+        // Configure RetentionPolicy (EP0017)
+        builder.Entity<RetentionPolicy>(entity =>
+        {
+            entity.HasIndex(e => e.EntityName).IsUnique();
+            entity.Property(e => e.EntityName).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.UpdatedBy).HasMaxLength(256);
+        });
+
+        // Configure RetentionRun (EP0017)
+        builder.Entity<RetentionRun>(entity =>
+        {
+            entity.HasIndex(e => new { e.EntityName, e.StartedAt });
+            entity.Property(e => e.EntityName).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RunMode).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(4000);
+            entity.Property(e => e.TriggeredBy).HasMaxLength(256);
         });
     }
 

@@ -43,11 +43,21 @@ public class QueueModel : PageModel
     public int TotalPages { get; set; }
     public int TotalMessages { get; set; }
 
+    /// <summary>US0057: Count of Pending messages by MessageType (always all-type, not filtered).</summary>
+    public Dictionary<string, int> PendingCountByType { get; set; } = new();
+
     [TempData]
     public string? StatusMessage { get; set; }
 
     public async Task OnGetAsync()
     {
+        // US0057: Summary counts (always from all pending, not affected by current filter)
+        PendingCountByType = await _context.SmsQueues
+            .Where(q => q.Status == SmsStatus.Pending)
+            .GroupBy(q => q.MessageType)
+            .Select(g => new { Type = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Type, x => x.Count);
+
         var query = _context.SmsQueues.AsQueryable();
 
         // Apply filters

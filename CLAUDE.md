@@ -41,7 +41,7 @@ SmartLogWebApp/
 │   ├── Migrations/                     # EF Core migrations
 │   ├── Program.cs                      # Startup, DI, middleware, auth config
 │   └── appsettings.json                # Configuration
-└── tests/SmartLog.Web.Tests/           # Unit tests (19 tests)
+└── tests/SmartLog.Web.Tests/           # xUnit tests (~160 tests across 14 files)
 ```
 
 ---
@@ -50,22 +50,27 @@ SmartLogWebApp/
 
 | Entity | Purpose | Key Fields |
 |--------|---------|------------|
-| `Student` | Student records | StudentId (YYYY-GG-NNNN), LRN, GradeLevel, Section, ParentPhone, SmsEnabled, SmsLanguage |
+| `Student` | Student records | StudentId (YYYY-GG-NNNN), LRN, GradeLevel, Section, Program (denormalized), ParentPhone, AlternatePhone, SmsEnabled, EntryExitSmsEnabled (default false), SmsLanguage |
 | `Faculty` | Teacher/staff records | EmployeeId (EMP-YYYY-NNNN), Department, Position, UserId (link to Identity) |
 | `Device` | Scanner device registration | Name, ApiKeyHash (SHA-256), IsActive, LastSeenAt |
 | `Scan` | QR code scan records | DeviceId, StudentId, QrPayload, ScannedAt, ReceivedAt, ScanType (ENTRY/EXIT), Status |
-| `QrCode` | Student QR codes | Payload (SMARTLOG:id:timestamp:hmac), HmacSignature, IsValid, QrImageBase64 |
-| `SmsQueue` | Async SMS queue | PhoneNumber, Message, Status, Priority, MessageType, ScheduledAt, RetryCount |
+| `QrCode` | Student QR codes | Payload (SMARTLOG:id:timestamp:hmac), HmacSignature, IsValid, InvalidatedAt, QrImageBase64 |
+| `Program` | K-12 program/strand | Code (REGULAR/SPA/STEM/ABM/etc), Name, SortOrder, IsActive — mandatory for all Sections |
+| `GradeLevelProgram` | Program ↔ GradeLevel allowed mapping | GradeLevelId, ProgramId |
+| `VisitorPass` | Reusable anonymous visitor passes | PassCode (VISITOR-NNN), Status (Available/InUse), QrPayload (SMARTLOG-V: prefix), HmacSignature |
+| `VisitorScan` | Visitor entry/exit records | VisitorPassId, DeviceId, ScanType, ScannedAt |
+| `Broadcast` | One-shot admin SMS broadcasts | Type (Announcement/Emergency/BulkSend), Message, TargetFilter, ScheduledAt, Status |
+| `SmsQueue` | Async SMS queue | PhoneNumber, Message, Provider, Status, Priority, MessageType (ENTRY/EXIT/NO_SCAN_ALERT/PERSONAL/BROADCAST), ScheduledAt, RetryCount |
 | `SmsLog` | SMS delivery audit | Provider, ProviderMessageId, DeliveryStatus, ProcessingTimeMs |
-| `SmsTemplate` | Bilingual templates | Code (ENTRY/EXIT/HOLIDAY/etc), TemplateEn, TemplateFil, AvailablePlaceholders |
-| `GradeLevel` | K-12 grade levels | Code (K,1-12), Name, SortOrder |
-| `Section` | Class sections | Name, GradeLevelId, AdviserId, Capacity |
+| `SmsTemplate` | Bilingual templates | Code (ENTRY/EXIT/NO_SCAN_ALERT/HOLIDAY/etc), TemplateEn, TemplateFil, AvailablePlaceholders |
+| `GradeLevel` | K-12 grade levels | Code (K,1-12,NG), Name, SortOrder |
+| `Section` | Class sections | Name, GradeLevelId, **ProgramId (mandatory)**, AdviserId, Capacity |
 | `StudentEnrollment` | Year-based enrollment | StudentId, SectionId, AcademicYearId, IsActive |
 | `AcademicYear` | School years | Name (2025-2026), StartDate, EndDate, IsCurrent |
 | `CalendarEvent` | School calendar | EventType (Holiday/Event/Suspension), AffectsAttendance, AffectedGrades |
 | `AuditLog` | Security audit trail | Action, UserId, PerformedByUserId, IpAddress, UserAgent |
 | `AppSettings` | Dynamic config | Key, Value, Category, IsSensitive |
-| `SmsSettings` | SMS-specific config | Key, Value, Category |
+| `SmsSettings` | SMS-specific config | Key, Value, Category (e.g. `Sms:NoScanAlertEnabled`, `Sms:NoScanAlertTime`, `Sms:NoScanAlertProvider`, `Sms:DefaultProvider`) |
 
 ---
 
@@ -114,24 +119,43 @@ SmartLogScannerApp                    SmartLogWebApp
 
 **Rejection statuses:** `REJECTED_INVALID_QR`, `REJECTED_QR_INVALIDATED`, `REJECTED_STUDENT_INACTIVE`, `REJECTED_NOT_SCHOOL_DAY`, `DUPLICATE`
 
-### 2. SMS Notification Flow
+**Visitor QR branch:** If the payload starts with `SMARTLOG-V:` it is routed to `VisitorPassService` — looks up `VisitorPass` by code, verifies HMAC, records a `VisitorScan`, returns neutral visitor info (no student data, no SMS).
+
+### 2. SMS Notification Flow (V2 — No-Scan Alert default)
+
+Default attendance SMS strategy since EP0009 is **end-of-day No-Scan Alert**, not per-scan. Entry/Exit SMS is opt-in per student via `Student.EntryExitSmsEnabled = true` (default false).
 
 ```
+A. Per-scan (opt-in only)
 Scan Accepted
     │
     ▼
 QueueAttendanceNotificationAsync()
-    ├─ Check SMS globally enabled
+    ├─ Check SMS globally enabled (Sms:Enabled)
+    ├─ Check Student.EntryExitSmsEnabled == true (else skip)
     ├─ Lookup student (phone, SMS language)
     ├─ Render template (ENTRY or EXIT, EN or FIL)
     ├─ Check duplicate (5-min window)
-    └─ Insert into SmsQueue (status: Pending)
+    └─ Insert into SmsQueue (MessageType=ENTRY|EXIT, status: Pending)
+
+B. End-of-Day No-Scan Alert (default broadcast)
+NoScanAlertService (IHostedService, runs daily at Sms:NoScanAlertTime, default 18:10)
+    ├─ Check global SMS enabled + Sms:NoScanAlertEnabled
+    ├─ Check today is a school day (CalendarService)
+    ├─ Scanner-health guard: require ≥1 accepted scan system-wide today (else suppress + alert admin)
+    ├─ Query students with zero accepted scans for today
+    ├─ Idempotency guard: skip students already alerted today
+    └─ Queue NO_SCAN_ALERT SMS with Provider = Sms:NoScanAlertProvider
+
+C. Admin broadcasts & personal SMS
+Announcement / Emergency / BulkSend / Personal (from student profile)
+    └─ Insert into SmsQueue (MessageType=BROADCAST|PERSONAL, Provider = Sms:DefaultProvider)
            │
            ▼
     SmsWorkerService (polls every 5s)
     ├─ Fetch Pending messages (priority-ordered, respects ScheduledAt)
-    ├─ Select gateway: GSM_MODEM (default) → SEMAPHORE (fallback)
-    ├─ Send via gateway
+    ├─ Respect pre-set Provider on message; else use Sms:DefaultProvider
+    ├─ Send via gateway; Sms:FallbackEnabled toggles GSM→Semaphore fallback
     ├─ On success: status=Sent, log to SmsLog with ProviderMessageId
     └─ On failure: retry with exponential backoff (2, 4, 8 min), max 3 retries
 ```
@@ -153,6 +177,39 @@ Annual Batch Re-enrollment
     ├─ Preview all students with promotion options
     ├─ Admin assigns: Promote / Graduate / Skip
     └─ Execute: deactivate old enrollment, create new enrollment
+```
+
+### 4. Visitor Pass Flow (EP0012)
+
+Reusable anonymous passes issued by admin; no PII, no SMS. Admin-configurable pool size (default 20).
+
+```
+Admin creates pool → VisitorPass rows (PassCode=VISITOR-001..N, Status=Available, HMAC-signed SMARTLOG-V: QR)
+    │
+    ▼
+Guard hands pass to visitor → Scanner scans SMARTLOG-V: QR
+    ├─ ScansApiController routes to VisitorPassService
+    ├─ Record VisitorScan (ENTRY)
+    └─ Pass stays Available (not tied to a specific person)
+
+Visitor returns pass → Guard scans at EXIT
+    ├─ Record VisitorScan (EXIT)
+    └─ Pass ready for next visitor
+```
+
+**QR prefix `SMARTLOG-V:`** is what distinguishes visitor passes from student QRs. QR generation for passes uses the same HMAC secret as student QRs but a different payload format.
+
+### 5. QR Regeneration & Invalidation (EP0013)
+
+Student `StudentId` is permanent — the QR is regenerated only when a card is lost or re-issued.
+
+```
+Regenerate QR
+    ├─ Mark old QrCode.IsValid = false, set InvalidatedAt (keeps row for audit)
+    └─ Create new QrCode row with fresh timestamp + HMAC
+
+Invalidate without regeneration
+    └─ Mark IsValid = false, InvalidatedAt set; future scans of old QR return REJECTED_QR_INVALIDATED
 ```
 
 ---

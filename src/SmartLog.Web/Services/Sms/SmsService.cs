@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 
 namespace SmartLog.Web.Services.Sms;
 
@@ -233,20 +234,68 @@ public class SmsService : ISmsService
         }
     }
 
-    public async Task<Guid> QueueEmergencyAnnouncementAsync(
-        string message,
-        string? language = null,
+    public async Task<List<Guid>> ResolveStudentIdsByFiltersAsync(
+        List<ProgramGradeFilter> filters,
+        bool activeOnly = true,
+        bool smsEnabledOnly = true)
+    {
+        if (filters.Count == 0)
+        {
+            var baseQuery = _context.Students.AsQueryable();
+            if (activeOnly) baseQuery = baseQuery.Where(s => s.IsActive);
+            if (smsEnabledOnly) baseQuery = baseQuery.Where(s => s.SmsEnabled);
+            return await baseQuery.Select(s => s.Id).ToListAsync();
+        }
+
+        var allIds = new HashSet<Guid>();
+        foreach (var filter in filters)
+        {
+            if (string.IsNullOrEmpty(filter.ProgramCode)) continue;
+
+            var query = _context.Students
+                .Where(s => s.Program == filter.ProgramCode);
+
+            if (filter.GradeLevelCodes.Count > 0)
+                query = query.Where(s => filter.GradeLevelCodes.Contains(s.GradeLevel));
+
+            if (activeOnly) query = query.Where(s => s.IsActive);
+            if (smsEnabledOnly) query = query.Where(s => s.SmsEnabled);
+
+            var ids = await query.Select(s => s.Id).ToListAsync();
+            foreach (var id in ids) allIds.Add(id);
+        }
+
+        return allIds.ToList();
+    }
+
+    public async Task<(Guid broadcastId, int skipped)> QueueEmergencyAnnouncementAsync(
+        BroadcastMessageBodies bodies,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         string? createdByUserId = null,
-        string? createdByName = null)
+        string? createdByName = null,
+        string? preferredProvider = null,
+        List<Guid>? preResolvedStudentIds = null)
     {
         var broadcastId = Guid.NewGuid();
         try
         {
-            var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
-            if (affectedGrades != null && affectedGrades.Any())
-                query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
-            var students = await query.ToListAsync();
+            List<Student> students;
+            if (preResolvedStudentIds != null)
+            {
+                students = await _context.Students
+                    .Where(s => preResolvedStudentIds.Contains(s.Id))
+                    .ToListAsync();
+            }
+            else
+            {
+                var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+                if (affectedGrades != null && affectedGrades.Any())
+                    query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
+                if (affectedPrograms != null && affectedPrograms.Any())
+                    query = query.Where(s => s.Program != null && affectedPrograms.Contains(s.Program));
+                students = await query.ToListAsync();
+            }
 
             _logger.LogInformation("Sending emergency announcement to {Count} students", students.Count);
 
@@ -254,14 +303,22 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "EMERGENCY",
-                Message = message,
-                Language = language,
+                Message = bodies.EnglishBody,
+                Language = bodies.Mode switch
+                {
+                    BroadcastLanguageMode.EnglishOnly => "EN",
+                    BroadcastLanguageMode.FilipinoOnly => "FIL",
+                    _ => null
+                },
                 AffectedGrades = affectedGrades != null && affectedGrades.Any()
                     ? System.Text.Json.JsonSerializer.Serialize(affectedGrades) : null,
+                AffectedPrograms = affectedPrograms != null && affectedPrograms.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedPrograms) : null,
                 ScheduledAt = null,
                 Status = Data.Entities.BroadcastStatus.Sending,
                 CreatedByUserId = createdByUserId,
                 CreatedByName = createdByName,
+                PreferredProvider = preferredProvider,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -269,46 +326,60 @@ public class SmsService : ISmsService
             await _context.SaveChangesAsync();
 
             var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
-            var placeholders = new Dictionary<string, string>
+            var basePlaceholders = new Dictionary<string, string>
             {
-                { "Message", message },
+                { "Message", bodies.EnglishBody },
                 { "SchoolPhone", schoolPhone }
             };
 
-            var recipientCount = await ExecuteBroadcastAsync(
-                broadcast, students, "EMERGENCY", placeholders,
+            var (recipientCount, skipped) = await ExecuteBroadcastAsync(
+                broadcast, students, "EMERGENCY", basePlaceholders, bodies,
                 SmsPriority.Emergency, scheduledAt: null, checkDuplicates: false);
 
             broadcast.TotalRecipients = recipientCount;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Emergency broadcast {BroadcastId}: {Recipients} messages dispatched",
-                broadcastId, recipientCount);
+            _logger.LogInformation("Emergency broadcast {BroadcastId}: {Recipients} messages dispatched, {Skipped} skipped",
+                broadcastId, recipientCount, skipped);
 
-            return broadcastId;
+            return (broadcastId, skipped);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error queuing emergency announcements");
-            return broadcastId;
+            return (broadcastId, 0);
         }
     }
 
-    public async Task<Guid> QueueAnnouncementAsync(
-        string message,
-        string? language = null,
+    public async Task<(Guid broadcastId, int skipped)> QueueAnnouncementAsync(
+        BroadcastMessageBodies bodies,
         List<string>? affectedGrades = null,
+        List<string>? affectedPrograms = null,
         DateTime? scheduledAt = null,
         string? createdByUserId = null,
-        string? createdByName = null)
+        string? createdByName = null,
+        string? preferredProvider = null,
+        List<Guid>? preResolvedStudentIds = null)
     {
         var broadcastId = Guid.NewGuid();
         try
         {
-            var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
-            if (affectedGrades != null && affectedGrades.Any())
-                query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
-            var students = await query.ToListAsync();
+            List<Student> students;
+            if (preResolvedStudentIds != null)
+            {
+                students = await _context.Students
+                    .Where(s => preResolvedStudentIds.Contains(s.Id))
+                    .ToListAsync();
+            }
+            else
+            {
+                var query = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
+                if (affectedGrades != null && affectedGrades.Any())
+                    query = query.Where(s => affectedGrades.Contains(s.GradeLevel));
+                if (affectedPrograms != null && affectedPrograms.Any())
+                    query = query.Where(s => s.Program != null && affectedPrograms.Contains(s.Program));
+                students = await query.ToListAsync();
+            }
 
             _logger.LogInformation("Sending announcement to {Count} students", students.Count);
 
@@ -317,14 +388,22 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "ANNOUNCEMENT",
-                Message = message,
-                Language = language,
+                Message = bodies.EnglishBody,
+                Language = bodies.Mode switch
+                {
+                    BroadcastLanguageMode.EnglishOnly => "EN",
+                    BroadcastLanguageMode.FilipinoOnly => "FIL",
+                    _ => null
+                },
                 AffectedGrades = affectedGrades != null && affectedGrades.Any()
                     ? System.Text.Json.JsonSerializer.Serialize(affectedGrades) : null,
+                AffectedPrograms = affectedPrograms != null && affectedPrograms.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(affectedPrograms) : null,
                 ScheduledAt = scheduledAt,
                 Status = isScheduled ? Data.Entities.BroadcastStatus.Scheduled : Data.Entities.BroadcastStatus.Sending,
                 CreatedByUserId = createdByUserId,
                 CreatedByName = createdByName,
+                PreferredProvider = preferredProvider,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -333,29 +412,29 @@ public class SmsService : ISmsService
 
             var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var schoolName = await _appSettingsService.GetAsync("System.SchoolName") ?? "School";
-            var placeholders = new Dictionary<string, string>
+            var basePlaceholders = new Dictionary<string, string>
             {
                 { "SchoolName", schoolName },
-                { "Message", message },
+                { "Message", bodies.EnglishBody },
                 { "SchoolPhone", schoolPhone }
             };
 
-            var recipientCount = await ExecuteBroadcastAsync(
-                broadcast, students, "ANNOUNCEMENT", placeholders,
+            var (recipientCount, skipped) = await ExecuteBroadcastAsync(
+                broadcast, students, "ANNOUNCEMENT", basePlaceholders, bodies,
                 SmsPriority.High, scheduledAt, checkDuplicates: true);
 
             broadcast.TotalRecipients = recipientCount;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Announcement broadcast {BroadcastId}: {Recipients} messages dispatched",
-                broadcastId, recipientCount);
+            _logger.LogInformation("Announcement broadcast {BroadcastId}: {Recipients} messages dispatched, {Skipped} skipped",
+                broadcastId, recipientCount, skipped);
 
-            return broadcastId;
+            return (broadcastId, skipped);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error queuing announcements");
-            return broadcastId;
+            return (broadcastId, 0);
         }
     }
 
@@ -368,35 +447,48 @@ public class SmsService : ISmsService
     /// 2. Duplicate check is a single batch query against all phones at once.
     /// 3. DB inserts are batched — single SaveChangesAsync for all rows.
     /// </summary>
-    private async Task<int> ExecuteBroadcastAsync(
+    private async Task<(int queued, int skipped)> ExecuteBroadcastAsync(
         Data.Entities.Broadcast broadcast,
         List<Student> students,
         string templateCode,
-        Dictionary<string, string> placeholders,
+        Dictionary<string, string> basePlaceholders,
+        BroadcastMessageBodies bodies,
         SmsPriority priority,
         DateTime? scheduledAt,
         bool checkDuplicates)
     {
         var broadcastId = broadcast.Id;
         var messageType = broadcast.Type;
-        var language = broadcast.Language;
+        var preferredProvider = broadcast.PreferredProvider;
 
         var isScheduled = scheduledAt.HasValue && scheduledAt.Value > DateTime.UtcNow;
-        var useBulk = !isScheduled && await CanUseBulkAsync();
+        bool useBulk;
+        if (isScheduled)
+            useBulk = false;
+        else if (preferredProvider == "GSM_MODEM")
+            useBulk = false;
+        else if (preferredProvider == "SEMAPHORE")
+            useBulk = _semaphoreGateway != null && await _semaphoreGateway.IsAvailableAsync();
+        else
+            useBulk = await CanUseBulkAsync();
 
-        // Pre-render each language variant ONCE — needed before the duplicate check
-        // so we can match on exact message content (prevents different broadcasts blocking each other).
+        // Pre-render each language variant ONCE, substituting the correct per-language body.
+        // EN is always rendered unless FilipinoOnly; FIL is always rendered unless EnglishOnly.
         var renderedByLanguage = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var lang in students.Select(s => language ?? s.SmsLanguage).Distinct())
+        var langsToRender = new List<string>();
+        if (bodies.Mode != BroadcastLanguageMode.FilipinoOnly) langsToRender.Add("EN");
+        if (bodies.Mode != BroadcastLanguageMode.EnglishOnly) langsToRender.Add("FIL");
+
+        foreach (var lang in langsToRender)
         {
-            var rendered = await _templateService.RenderTemplateAsync(templateCode, lang, placeholders);
+            var body = bodies.GetBodyForLanguage(lang);
+            var langPlaceholders = new Dictionary<string, string>(basePlaceholders) { ["Message"] = body };
+            var rendered = await _templateService.RenderTemplateAsync(templateCode, lang, langPlaceholders);
             if (!string.IsNullOrWhiteSpace(rendered))
                 renderedByLanguage[lang] = rendered;
         }
 
-        // Batch duplicate check — one query per rendered message variant.
-        // Matching on exact message content means two different announcements sent within the
-        // 60-minute window won't block each other (only the same text to the same phone is a duplicate).
+        // Batch duplicate check
         HashSet<string>? duplicatePhones = null;
         if (checkDuplicates)
         {
@@ -424,17 +516,30 @@ public class SmsService : ISmsService
             }
         }
 
-        // Group recipients by their rendered message (EN vs FIL)
+        // Group recipients by their rendered message, applying language-mode skip logic.
         var groups = new Dictionary<string, List<string>>();
+        int skipped = 0;
 
         foreach (var student in students)
         {
             if (string.IsNullOrWhiteSpace(student.ParentPhone)) continue;
 
-            var smsLanguage = language ?? student.SmsLanguage;
+            // Skip students whose language preference doesn't match the chosen mode
+            if (!bodies.ShouldSendToStudent(student.SmsLanguage))
+            {
+                skipped++;
+                continue;
+            }
 
-            if (!renderedByLanguage.TryGetValue(smsLanguage, out var renderedMessage)) continue;
+            // Determine which rendered variant this student receives
+            var effectiveLang = bodies.Mode switch
+            {
+                BroadcastLanguageMode.EnglishOnly => "EN",
+                BroadcastLanguageMode.FilipinoOnly => "FIL",
+                _ => student.SmsLanguage ?? "EN"
+            };
 
+            if (!renderedByLanguage.TryGetValue(effectiveLang, out var renderedMessage)) continue;
             if (string.IsNullOrWhiteSpace(renderedMessage)) continue;
 
             foreach (var phone in GetPhonesForStudent(student))
@@ -450,24 +555,20 @@ public class SmsService : ISmsService
             }
         }
 
-        int recipientCount = 0;
+        int queued;
 
         if (useBulk)
         {
-            recipientCount = await SendBulkGroupsAsync(groups, broadcastId, messageType, priority);
-
-            // Finalize broadcast status: bulk path sends immediately (no worker involvement),
-            // so we must update Broadcast.Status here after all messages are processed.
+            queued = await SendBulkGroupsAsync(groups, broadcastId, messageType, priority);
             await FinalizeBroadcastAsync(broadcastId);
         }
         else
         {
-            // FIX 3: Batch queue inserts for GSM modem / scheduled path
-            recipientCount = await QueueBroadcastBatchAsync(
-                groups, broadcastId, messageType, priority, scheduledAt);
+            queued = await QueueBroadcastBatchAsync(
+                groups, broadcastId, messageType, priority, scheduledAt, preferredProvider);
         }
 
-        return recipientCount;
+        return (queued, skipped);
     }
 
     private static IEnumerable<string> GetPhonesForStudent(Student student)
@@ -636,7 +737,8 @@ public class SmsService : ISmsService
         Guid broadcastId,
         string messageType,
         SmsPriority priority,
-        DateTime? scheduledAt)
+        DateTime? scheduledAt,
+        string? preferredProvider = null)
     {
         var now = DateTime.UtcNow;
         var entries = groups
@@ -651,7 +753,8 @@ public class SmsService : ISmsService
                 MaxRetries = 3,
                 CreatedAt = now,
                 ScheduledAt = scheduledAt,
-                BroadcastId = broadcastId
+                BroadcastId = broadcastId,
+                Provider = preferredProvider   // US0055: pre-set provider so worker respects it
             }))
             .ToList();
 
@@ -672,8 +775,9 @@ public class SmsService : ISmsService
         string message,
         SmsPriority priority = SmsPriority.Normal,
         string messageType = "CUSTOM",
-        DateTime? scheduledAt = null)
-        => QueueSmsInternalAsync(phoneNumber, message, priority, messageType, scheduledAt, broadcastId: null);
+        DateTime? scheduledAt = null,
+        string? preferredProvider = null)
+        => QueueSmsInternalAsync(phoneNumber, message, priority, messageType, scheduledAt, broadcastId: null, preferredProvider);
 
     private async Task<long> QueueSmsInternalAsync(
         string phoneNumber,
@@ -681,7 +785,8 @@ public class SmsService : ISmsService
         SmsPriority priority,
         string messageType,
         DateTime? scheduledAt,
-        Guid? broadcastId)
+        Guid? broadcastId,
+        string? preferredProvider = null)
     {
         try
         {
@@ -696,7 +801,8 @@ public class SmsService : ISmsService
                 MaxRetries = 3,
                 CreatedAt = DateTime.UtcNow,
                 ScheduledAt = scheduledAt,
-                BroadcastId = broadcastId
+                BroadcastId = broadcastId,
+                Provider = preferredProvider   // US0055: pre-set provider so worker respects it
             };
 
             _context.SmsQueues.Add(queueEntry);

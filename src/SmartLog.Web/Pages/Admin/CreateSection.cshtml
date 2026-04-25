@@ -17,7 +17,7 @@
 
                         <div class="mb-3">
                             <label asp-for="Input.GradeLevelId" class="form-label">Grade Level</label>
-                            <select asp-for="Input.GradeLevelId" class="form-select">
+                            <select asp-for="Input.GradeLevelId" class="form-select" id="gradeLevelSelect">
                                 <option value="">Select grade level...</option>
                                 @foreach (var grade in Model.GradeLevels)
                                 {
@@ -25,6 +25,18 @@
                                 }
                             </select>
                             <span asp-validation-for="Input.GradeLevelId" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.ProgramId" class="form-label">Program <span class="text-danger">*</span></label>
+                            <select asp-for="Input.ProgramId" class="form-select" id="programSelect" required>
+                                <option value="">Select grade level first...</option>
+                                @foreach (var program in Model.Programs)
+                                {
+                                    <option value="@program.Id">@program.Code — @program.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.ProgramId" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
@@ -67,4 +79,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('gradeLevelSelect').addEventListener('change', function () {
+            const gradeId = this.value;
+            const programSelect = document.getElementById('programSelect');
+            programSelect.innerHTML = '<option value="">Loading...</option>';
+            programSelect.disabled = true;
+
+            if (!gradeId) {
+                programSelect.innerHTML = '<option value="">Select grade level first...</option>';
+                programSelect.disabled = false;
+                return;
+            }
+
+            fetch(`?handler=ProgramsForGrade&gradeLevelId=${gradeId}`)
+                .then(r => r.json())
+                .then(programs => {
+                    programSelect.innerHTML = '<option value="">Select program...</option>';
+                    programs.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = `${p.code} — ${p.name}`;
+                        programSelect.appendChild(opt);
+                    });
+                    programSelect.disabled = false;
+                })
+                .catch(() => {
+                    programSelect.innerHTML = '<option value="">Error loading programs</option>';
+                    programSelect.disabled = false;
+                });
+        });
+    </script>
 }

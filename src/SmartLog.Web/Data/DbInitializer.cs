@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Services;
 
 namespace SmartLog.Web.Data;
 
@@ -45,8 +46,8 @@ public static class DbInitializer
                 throw new InvalidOperationException("SMARTLOG_SEED_PASSWORD environment variable must be set in production.");
             }
 
-            adminPassword = "SecurePass1!";
-            logger.LogWarning("Using default seed password for development. Set SMARTLOG_SEED_PASSWORD environment variable for production.");
+            adminPassword = PasswordGenerator.GenerateTemporaryPassword();
+            logger.LogWarning("Generated seed password for admin.amy: {Password} — Set SMARTLOG_SEED_PASSWORD environment variable to use a fixed password.", adminPassword);
         }
 
         var existingUser = await userManager.FindByNameAsync(adminUserName);
@@ -162,16 +163,17 @@ public static class DbInitializer
         // Seed test faculty members
         await SeedFacultyAsync(context, userManager, logger);
 
-        // Seed grade levels, sections, and academic years
-        await SeedGradeLevelsAsync(context, logger);
+        // Seed academic years
         await SeedAcademicYearsAsync(context, logger);
-        await SeedSectionsAsync(context, logger);
 
         // Seed calendar events (holidays)
         await SeedCalendarEventsAsync(context, logger);
 
         // Seed SMS templates
         await SeedSmsTemplatesAsync(context, logger);
+
+        // Seed default AppSettings keys
+        await SeedAppSettingsAsync(context, logger);
 
         // Reset any messages stuck in Processing status from a previous crash/restart
         await ResetStuckProcessingMessagesAsync(context, logger);
@@ -181,6 +183,9 @@ public static class DbInitializer
 
         // Migrate existing students to enrollments
         await MigrateExistingStudentsToEnrollmentsAsync(context, logger);
+
+        // Seed default retention policies (EP0017)
+        await SeedRetentionPoliciesAsync(context, logger);
     }
 
     private static async Task SeedUserAsync(
@@ -339,31 +344,6 @@ public static class DbInitializer
         logger.LogInformation("Note: Student seeding will be implemented when US0015 is completed");
     }
 
-    private static async Task SeedGradeLevelsAsync(ApplicationDbContext context, ILogger logger)
-    {
-        // Only seed if no grade levels exist
-        if (context.GradeLevels.Any())
-        {
-            logger.LogInformation("Grade levels already seeded, skipping");
-            return;
-        }
-
-        var gradeLevels = new List<GradeLevel>
-        {
-            new GradeLevel { Code = "7", Name = "Grade 7", SortOrder = 1, IsActive = true },
-            new GradeLevel { Code = "8", Name = "Grade 8", SortOrder = 2, IsActive = true },
-            new GradeLevel { Code = "9", Name = "Grade 9", SortOrder = 3, IsActive = true },
-            new GradeLevel { Code = "10", Name = "Grade 10", SortOrder = 4, IsActive = true },
-            new GradeLevel { Code = "11", Name = "Grade 11", SortOrder = 5, IsActive = true },
-            new GradeLevel { Code = "12", Name = "Grade 12", SortOrder = 6, IsActive = true }
-        };
-
-        context.GradeLevels.AddRange(gradeLevels);
-        await context.SaveChangesAsync();
-
-        logger.LogInformation("Seeded {Count} grade levels (7-12)", gradeLevels.Count);
-    }
-
     private static async Task SeedAcademicYearsAsync(ApplicationDbContext context, ILogger logger)
     {
         // Only seed if no academic years exist
@@ -399,46 +379,6 @@ public static class DbInitializer
 
         logger.LogInformation("Seeded {Count} academic years. Current: {Current}",
             academicYears.Count, academicYears.First(ay => ay.IsCurrent).Name);
-    }
-
-    private static async Task SeedSectionsAsync(ApplicationDbContext context, ILogger logger)
-    {
-        // Only seed if no sections exist
-        if (context.Sections.Any())
-        {
-            logger.LogInformation("Sections already seeded, skipping");
-            return;
-        }
-
-        var gradeLevels = await context.GradeLevels.OrderBy(gl => gl.SortOrder).ToListAsync();
-        if (!gradeLevels.Any())
-        {
-            logger.LogWarning("No grade levels found, cannot seed sections");
-            return;
-        }
-
-        var sections = new List<Section>();
-        var sectionNames = new[] { "A", "B", "C" };
-
-        foreach (var gradeLevel in gradeLevels)
-        {
-            foreach (var sectionName in sectionNames)
-            {
-                sections.Add(new Section
-                {
-                    Name = sectionName,
-                    GradeLevelId = gradeLevel.Id,
-                    Capacity = 40,
-                    IsActive = true,
-                    AdviserId = null // Will be assigned later
-                });
-            }
-        }
-
-        context.Sections.AddRange(sections);
-        await context.SaveChangesAsync();
-
-        logger.LogInformation("Seeded {Count} sections (A, B, C for each grade)", sections.Count);
     }
 
     private static async Task MigrateExistingStudentsToEnrollmentsAsync(ApplicationDbContext context, ILogger logger)
@@ -867,6 +807,16 @@ public static class DbInitializer
                 AvailablePlaceholders = "{SchoolName},{Message},{SchoolPhone}",
                 IsActive = true,
                 IsSystem = true
+            },
+            new()
+            {
+                Code = "NO_SCAN_ALERT",
+                Name = "End-of-Day No-Scan Alert",
+                TemplateEn = "{SchoolName}: We have no attendance record for {StudentFirstName} ({GradeLevel} - {Section}) today, {Date}. Please verify their whereabouts or contact the school at {SchoolPhone}.",
+                TemplateFil = "{SchoolName}: Wala kaming rekord ng pagdalo ni {StudentFirstName} ({GradeLevel} - {Section}) ngayon, {Date}. Mangyaring tiyakin ang kanilang kinaroroonan o makipag-ugnayan sa paaralan sa {SchoolPhone}.",
+                AvailablePlaceholders = "{StudentFirstName},{GradeLevel},{Section},{Date},{SchoolPhone},{SchoolName}",
+                IsActive = true,
+                IsSystem = true
             }
         };
 
@@ -897,6 +847,58 @@ public static class DbInitializer
         logger.LogInformation("SMS templates: {Added} added, {Updated} updated", added, updated);
     }
 
+    private static async Task SeedAppSettingsAsync(ApplicationDbContext context, ILogger logger)
+    {
+        // Only insert keys that do not already exist — never overwrite admin-configured values
+        var defaults = new[]
+        {
+            new AppSettings
+            {
+                Key = "Sms:NoScanAlertTime",
+                Value = "18:10",
+                Category = "Sms",
+                Description = "Time (HH:mm, 24-hour local) at which the end-of-day no-scan alert job runs."
+            },
+            new AppSettings
+            {
+                Key = "Sms:NoScanAlertEnabled",
+                Value = "true",
+                Category = "Sms",
+                Description = "Enable/disable the end-of-day no-scan alert. Independent of global SMS toggle."
+            },
+            new AppSettings
+            {
+                Key = "Sms:NoScanAlertProvider",
+                Value = "SEMAPHORE",
+                Category = "Sms",
+                Description = "SMS provider for no-scan alerts (SEMAPHORE or GSM_MODEM)."
+            },
+            new AppSettings
+            {
+                Key = "Visitor:MaxPasses",
+                Value = "20",
+                Category = "Visitor",
+                Description = "Maximum number of visitor passes to generate."
+            }
+        };
+
+        int added = 0;
+        foreach (var setting in defaults)
+        {
+            if (!await context.AppSettings.AnyAsync(s => s.Key == setting.Key))
+            {
+                context.AppSettings.Add(setting);
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            await context.SaveChangesAsync();
+            logger.LogInformation("AppSettings: {Added} default key(s) seeded", added);
+        }
+    }
+
     private static async Task ResetStuckProcessingMessagesAsync(ApplicationDbContext context, ILogger logger)
     {
         var stuck = await context.SmsQueues
@@ -913,5 +915,35 @@ public static class DbInitializer
 
         await context.SaveChangesAsync();
         logger.LogWarning("Reset {Count} SMS message(s) stuck in Processing status back to Pending", stuck.Count);
+    }
+
+    private static async Task SeedRetentionPoliciesAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var defaults = new[]
+        {
+            new RetentionPolicy { EntityName = "SmsQueue",    RetentionDays = 90,   ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "SmsLog",      RetentionDays = 180,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "Broadcast",   RetentionDays = 365,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "Scan",        RetentionDays = 730,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "AuditLog",    RetentionDays = 1095, ArchiveEnabled = true  },
+            new RetentionPolicy { EntityName = "VisitorScan", RetentionDays = 365,  ArchiveEnabled = false },
+        };
+
+        int added = 0;
+        foreach (var def in defaults)
+        {
+            if (!await context.RetentionPolicies.AnyAsync(p => p.EntityName == def.EntityName))
+            {
+                def.UpdatedAt = DateTime.UtcNow;
+                context.RetentionPolicies.Add(def);
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            await context.SaveChangesAsync();
+            logger.LogInformation("RetentionPolicies: {Count} default row(s) seeded", added);
+        }
     }
 }

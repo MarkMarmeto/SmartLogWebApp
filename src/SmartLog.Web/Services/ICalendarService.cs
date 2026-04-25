@@ -1,4 +1,5 @@
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 
 namespace SmartLog.Web.Services;
 
@@ -75,6 +76,15 @@ public interface ICalendarService
     /// Gets a list of all school days within a date range.
     /// </summary>
     Task<List<DateTime>> GetSchoolDaysAsync(DateTime startDate, DateTime endDate, string? gradeLevel = null);
+
+    // No-Scan Alert integration
+    /// <summary>
+    /// Returns active suppressions for today's No-Scan Alert.
+    /// Holidays and Suspensions always suppress (system-wide if AffectedGrades is null, else per-grade).
+    /// Events suppress only when SuppressesNoScanAlert == true.
+    /// An empty GradeLevels list on the returned suppression means all grades are suppressed.
+    /// </summary>
+    Task<List<AlertSuppression>> GetTodaysSuppressionsAsync(DateOnly today);
 
     // Reporting
     /// <summary>

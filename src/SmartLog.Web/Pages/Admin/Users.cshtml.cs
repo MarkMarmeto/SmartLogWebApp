@@ -345,9 +345,9 @@ public class UsersModel : PageModel
         // Generate new temporary password
         var tempPassword = GenerateTemporaryPassword();
 
-        // Remove old password and set new one
-        await _userManager.RemovePasswordAsync(user);
-        var result = await _userManager.AddPasswordAsync(user, tempPassword);
+        // Use token-based reset to avoid leaving user passwordless if the operation fails
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, resetToken, tempPassword);
 
         if (!result.Succeeded)
         {
@@ -361,11 +361,20 @@ public class UsersModel : PageModel
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
 
-        // If user was locked, unlock them
+        // Only unlock if the current admin has authority over this user
         if (await _userManager.IsLockedOutAsync(user))
         {
-            await _userManager.SetLockoutEndDateAsync(user, null);
-            await _userManager.ResetAccessFailedCountAsync(user);
+            // Non-SuperAdmin cannot unlock SuperAdmin accounts
+            if (!isSuperAdmin && targetIsSuperAdmin)
+            {
+                _logger.LogWarning("Admin {AdminId} attempted to unlock SuperAdmin {UserId} during password reset",
+                    currentUser?.Id, userId);
+            }
+            else
+            {
+                await _userManager.SetLockoutEndDateAsync(user, null);
+                await _userManager.ResetAccessFailedCountAsync(user);
+            }
         }
 
         // Audit log

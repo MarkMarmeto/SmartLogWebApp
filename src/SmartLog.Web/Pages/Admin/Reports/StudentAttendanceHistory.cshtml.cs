@@ -67,43 +67,49 @@ public class StudentAttendanceHistoryModel : PageModel
 
     private async Task LoadAttendanceHistoryAsync(Guid studentId, DateTime startDate, DateTime endDate)
     {
+        var start = startDate.Date;
+        var end = endDate.Date.AddDays(1); // exclusive upper bound
+
+        // Single query for entire date range instead of one query per day
+        var allScans = await _context.Scans
+            .Include(s => s.Device)
+            .Where(s => s.StudentId == studentId
+                && s.ScannedAt >= start
+                && s.ScannedAt < end
+                && s.Status == "ACCEPTED")
+            .OrderBy(s => s.ScannedAt)
+            .Select(s => new { s.ScanType, s.ScannedAt, DeviceName = s.Device != null ? s.Device.Name : null })
+            .ToListAsync();
+
+        // Group scans by date in memory
+        var scansByDate = allScans.GroupBy(s => s.ScannedAt.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         var history = new List<DailyAttendanceRecord>();
 
-        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+        for (var date = start; date <= endDate.Date; date = date.AddDays(1))
         {
-            var nextDay = date.AddDays(1);
+            scansByDate.TryGetValue(date, out var scans);
 
-            // Get scans for this student on this date
-            var scans = await _context.Scans
-                .Where(s => s.StudentId == studentId
-                    && s.ScannedAt >= date
-                    && s.ScannedAt < nextDay
-                    && s.Status == "ACCEPTED")
-                .OrderBy(s => s.ScannedAt)
-                .Select(s => new { s.ScanType, s.ScannedAt, s.Device })
-                .ToListAsync();
+            var entryScans = scans?.Where(s => s.ScanType == "ENTRY").ToList();
+            var exitScans = scans?.Where(s => s.ScanType == "EXIT").ToList();
 
-            var entryScans = scans.Where(s => s.ScanType == "ENTRY").ToList();
-            var exitScans = scans.Where(s => s.ScanType == "EXIT").ToList();
+            var hasEntry = entryScans != null && entryScans.Any();
+            var hasExit = exitScans != null && exitScans.Any();
 
-            var status = entryScans.Any() && exitScans.Any() ? "Departed" :
-                         entryScans.Any() ? "Present" :
+            var status = hasEntry && hasExit ? "Departed" :
+                         hasEntry ? "Present" :
                          "Absent";
-
-            var entryTime = entryScans.FirstOrDefault()?.ScannedAt;
-            var exitTime = exitScans.LastOrDefault()?.ScannedAt;
-            var entryDevice = entryScans.FirstOrDefault()?.Device?.Name;
-            var exitDevice = exitScans.LastOrDefault()?.Device?.Name;
 
             history.Add(new DailyAttendanceRecord
             {
                 Date = date,
                 DayOfWeek = date.ToString("dddd"),
                 Status = status,
-                EntryTime = entryTime,
-                ExitTime = exitTime,
-                EntryDevice = entryDevice,
-                ExitDevice = exitDevice,
+                EntryTime = hasEntry ? entryScans!.First().ScannedAt : null,
+                ExitTime = hasExit ? exitScans!.Last().ScannedAt : null,
+                EntryDevice = hasEntry ? entryScans!.First().DeviceName : null,
+                ExitDevice = hasExit ? exitScans!.Last().DeviceName : null,
                 IsWeekend = date.DayOfWeek == System.DayOfWeek.Saturday || date.DayOfWeek == System.DayOfWeek.Sunday
             });
         }

@@ -110,6 +110,10 @@
                                         {
                                             <span class="badge bg-danger">Inactive</span>
                                         }
+                                        @if (student.EntryExitSmsEnabled)
+                                        {
+                                            <span class="badge bg-info ms-1" title="Entry/Exit SMS enabled">E/E</span>
+                                        }
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">

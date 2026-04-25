@@ -43,16 +43,16 @@
         <!-- Step 1: Upload -->
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-file-earmark-arrow-up me-2"></i>Upload CSV File
+                <i class="bi bi-file-earmark-arrow-up me-2"></i>Upload Excel File
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-8">
                         <form method="post" asp-page-handler="Validate" enctype="multipart/form-data">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Select CSV File</label>
-                                <input type="file" name="CsvFile" class="form-control" accept=".csv" required />
-                                <div class="form-text">Maximum 500 rows per import. File must be in CSV format.</div>
+                                <label class="form-label fw-bold">Select Excel File (.xlsx)</label>
+                                <input type="file" name="ExcelFile" class="form-control" accept=".xlsx,.xls" required />
+                                <div class="form-text">Maximum 500 rows per import. Use the downloaded template — enter data on the <strong>Students</strong> sheet.</div>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check2-circle me-1"></i>Validate & Preview
@@ -62,10 +62,10 @@
                     <div class="col-md-4">
                         <div class="card bg-light">
                             <div class="card-body">
-                                <h6><i class="bi bi-download me-1"></i>CSV Template</h6>
-                                <p class="small text-muted mb-2">Download the template to see the expected format with sample data.</p>
-                                <a asp-page-handler="DownloadTemplate" class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download Template
+                                <h6><i class="bi bi-file-earmark-excel me-1"></i>Excel Template</h6>
+                                <p class="small text-muted mb-2">Download the template. It includes sample data, an <strong>Available Sections</strong> reference sheet, and column instructions.</p>
+                                <a asp-page-handler="DownloadTemplate" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-download me-1"></i>Download Template (.xlsx)
                                 </a>
                             </div>
                         </div>
@@ -74,8 +74,8 @@
                                 <h6><i class="bi bi-info-circle me-1"></i>Required Fields</h6>
                                 <ul class="small mb-0">
                                     <li>FirstName, LastName</li>
-                                    <li>GradeLevel (K, 1-12)</li>
-                                    <li>Section</li>
+                                    <li>GradeLevel (K, 1-12, NG)</li>
+                                    <li>Section (name only, e.g. AGATE)</li>
                                     <li>ParentGuardianName</li>
                                     <li>GuardianRelationship (Mother/Father/Guardian/Other)</li>
                                     <li>ParentPhone</li>

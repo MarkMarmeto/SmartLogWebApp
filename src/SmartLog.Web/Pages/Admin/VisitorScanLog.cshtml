@@ -1,0 +1,203 @@
+@page
+@model SmartLog.Web.Pages.Admin.VisitorScanLogModel
+@{
+    ViewData["Title"] = "Visitor Scan Log";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-clock-history me-2"></i>Visitor Scan Log</h1>
+        <a asp-page="/Admin/VisitorPasses" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Passes
+        </a>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Today's Visitors</div>
+                    <div class="fs-4 fw-bold">@Model.Summary.TotalVisitors</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Avg Duration</div>
+                    <div class="fs-4 fw-bold">@Model.Summary.AvgDuration</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-warning">
+                <div class="card-body py-2">
+                    <div class="text-muted small">Currently In</div>
+                    <div class="fs-4 fw-bold text-warning">@Model.Summary.CurrentlyIn</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="startDate" name="StartDate"
+                           value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-auto">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="endDate" name="EndDate"
+                           value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-auto">
+                    <label for="searchTerm" class="form-label">Pass Code</label>
+                    <input type="text" class="form-control" id="searchTerm" name="SearchTerm"
+                           value="@Model.SearchTerm" placeholder="e.g. VISITOR-005" />
+                </div>
+                <div class="col-auto">
+                    <label for="deviceFilter" class="form-label">Device</label>
+                    <select class="form-select" id="deviceFilter" name="DeviceFilter">
+                        <option value="">All</option>
+                        @foreach (var device in Model.Devices)
+                        {
+                            <option value="@device.Id" selected="@(Model.DeviceFilter == device.Id.ToString())">@device.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label for="cameraFilter" class="form-label">Camera</label>
+                    <select class="form-select" id="cameraFilter" name="CameraFilter">
+                        <option value="">All</option>
+                        @foreach (var cam in Model.AvailableCameras)
+                        {
+                            <option value="@cam.FilterValue" selected="@(Model.CameraFilter == cam.FilterValue)">@cam.DisplayText</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel me-1"></i>Filter
+                    </button>
+                </div>
+                @if (Model.SearchTerm != null || Model.StartDate != DateTime.UtcNow.Date || Model.EndDate != DateTime.UtcNow.Date)
+                {
+                    <div class="col-auto">
+                        <a asp-page="/Admin/VisitorScanLog" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Visits Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list me-2"></i>Visitor Activity</span>
+            <span class="text-muted small">@Model.TotalVisits visit(s)</span>
+        </div>
+        <div class="card-body">
+            @if (Model.Visits.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Pass Code</th>
+                                <th>Entry Time</th>
+                                <th>Exit Time</th>
+                                <th>Duration</th>
+                                <th>Device</th>
+                                <th>Camera</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var visit in Model.Visits)
+                            {
+                                var isLong = visit.ExitTime.HasValue && (visit.ExitTime.Value - visit.EntryTime).TotalHours > 24;
+                                <tr class="@(isLong ? "table-warning" : "")">
+                                    <td><code>@visit.PassCode</code></td>
+                                    <td>
+                                        <span title="@visit.EntryTime.ToString("yyyy-MM-dd HH:mm:ss") UTC">
+                                            @visit.EntryTime.ToString("MMM dd, HH:mm")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (visit.ExitTime.HasValue)
+                                        {
+                                            <span title="@visit.ExitTime.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
+                                                @visit.ExitTime.Value.ToString("MMM dd, HH:mm")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (visit.Status == "In progress")
+                                        {
+                                            <span class="text-warning fw-bold">In progress</span>
+                                        }
+                                        else if (isLong)
+                                        {
+                                            <span class="text-warning" title="Pass may not have been returned">@visit.Duration</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">@visit.Duration</span>
+                                        }
+                                    </td>
+                                    <td>@visit.DeviceName</td>
+                                    <td class="text-nowrap">@(visit.CameraIndex.HasValue ? $"{visit.CameraIndex} · {visit.CameraName ?? "—"}" : "—")</td>
+                                    <td>
+                                        @if (visit.Status == "Completed")
+                                        {
+                                            <span class="badge bg-success">Completed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">In progress</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            @for (var i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                    <a class="page-link" asp-page="/Admin/VisitorScanLog"
+                                       asp-route-PageNumber="@i"
+                                       asp-route-StartDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                                       asp-route-EndDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                                       asp-route-SearchTerm="@Model.SearchTerm"
+                                       asp-route-DeviceFilter="@Model.DeviceFilter"
+                                       asp-route-CameraFilter="@Model.CameraFilter">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-clock-history fs-1"></i>
+                    <p class="mt-2">No visitor activity for the selected period.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -81,7 +81,7 @@
                             @if (Model.CurrentEnrollment != null)
                             {
                                 <div class="alert alert-light mb-2">
-                                    <strong>@Model.CurrentEnrollment.Section.GradeLevel.Name</strong> - Section <strong>@Model.CurrentEnrollment.Section.Name</strong>
+                                    <strong>@Model.CurrentEnrollment.Section.GradeLevel.Name</strong> - @(Model.CurrentEnrollment.Section.Program?.Code) - <strong>@Model.CurrentEnrollment.Section.Name</strong>
                                     @if (Model.CurrentEnrollment.Section.Adviser != null)
                                     {
                                         <br /><small class="text-muted">Adviser: @Model.CurrentEnrollment.Section.Adviser.FullName</small>
@@ -102,7 +102,7 @@
                                 @foreach (var section in Model.Sections)
                                 {
                                     <option value="@(section.Id)">
-                                        @(section.GradeLevel.Name) - Section @(section.Name)
+                                        @(section.GradeLevel.Name) - @(section.Program?.Code) - @(section.Name)
                                         @if (section.Adviser != null)
                                         {
                                             @:((@(section.Adviser.FullName)))
@@ -171,6 +171,13 @@
                                 <strong>Enable SMS Notifications</strong>
                             </label>
                             <div class="form-text">Uncheck to opt this student/parent out of all SMS alerts</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input asp-for="Input.EntryExitSmsEnabled" class="form-check-input" type="checkbox" />
+                            <label asp-for="Input.EntryExitSmsEnabled" class="form-check-label">
+                                Enable Entry/Exit SMS
+                            </label>
+                            <div class="form-text">When enabled, parents receive SMS on each scan. When disabled, parents only receive end-of-day alerts for absent students.</div>
                         </div>
                     </div>
                     <div class="col-md-6">

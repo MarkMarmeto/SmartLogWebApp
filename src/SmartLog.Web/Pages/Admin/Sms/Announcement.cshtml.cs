@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 
@@ -17,10 +19,10 @@ public class AnnouncementModel : PageModel
     private readonly ISmsService _smsService;
     private readonly ISmsTemplateService _templateService;
     private readonly IAppSettingsService _appSettingsService;
+    private readonly ISmsSettingsService _smsSettingsService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<AnnouncementModel> _logger;
 
-    // Philippine Standard Time (UTC+8)
     private static readonly TimeZoneInfo PhilippineTime =
         TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
 
@@ -29,6 +31,7 @@ public class AnnouncementModel : PageModel
         ISmsService smsService,
         ISmsTemplateService templateService,
         IAppSettingsService appSettingsService,
+        ISmsSettingsService smsSettingsService,
         UserManager<ApplicationUser> userManager,
         ILogger<AnnouncementModel> logger)
     {
@@ -36,28 +39,23 @@ public class AnnouncementModel : PageModel
         _smsService = smsService;
         _templateService = templateService;
         _appSettingsService = appSettingsService;
+        _smsSettingsService = smsSettingsService;
         _userManager = userManager;
         _logger = logger;
     }
 
     [BindProperty]
-    public string Message { get; set; } = string.Empty;
+    public BroadcastMessageBodies MessageBodies { get; set; } = new();
 
     [BindProperty]
-    public string? Language { get; set; }
+    public string? TargetingJson { get; set; }
 
-    [BindProperty]
-    public List<string> AffectedGrades { get; set; } = new();
-
-    /// <summary>
-    /// Scheduled time in Philippine local time (datetime-local input), empty = send immediately
-    /// </summary>
     [BindProperty]
     public string? ScheduledAtLocal { get; set; }
 
-    public List<string> AvailableGrades { get; set; } = new();
+    public bool IsSmsEnabled { get; set; }
+    public List<ProgramWithGrades> ProgramsWithGrades { get; set; } = new();
     public int TotalActiveStudents { get; set; }
-    public Dictionary<string, int> StudentCountByGrade { get; set; } = new();
     public string TemplatePrefixEn { get; set; } = string.Empty;
     public string TemplatePrefixFil { get; set; } = string.Empty;
     public string TemplateSuffixEn { get; set; } = string.Empty;
@@ -71,33 +69,64 @@ public class AnnouncementModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
         await LoadPageDataAsync();
+    }
+
+    public async Task<IActionResult> OnGetRecipientCountAsync([FromQuery] string? targetingJson)
+    {
+        if (!string.IsNullOrWhiteSpace(targetingJson))
+        {
+            var filters = JsonSerializer.Deserialize<List<ProgramGradeFilter>>(targetingJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            var ids = await _smsService.ResolveStudentIdsByFiltersAsync(filters);
+            return new JsonResult(new { count = ids.Count });
+        }
+        var count = await _context.Students.CountAsync(s => s.IsActive && s.SmsEnabled);
+        return new JsonResult(new { count });
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (string.IsNullOrWhiteSpace(Message))
+        // Validate message bodies based on selected mode
+        if (MessageBodies.Mode != BroadcastLanguageMode.FilipinoOnly &&
+            string.IsNullOrWhiteSpace(MessageBodies.EnglishBody))
         {
-            ErrorMessage = "Message is required.";
+            ErrorMessage = "English message is required.";
+            return RedirectToPage();
+        }
+        if (MessageBodies.Mode == BroadcastLanguageMode.Both &&
+            string.IsNullOrWhiteSpace(MessageBodies.FilipinoBody))
+        {
+            ErrorMessage = "Filipino message is required when 'Both' is selected.";
+            return RedirectToPage();
+        }
+        if (MessageBodies.Mode == BroadcastLanguageMode.FilipinoOnly &&
+            string.IsNullOrWhiteSpace(MessageBodies.FilipinoBody))
+        {
+            ErrorMessage = "Filipino message is required.";
             return RedirectToPage();
         }
 
-        if (Message.Length > 160)
+        if (!string.IsNullOrWhiteSpace(MessageBodies.EnglishBody) && MessageBodies.EnglishBody.Length > 160)
         {
-            ErrorMessage = "Message must be 160 characters or less.";
+            ErrorMessage = "English message must be 160 characters or less.";
+            return RedirectToPage();
+        }
+        if (!string.IsNullOrWhiteSpace(MessageBodies.FilipinoBody) && MessageBodies.FilipinoBody.Length > 160)
+        {
+            ErrorMessage = "Filipino message must be 160 characters or less.";
             return RedirectToPage();
         }
 
-        // Parse optional schedule — input is in PH local time
+        // Parse optional schedule
         DateTime? scheduledAtUtc = null;
         if (!string.IsNullOrWhiteSpace(ScheduledAtLocal))
         {
             if (DateTime.TryParse(ScheduledAtLocal, out var localParsed))
             {
                 var utc = TimeZoneInfo.ConvertTimeToUtc(
-                    DateTime.SpecifyKind(localParsed, DateTimeKind.Unspecified),
-                    PhilippineTime);
-
+                    DateTime.SpecifyKind(localParsed, DateTimeKind.Unspecified), PhilippineTime);
                 if (utc <= DateTime.UtcNow.AddMinutes(2))
                 {
                     ErrorMessage = "Scheduled time must be at least a few minutes in the future.";
@@ -112,17 +141,23 @@ public class AnnouncementModel : PageModel
             }
         }
 
-        // Server-side guard: count recipients before sending
-        var recipientQuery = _context.Students.Where(s => s.IsActive && s.SmsEnabled);
-        if (AffectedGrades.Any())
-            recipientQuery = recipientQuery.Where(s => AffectedGrades.Contains(s.GradeLevel));
-        var recipientCount = await recipientQuery.CountAsync();
+        List<ProgramGradeFilter> filters = new();
+        if (!string.IsNullOrWhiteSpace(TargetingJson))
+        {
+            filters = JsonSerializer.Deserialize<List<ProgramGradeFilter>>(TargetingJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+        }
+
+        var preResolvedIds = filters.Any()
+            ? await _smsService.ResolveStudentIdsByFiltersAsync(filters)
+            : null;
+
+        var recipientCount = preResolvedIds?.Count
+            ?? await _context.Students.CountAsync(s => s.IsActive && s.SmsEnabled);
 
         if (recipientCount == 0)
         {
-            ErrorMessage = AffectedGrades.Any()
-                ? $"No students with SMS enabled found in grades {string.Join(", ", AffectedGrades)}. Adjust the grade filter or check that students have SMS enabled."
-                : "No active students with SMS enabled were found. Enable SMS for students before sending a broadcast.";
+            ErrorMessage = "No students with SMS enabled match the selected targeting. Adjust the filter or check that students have SMS enabled.";
             return RedirectToPage();
         }
 
@@ -133,30 +168,38 @@ public class AnnouncementModel : PageModel
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : User.Identity?.Name;
 
-            var broadcastId = await _smsService.QueueAnnouncementAsync(
-                Message,
-                Language,
-                AffectedGrades.Any() ? AffectedGrades : null,
+            var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
+
+            var historyGrades = filters.SelectMany(f => f.GradeLevelCodes).Distinct().ToList();
+            var historyPrograms = filters.Select(f => f.ProgramCode).Distinct().ToList();
+
+            var (broadcastId, skipped) = await _smsService.QueueAnnouncementAsync(
+                MessageBodies,
+                historyGrades.Any() ? historyGrades : null,
+                historyPrograms.Any() ? historyPrograms : null,
                 scheduledAtUtc,
                 _userManager.GetUserId(User),
-                createdByName);
+                createdByName,
+                provider,
+                preResolvedIds);
 
-            var gradeText = AffectedGrades.Any()
-                ? $"grades {string.Join(", ", AffectedGrades)}"
-                : "all grades";
+            var programText = historyPrograms.Any() ? string.Join(", ", historyPrograms) : "all programs";
+            var gradeText = historyGrades.Any() ? $"grades {string.Join(", ", historyGrades)}" : "all grades";
+            var targetSummary = $"{programText} — {gradeText}";
 
             if (scheduledAtUtc.HasValue)
             {
                 var localTime = TimeZoneInfo.ConvertTimeFromUtc(scheduledAtUtc.Value, PhilippineTime);
-                StatusMessage = $"Announcement scheduled for {localTime:MMM d, yyyy h:mm tt} (PHT) for {gradeText}.";
+                StatusMessage = $"Announcement scheduled for {localTime:MMM d, yyyy h:mm tt} (PHT) to {targetSummary}.";
             }
             else
             {
-                StatusMessage = $"Announcement queued successfully for {gradeText}.";
+                StatusMessage = skipped > 0
+                    ? $"Announcement queued to {targetSummary}. {skipped} student(s) skipped — language preference does not match selected mode."
+                    : $"Announcement queued successfully to {targetSummary}.";
             }
 
-            _logger.LogInformation("Announcement broadcast created by {User}: {Message} to {Grades}",
-                User.Identity?.Name, Message, gradeText);
+            _logger.LogInformation("Announcement broadcast created by {User} to {Target}", User.Identity?.Name, targetSummary);
 
             return RedirectToPage("/Admin/Sms/Broadcasts");
         }
@@ -170,20 +213,27 @@ public class AnnouncementModel : PageModel
 
     private async Task LoadPageDataAsync()
     {
-        AvailableGrades = await _context.GradeLevels
-            .OrderBy(g => g.SortOrder)
-            .Select(g => g.Code)
+        ProgramsWithGrades = await _context.Programs
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder).ThenBy(p => p.Code)
+            .Select(p => new ProgramWithGrades
+            {
+                Code = p.Code,
+                Name = p.Name,
+                Grades = p.GradeLevelPrograms
+                    .OrderBy(glp => glp.GradeLevel.SortOrder)
+                    .Select(glp => new GradeLevelItem
+                    {
+                        Code = glp.GradeLevel.Code,
+                        Name = glp.GradeLevel.Name
+                    })
+                    .ToList()
+            })
             .ToListAsync();
 
         TotalActiveStudents = await _context.Students
             .Where(s => s.IsActive && s.SmsEnabled)
             .CountAsync();
-
-        StudentCountByGrade = await _context.Students
-            .Where(s => s.IsActive && s.SmsEnabled)
-            .GroupBy(s => s.GradeLevel)
-            .Select(g => new { Grade = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Grade, x => x.Count);
 
         var schoolName = await _appSettingsService.GetAsync("System.SchoolName") ?? "School";
         var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
@@ -192,11 +242,9 @@ public class AnnouncementModel : PageModel
         if (template != null)
         {
             var enResolved = template.TemplateEn
-                .Replace("{SchoolName}", schoolName)
-                .Replace("{SchoolPhone}", schoolPhone);
+                .Replace("{SchoolName}", schoolName).Replace("{SchoolPhone}", schoolPhone);
             var filResolved = template.TemplateFil
-                .Replace("{SchoolName}", schoolName)
-                .Replace("{SchoolPhone}", schoolPhone);
+                .Replace("{SchoolName}", schoolName).Replace("{SchoolPhone}", schoolPhone);
 
             var enIdx = enResolved.IndexOf("{Message}");
             var filIdx = filResolved.IndexOf("{Message}");

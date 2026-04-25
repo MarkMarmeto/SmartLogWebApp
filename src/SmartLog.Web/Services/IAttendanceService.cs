@@ -8,7 +8,7 @@ public interface IAttendanceService
     /// <summary>
     /// Get attendance summary for a specific date.
     /// </summary>
-    Task<AttendanceSummary> GetAttendanceSummaryAsync(DateTime date, string? gradeFilter = null, string? sectionFilter = null);
+    Task<AttendanceSummary> GetAttendanceSummaryAsync(DateTime date, string? gradeFilter = null, string? sectionFilter = null, string? programFilter = null);
 
     /// <summary>
     /// Get detailed attendance list for a specific date.
@@ -20,7 +20,8 @@ public interface IAttendanceService
         string? searchTerm = null,
         string? statusFilter = null,
         int pageNumber = 1,
-        int pageSize = 50);
+        int pageSize = 50,
+        string? programFilter = null);
 
     /// <summary>
     /// Get total count for pagination.
@@ -30,7 +31,8 @@ public interface IAttendanceService
         string? gradeFilter = null,
         string? sectionFilter = null,
         string? searchTerm = null,
-        string? statusFilter = null);
+        string? statusFilter = null,
+        string? programFilter = null);
 }
 
 /// <summary>

@@ -103,6 +103,16 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label for="programFilter" class="form-label">Program</label>
+                    <select class="form-select" id="programFilter" name="programFilter">
+                        <option value="">All Programs</option>
+                        @foreach (var prog in Model.ProgramList)
+                        {
+                            <option value="@prog.Code" selected="@(Model.ProgramFilter == prog.Code)">@prog.Code</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="statusFilter" class="form-label">Status</label>
                     <select class="form-select" id="statusFilter" name="statusFilter">
                         <option value="">All Status</option>
@@ -203,20 +213,20 @@
                         <nav class="mt-3">
                             <ul class="pagination justify-content-center mb-0">
                                 <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
-                                    <a class="page-link" href="?pageNumber=@(Model.PageNumber - 1)&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
+                                    <a class="page-link" href="?pageNumber=@(Model.PageNumber - 1)&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&programFilter=@Model.ProgramFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
                                         Previous
                                     </a>
                                 </li>
                                 @for (int i = Math.Max(1, Model.PageNumber - 2); i <= Math.Min(Model.TotalPages, Model.PageNumber + 2); i++)
                                 {
                                     <li class="page-item @(Model.PageNumber == i ? "active" : "")">
-                                        <a class="page-link" href="?pageNumber=@i&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
+                                        <a class="page-link" href="?pageNumber=@i&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&programFilter=@Model.ProgramFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
                                             @i
                                         </a>
                                     </li>
                                 }
                                 <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
-                                    <a class="page-link" href="?pageNumber=@(Model.PageNumber + 1)&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
+                                    <a class="page-link" href="?pageNumber=@(Model.PageNumber + 1)&selectedDate=@Model.DisplayDate.ToString("yyyy-MM-dd")&gradeFilter=@Model.GradeFilter&sectionFilter=@Model.SectionFilter&programFilter=@Model.ProgramFilter&searchTerm=@Model.SearchTerm&statusFilter=@Model.StatusFilter">
                                         Next
                                     </a>
                                 </li>
@@ -274,9 +284,10 @@
             const date = document.getElementById('selectedDate')?.value || '@Model.DisplayDate.ToString("yyyy-MM-dd")';
             const grade = document.getElementById('gradeFilter')?.value || '';
             const section = document.getElementById('sectionFilter')?.value || '';
+            const program = document.getElementById('programFilter')?.value || '';
 
             // Fetch updated summary
-            fetch(`/api/v1/attendance/summary?date=${date}&grade=${grade}&section=${section}`)
+            fetch(`/api/v1/attendance/summary?date=${date}&grade=${grade}&section=${section}&program=${program}`)
                 .then(response => response.json())
                 .then(data => {
                     // Update summary cards

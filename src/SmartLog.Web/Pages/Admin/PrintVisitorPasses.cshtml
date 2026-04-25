@@ -1,0 +1,159 @@
+@page
+@model SmartLog.Web.Pages.Admin.PrintVisitorPassesModel
+@{
+    ViewData["Title"] = "Print Visitor Passes";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Visitor Passes — Print</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 24px;
+        }
+
+        .controls {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-print { background: #0d6efd; color: #fff; }
+        .btn-back { background: #6c757d; color: #fff; }
+
+        /* Card grid */
+        .card-grid {
+            max-width: 800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .visitor-card {
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background: #fff;
+            /* CR80 card aspect ratio: 85.6mm x 53.98mm */
+            aspect-ratio: 85.6 / 54;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visitor-card .qr-img {
+            width: 100px;
+            height: 100px;
+        }
+
+        .visitor-card .pass-code {
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+
+        .visitor-card .pass-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .no-passes {
+            max-width: 800px;
+            margin: 40px auto;
+            text-align: center;
+            color: #666;
+        }
+
+        /* Print styles */
+        @@media print {
+            body { background: #fff; padding: 0; margin: 0; }
+            .controls { display: none; }
+
+            .card-grid {
+                max-width: 100%;
+                gap: 4mm;
+            }
+
+            .visitor-card {
+                border: 1px solid #000;
+                border-radius: 4px;
+                page-break-inside: avoid;
+                padding: 8px;
+            }
+
+            .visitor-card .qr-img {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h1>Visitor Passes (@Model.Passes.Count cards)</h1>
+        <a href="/Admin/VisitorPasses" class="btn btn-back">Back</a>
+        <button class="btn btn-print" onclick="window.print()">Print</button>
+    </div>
+
+    @if (Model.Passes.Any())
+    {
+        <div class="card-grid">
+            @foreach (var pass in Model.Passes)
+            {
+                <div class="visitor-card">
+                    @if (!string.IsNullOrEmpty(pass.QrImageBase64))
+                    {
+                        <img class="qr-img" src="data:image/png;base64,@pass.QrImageBase64" alt="QR @pass.Code" />
+                    }
+                    <div class="pass-code">@pass.Code</div>
+                    <div class="pass-label">SmartLog Visitor Pass</div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="no-passes">
+            <p style="font-size: 48px;">&#9432;</p>
+            <p>No active passes to print.</p>
+            <p>Go to <a href="/Admin/VisitorPasses">Visitor Passes</a> to generate passes first.</p>
+        </div>
+    }
+</body>
+</html>

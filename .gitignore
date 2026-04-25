@@ -71,7 +71,6 @@ coverage/
 
 # Claude Code
 .claude/
-sdlc-studio/
 
 # Temporary documentation
 *_SUMMARY.md

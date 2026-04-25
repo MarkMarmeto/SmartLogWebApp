@@ -88,7 +88,7 @@
                                 @foreach (var section in Model.Sections)
                                 {
                                     <option value="@(section.Id)" data-grade-id="@(section.GradeLevelId)">
-                                        @(section.GradeLevel.Name) - @(section.Name)
+                                        @(section.GradeLevel.Name) - @(section.Program?.Code) - @(section.Name)
                                     </option>
                                 }
                             </select>

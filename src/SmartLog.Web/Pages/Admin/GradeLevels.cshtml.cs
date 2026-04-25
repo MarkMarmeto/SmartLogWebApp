@@ -10,10 +10,14 @@ namespace SmartLog.Web.Pages.Admin;
 public class GradeLevelsModel : PageModel
 {
     private readonly IGradeSectionService _gradeSectionService;
+    private readonly IAuditService _auditService;
+    private readonly ILogger<GradeLevelsModel> _logger;
 
-    public GradeLevelsModel(IGradeSectionService gradeSectionService)
+    public GradeLevelsModel(IGradeSectionService gradeSectionService, IAuditService auditService, ILogger<GradeLevelsModel> logger)
     {
         _gradeSectionService = gradeSectionService;
+        _auditService = auditService;
+        _logger = logger;
     }
 
     public List<GradeLevel> GradeLevels { get; set; } = new();
@@ -47,5 +51,26 @@ public class GradeLevelsModel : PageModel
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)
             .ToList();
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        if (!User.IsInRole("SuperAdmin")) return Forbid();
+        try
+        {
+            await _gradeSectionService.DeleteGradeLevelAsync(id);
+            await _auditService.LogAsync("DeleteGradeLevel", null, null, $"Deleted grade level ID {id} by {User.Identity?.Name}");
+            StatusMessage = "Grade level deleted successfully.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting grade level {Id}", id);
+            ErrorMessage = "An unexpected error occurred while deleting the grade level.";
+        }
+        return RedirectToPage();
     }
 }

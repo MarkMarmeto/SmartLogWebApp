@@ -1,0 +1,213 @@
+@page
+@model SmartLog.Web.Pages.Admin.Settings.RetentionModel
+@{
+    ViewData["Title"] = "Data Retention";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-archive me-2"></i>Data Retention</h1>
+        <p class="text-muted mb-0">Configure how long each type of data is retained before purging.</p>
+    </div>
+    <a href="#retention-info" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-info-circle me-1"></i>View Retention Policy Documentation
+    </a>
+</div>
+
+@if (Model.StatusMessage != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@Model.StatusMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (Model.ErrorMessage != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>@Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form method="post">
+    <div asp-validation-summary="All" class="alert alert-danger" style="display:@(ViewContext.ModelState.IsValid ? "none" : "block")"></div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-table me-2"></i>Retention Policies</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Entity</th>
+                            <th>Retention (days)</th>
+                            <th>Enabled</th>
+                            <th>Archive</th>
+                            <th>Last Run</th>
+                            <th>Last Rows Affected</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Policies.Count; i++)
+                        {
+                            var policy = Model.Policies[i];
+                            <tr>
+                                <td>
+                                    <input type="hidden" asp-for="Policies[i].Id" />
+                                    <input type="hidden" asp-for="Policies[i].EntityName" />
+                                    <strong>@policy.FriendlyName</strong>
+                                    <div class="text-muted small">@policy.Description</div>
+                                    @if (policy.EntityName == "Scan" && !policy.ArchiveEnabled)
+                                    {
+                                        <span class="badge bg-warning text-dark small"
+                                              title="Attendance records are used for enrolment audits">Archive recommended</span>
+                                    }
+                                    @if (policy.EntityName == "AuditLog" && !policy.ArchiveEnabled)
+                                    {
+                                        <span class="badge bg-danger small"
+                                              title="Audit logs are compliance evidence (RA 10173)">Archive strongly recommended</span>
+                                    }
+                                </td>
+                                <td style="width:160px">
+                                    <input type="number" asp-for="Policies[i].RetentionDays"
+                                           class="form-control form-control-sm @(ViewContext.ModelState[$"Policies[{i}].RetentionDays"]?.Errors.Any() == true ? "is-invalid" : "")"
+                                           min="@policy.MinFloor" style="width:100px" />
+                                    <span asp-validation-for="Policies[i].RetentionDays" class="text-danger small"></span>
+                                    <div class="text-muted small">min @policy.MinFloor days</div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               asp-for="Policies[i].Enabled" role="switch" />
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               asp-for="Policies[i].ArchiveEnabled" role="switch" />
+                                    </div>
+                                    @if (policy.ArchiveEnabled)
+                                    {
+                                        <span class="text-muted small" title="Archive service ships with US0102">(coming soon)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @(policy.LastRunAt.HasValue
+                                        ? policy.LastRunAt.Value.ToString("MMM d, yyyy HH:mm")
+                                        : "—")
+                                </td>
+                                <td>
+                                    @(policy.LastRowsAffected.HasValue
+                                        ? policy.LastRowsAffected.Value.ToString("N0")
+                                        : "—")
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-outline-primary btn-sm"
+                                            disabled title="Available after US0101 ships">
+                                        <i class="bi bi-play me-1"></i>Run Now
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            disabled title="Available after US0101 ships">
+                                        <i class="bi bi-eye me-1"></i>Dry Run
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Save All
+            </button>
+        </div>
+    </div>
+</form>
+
+@if (Model.RecentRuns.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Runs</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Entity</th>
+                            <th>Mode</th>
+                            <th>Status</th>
+                            <th>Rows Affected</th>
+                            <th>Duration</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var run in Model.RecentRuns)
+                        {
+                            <tr>
+                                <td>@run.EntityName</td>
+                                <td><span class="badge bg-secondary">@run.RunMode</span></td>
+                                <td>
+                                    @if (run.Status == "Success")
+                                    {
+                                        <span class="badge bg-success">Success</span>
+                                    }
+                                    else if (run.Status == "Failed")
+                                    {
+                                        <span class="badge bg-danger" title="@run.ErrorMessage">Failed</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">@run.Status</span>
+                                    }
+                                </td>
+                                <td>@run.RowsAffected.ToString("N0")</td>
+                                <td>@(run.DurationMs.HasValue ? $"{run.DurationMs:N0} ms" : "—")</td>
+                                <td>@run.StartedAt.ToString("MMM d, yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div id="retention-info" class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-book me-2"></i>Retention Policy Documentation</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small">
+            Retention periods are set to satisfy the storage-limitation principle under <strong>RA 10173 (Data Privacy Act of 2012)</strong>.
+            Personal data must not be kept longer than necessary for the stated purpose.
+        </p>
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Entity</th>
+                    <th>Default</th>
+                    <th>Min Floor</th>
+                    <th>Rationale</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>SMS Queue</td><td>90 days</td><td>7 days</td><td>Processed messages have no operational value; delivery follow-up covered by SMS Log.</td></tr>
+                <tr><td>SMS Log</td><td>180 days</td><td>30 days</td><td>Covers two billing cycles and typical parent-complaint review windows.</td></tr>
+                <tr><td>Broadcasts</td><td>365 days</td><td>30 days</td><td>One school year for admin reference; message bodies may contain personal data.</td></tr>
+                <tr><td>Scan Records</td><td>730 days</td><td>365 days</td><td>Two school years for enrolment audits and report-backs; RA 10173 requires proportionality.</td></tr>
+                <tr><td>Audit Log</td><td>1095 days (3 yrs)</td><td>365 days</td><td>RA 10173 breach investigation window; archive strongly recommended.</td></tr>
+                <tr><td>Visitor Scans</td><td>365 days</td><td>7 days</td><td>Annual safety-incident review window; no personal student data involved.</td></tr>
+            </tbody>
+        </table>
+        <p class="text-muted small mb-0">
+            Changing retention periods below the documented floor requires approval from your Data Privacy Officer.
+        </p>
+    </div>
+</div>

@@ -391,6 +391,10 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("AffectedPrograms")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -412,6 +416,10 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("PreferredProvider")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("ScheduledAt")
                         .HasColumnType("datetime2");
@@ -523,6 +531,9 @@ namespace SmartLog.Web.Migrations
 
                     b.Property<TimeSpan?>("StartTime")
                         .HasColumnType("time");
+
+                    b.Property<bool?>("SuppressesNoScanAlert")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -725,6 +736,62 @@ namespace SmartLog.Web.Migrations
                     b.ToTable("GradeLevels");
                 });
 
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevelProgram", b =>
+                {
+                    b.Property<Guid>("GradeLevelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("GradeLevelId", "ProgramId");
+
+                    b.HasIndex("ProgramId");
+
+                    b.ToTable("GradeLevelPrograms");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.Program", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("Programs");
+                });
+
             modelBuilder.Entity("SmartLog.Web.Data.Entities.QrCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -735,6 +802,9 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("InvalidatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsValid")
                         .HasColumnType("bit");
@@ -752,17 +822,114 @@ namespace SmartLog.Web.Migrations
                     b.Property<string>("QrImageBase64")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("ReplacedByQrCodeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudentId")
-                        .IsUnique();
+                    b.HasIndex("ReplacedByQrCodeId");
+
+                    b.HasIndex("StudentId");
 
                     b.HasIndex("IsValid", "StudentId");
 
                     b.ToTable("QrCodes");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.RetentionPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("ArchiveEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("LastRowsAffected")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntityName")
+                        .IsUnique();
+
+                    b.ToTable("RetentionPolicies");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.RetentionRun", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DurationMs")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("RowsAffected")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RunMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TriggeredBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntityName", "StartedAt");
+
+                    b.ToTable("RetentionRuns");
                 });
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.Scan", b =>
@@ -773,6 +940,13 @@ namespace SmartLog.Web.Migrations
 
                     b.Property<Guid?>("AcademicYearId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("CameraIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CameraName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("uniqueidentifier");
@@ -811,9 +985,15 @@ namespace SmartLog.Web.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("Status", "ScannedAt")
+                        .HasDatabaseName("IX_Scans_Status_ScannedAt");
 
                     b.HasIndex("DeviceId", "StudentId", "ScannedAt");
+
+                    b.HasIndex("StudentId", "ScanType", "ScannedAt")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Scans_NoDuplicateAccepted")
+                        .HasFilter("[Status] = 'ACCEPTED'");
 
                     b.ToTable("Scans");
                 });
@@ -846,9 +1026,14 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AdviserId");
+
+                    b.HasIndex("ProgramId");
 
                     b.HasIndex("GradeLevelId", "Name");
 
@@ -886,6 +1071,10 @@ namespace SmartLog.Web.Migrations
 
                     b.Property<int>("MessageParts")
                         .HasColumnType("int");
+
+                    b.Property<string>("MessageType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -1130,6 +1319,9 @@ namespace SmartLog.Web.Migrations
                     b.Property<Guid?>("CurrentEnrollmentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("EntryExitSmsEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1174,6 +1366,10 @@ namespace SmartLog.Web.Migrations
                     b.Property<string>("ProfilePicturePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Program")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Section")
                         .IsRequired()
@@ -1250,6 +1446,114 @@ namespace SmartLog.Web.Migrations
                         .HasFilter("[IsActive] = 1");
 
                     b.ToTable("StudentEnrollments");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.VisitorPass", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("CurrentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("HmacSignature")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("PassNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QrImageBase64")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QrPayload")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CurrentStatus");
+
+                    b.HasIndex("PassNumber")
+                        .IsUnique();
+
+                    b.ToTable("VisitorPasses");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.VisitorScan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AcademicYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("CameraIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CameraName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("ScanType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("ScannedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("VisitorPassId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcademicYearId");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("ScannedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("VisitorPassId", "ScannedAt");
+
+                    b.ToTable("VisitorScans");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1359,13 +1663,39 @@ namespace SmartLog.Web.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SmartLog.Web.Data.Entities.QrCode", b =>
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevelProgram", b =>
                 {
-                    b.HasOne("SmartLog.Web.Data.Entities.Student", "Student")
-                        .WithOne("QrCode")
-                        .HasForeignKey("SmartLog.Web.Data.Entities.QrCode", "StudentId")
+                    b.HasOne("SmartLog.Web.Data.Entities.GradeLevel", "GradeLevel")
+                        .WithMany("GradeLevelPrograms")
+                        .HasForeignKey("GradeLevelId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SmartLog.Web.Data.Entities.Program", "Program")
+                        .WithMany("GradeLevelPrograms")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GradeLevel");
+
+                    b.Navigation("Program");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.QrCode", b =>
+                {
+                    b.HasOne("SmartLog.Web.Data.Entities.QrCode", "ReplacedByQrCode")
+                        .WithMany()
+                        .HasForeignKey("ReplacedByQrCodeId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("SmartLog.Web.Data.Entities.Student", "Student")
+                        .WithMany("QrCodes")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReplacedByQrCode");
 
                     b.Navigation("Student");
                 });
@@ -1409,9 +1739,17 @@ namespace SmartLog.Web.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SmartLog.Web.Data.Entities.Program", "Program")
+                        .WithMany("Sections")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Adviser");
 
                     b.Navigation("GradeLevel");
+
+                    b.Navigation("Program");
                 });
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.SmsLog", b =>
@@ -1485,6 +1823,32 @@ namespace SmartLog.Web.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.VisitorScan", b =>
+                {
+                    b.HasOne("SmartLog.Web.Data.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SmartLog.Web.Data.Entities.Device", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartLog.Web.Data.Entities.VisitorPass", "VisitorPass")
+                        .WithMany("VisitorScans")
+                        .HasForeignKey("VisitorPassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+
+                    b.Navigation("Device");
+
+                    b.Navigation("VisitorPass");
+                });
+
             modelBuilder.Entity("SmartLog.Web.Data.Entities.AcademicYear", b =>
                 {
                     b.Navigation("Enrollments");
@@ -1509,6 +1873,15 @@ namespace SmartLog.Web.Migrations
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.GradeLevel", b =>
                 {
+                    b.Navigation("GradeLevelPrograms");
+
+                    b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.Program", b =>
+                {
+                    b.Navigation("GradeLevelPrograms");
+
                     b.Navigation("Sections");
                 });
 
@@ -1521,7 +1894,12 @@ namespace SmartLog.Web.Migrations
                 {
                     b.Navigation("Enrollments");
 
-                    b.Navigation("QrCode");
+                    b.Navigation("QrCodes");
+                });
+
+            modelBuilder.Entity("SmartLog.Web.Data.Entities.VisitorPass", b =>
+                {
+                    b.Navigation("VisitorScans");
                 });
 #pragma warning restore 612, 618
         }

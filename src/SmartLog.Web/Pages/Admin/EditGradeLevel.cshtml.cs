@@ -90,8 +90,7 @@ public class EditGradeLevelModel : PageModel
 
             await _auditService.LogAsync(
                 action: "UpdateGradeLevel",
-                userId: User.Identity?.Name,
-                details: $"Updated grade level '{Input.Code}' - {Input.Name}");
+                details: $"Updated grade level '{Input.Code}' - {Input.Name} by {User.Identity?.Name}");
 
             TempData["StatusMessage"] = $"Grade level '{Input.Name}' updated successfully.";
             return RedirectToPage("/Admin/GradeLevels");

@@ -39,9 +39,15 @@ public class TimezoneService : ITimezoneService
 
     public DateTime ToPhilippinesTime(DateTime utcDateTime)
     {
-        if (utcDateTime.Kind != DateTimeKind.Utc)
+        // EF Core returns DateTime values from SQL Server with DateTimeKind.Unspecified.
+        // All ScannedAt/ReceivedAt/CreatedAt values are stored as UTC, so treat Unspecified as UTC.
+        if (utcDateTime.Kind == DateTimeKind.Local)
         {
-            _logger.LogWarning("ToPhilippinesTime called with non-UTC DateTime. Converting to UTC first.");
+            _logger.LogWarning("ToPhilippinesTime called with Local DateTime — converting to UTC first.");
+            utcDateTime = utcDateTime.ToUniversalTime();
+        }
+        else if (utcDateTime.Kind == DateTimeKind.Unspecified)
+        {
             utcDateTime = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
         }
 

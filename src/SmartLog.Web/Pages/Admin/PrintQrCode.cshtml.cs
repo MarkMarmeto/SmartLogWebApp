@@ -9,35 +9,31 @@ using SmartLog.Web.Services;
 namespace SmartLog.Web.Pages.Admin;
 
 /// <summary>
-/// Print QR code page for individual student.
-/// Implements US0021 (Print Individual QR Code).
+/// Print QR code page — permanent CR80 ID card (no academic year).
+/// Implements US0021 (Print Individual QR Code), US0077 (CR80 Card Template Redesign).
 /// </summary>
 [Authorize(Policy = "CanViewStudents")]
 public class PrintQrCodeModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IAppSettingsService _appSettings;
-    private readonly IAcademicYearService _academicYearService;
 
     public PrintQrCodeModel(
         ApplicationDbContext context,
-        IAppSettingsService appSettings,
-        IAcademicYearService academicYearService)
+        IAppSettingsService appSettings)
     {
         _context = context;
         _appSettings = appSettings;
-        _academicYearService = academicYearService;
     }
 
     public Student Student { get; set; } = null!;
     public QrCode QrCode { get; set; } = null!;
     public string SchoolName { get; set; } = "SmartLog School";
-    public string AcademicYear { get; set; } = string.Empty;
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var student = await _context.Students
-            .Include(s => s.QrCode)
+            .Include(s => s.QrCodes)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (student == null)
@@ -45,17 +41,15 @@ public class PrintQrCodeModel : PageModel
             return NotFound();
         }
 
-        if (student.QrCode == null || !student.QrCode.IsValid)
+        var activeQrCode = student.QrCodes.FirstOrDefault(q => q.IsValid);
+        if (activeQrCode == null)
         {
             return BadRequest("No valid QR code available for this student");
         }
 
         Student = student;
-        QrCode = student.QrCode;
+        QrCode = activeQrCode;
         SchoolName = await _appSettings.GetAsync("System.SchoolName") ?? "SmartLog School";
-
-        var currentYear = await _academicYearService.GetCurrentAcademicYearAsync();
-        AcademicYear = currentYear?.Name ?? string.Empty;
 
         return Page();
     }

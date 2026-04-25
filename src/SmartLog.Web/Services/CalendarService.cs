@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
-using SmartLog.Web.Services.Sms;
+using SmartLog.Web.Models.Sms;
 
 namespace SmartLog.Web.Services;
 
@@ -13,18 +13,15 @@ public class CalendarService : ICalendarService
 {
     private readonly ApplicationDbContext _context;
     private readonly IAcademicYearService _academicYearService;
-    private readonly ISmsService _smsService;
     private readonly ILogger<CalendarService> _logger;
 
     public CalendarService(
         ApplicationDbContext context,
         IAcademicYearService academicYearService,
-        ISmsService smsService,
         ILogger<CalendarService> logger)
     {
         _context = context;
         _academicYearService = academicYearService;
-        _smsService = smsService;
         _logger = logger;
     }
 
@@ -120,7 +117,9 @@ public class CalendarService : ICalendarService
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogError(ex, "Error parsing AffectedGrades JSON for event {EventId}", suspension.Id);
+                    // Fail-safe: if AffectedGrades JSON is corrupted, treat suspension as affecting all grades
+                    _logger.LogError(ex, "Malformed AffectedGrades JSON for event {EventId} — treating as all-grade suspension", suspension.Id);
+                    return false;
                 }
             }
         }
@@ -175,24 +174,6 @@ public class CalendarService : ICalendarService
             "Created calendar event: {Title} ({EventType}) for {StartDate} - {EndDate}",
             calendarEvent.Title, calendarEvent.EventType, calendarEvent.StartDate, calendarEvent.EndDate);
 
-        // Queue SMS notifications for holidays and suspensions that affect attendance
-        if (calendarEvent.AffectsAttendance &&
-            (calendarEvent.EventType == EventType.Holiday ||
-             calendarEvent.EventType == EventType.Suspension))
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _smsService.QueueCalendarEventNotificationsAsync(calendarEvent.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error queuing SMS notifications for calendar event {EventId}", calendarEvent.Id);
-                }
-            });
-        }
-
         return calendarEvent;
     }
 
@@ -223,6 +204,7 @@ public class CalendarService : ICalendarService
         existing.AffectsAttendance = calendarEvent.AffectsAttendance;
         existing.AffectsClasses = calendarEvent.AffectsClasses;
         existing.AffectedGrades = calendarEvent.AffectedGrades;
+        existing.SuppressesNoScanAlert = calendarEvent.SuppressesNoScanAlert;
         existing.Location = calendarEvent.Location;
         existing.IsRecurring = calendarEvent.IsRecurring;
         existing.RecurrencePattern = calendarEvent.RecurrencePattern;
@@ -283,6 +265,41 @@ public class CalendarService : ICalendarService
         }
 
         return schoolDays;
+    }
+
+    public async Task<List<AlertSuppression>> GetTodaysSuppressionsAsync(DateOnly today)
+    {
+        var dateTime = today.ToDateTime(TimeOnly.MinValue);
+
+        var events = await _context.CalendarEvents
+            .Where(e =>
+                e.IsActive &&
+                e.StartDate.Date <= dateTime &&
+                e.EndDate.Date >= dateTime &&
+                (e.EventType == EventType.Holiday ||
+                 e.EventType == EventType.Suspension ||
+                 (e.EventType == EventType.Event && e.SuppressesNoScanAlert == true)))
+            .ToListAsync();
+
+        var suppressions = new List<AlertSuppression>();
+        foreach (var ev in events)
+        {
+            var grades = new List<string>();
+            if (!string.IsNullOrWhiteSpace(ev.AffectedGrades))
+            {
+                try
+                {
+                    grades = JsonSerializer.Deserialize<List<string>>(ev.AffectedGrades) ?? new List<string>();
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Malformed AffectedGrades JSON for event {EventId} — treating as all-grade suppression", ev.Id);
+                }
+            }
+            suppressions.Add(new AlertSuppression { Reason = ev.Title, GradeLevels = grades });
+        }
+
+        return suppressions;
     }
 
     public async Task<Dictionary<string, int>> GetEventStatisticsAsync(Guid academicYearId)

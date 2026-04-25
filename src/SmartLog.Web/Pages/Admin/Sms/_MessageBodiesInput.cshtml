@@ -1,0 +1,168 @@
+@using SmartLog.Web.Models.Sms
+@model BroadcastMessageBodies
+@{
+    var prefixEn   = ViewData["TemplatePrefixEn"]  as string ?? string.Empty;
+    var suffixEn   = ViewData["TemplateSuffixEn"]  as string ?? string.Empty;
+    var prefixFil  = ViewData["TemplatePrefixFil"] as string ?? string.Empty;
+    var suffixFil  = ViewData["TemplateSuffixFil"] as string ?? string.Empty;
+    var maxLen     = ViewData["MaxLength"] as int? ?? 160;
+    var formId     = ViewData["FormId"] as string ?? "broadcastForm";
+    var showSkipHint = ViewData["ShowSkipHint"] as bool? ?? true;
+}
+
+<!-- Language Mode Selector -->
+<div class="mb-3">
+    <label class="form-label fw-semibold">Language Mode <span class="text-danger">*</span></label>
+    <div class="d-flex gap-3 flex-wrap">
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="MessageBodies.Mode"
+                   id="modeBoth" value="Both"
+                   @(Model.Mode == BroadcastLanguageMode.Both ? "checked" : "") />
+            <label class="form-check-label" for="modeBoth">
+                <i class="bi bi-translate me-1"></i>Both (EN + Filipino)
+            </label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="MessageBodies.Mode"
+                   id="modeEn" value="EnglishOnly"
+                   @(Model.Mode == BroadcastLanguageMode.EnglishOnly ? "checked" : "") />
+            <label class="form-check-label" for="modeEn">English only</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="MessageBodies.Mode"
+                   id="modeFil" value="FilipinoOnly"
+                   @(Model.Mode == BroadcastLanguageMode.FilipinoOnly ? "checked" : "") />
+            <label class="form-check-label" for="modeFil">Filipino only</label>
+        </div>
+    </div>
+    @if (showSkipHint)
+    {
+        <div id="skipHint" class="form-text text-warning d-none">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Single-language mode: students whose preference doesn't match will be skipped.
+        </div>
+    }
+</div>
+
+<!-- English Body -->
+<div class="mb-3" id="enBodySection">
+    <label for="enBody" class="form-label">
+        English Message <span class="text-danger" id="enRequired">*</span>
+    </label>
+    <textarea class="form-control" id="enBody" name="MessageBodies.EnglishBody"
+              rows="3" maxlength="@maxLen"
+              placeholder="Enter English message...">@Model.EnglishBody</textarea>
+    <div class="d-flex justify-content-between form-text">
+        <span>Characters: <span id="enCharCount">@(Model.EnglishBody?.Length ?? 0)</span> / @maxLen</span>
+        <span id="enPartsHint" class="text-muted"></span>
+    </div>
+</div>
+
+<!-- Filipino Body -->
+<div class="mb-3" id="filBodySection">
+    <label for="filBody" class="form-label">
+        Filipino Message <span class="text-danger" id="filRequired">*</span>
+    </label>
+    <textarea class="form-control" id="filBody" name="MessageBodies.FilipinoBody"
+              rows="3" maxlength="@maxLen"
+              placeholder="Ilagay ang mensaheng Filipino...">@Model.FilipinoBody</textarea>
+    <div class="d-flex justify-content-between form-text">
+        <span>Characters: <span id="filCharCount">@(Model.FilipinoBody?.Length ?? 0)</span> / @maxLen</span>
+        <span id="filPartsHint" class="text-muted"></span>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(prefixEn) || !string.IsNullOrEmpty(prefixFil))
+{
+    <!-- Preview Panel -->
+    <div class="card mb-3 border-secondary">
+        <div class="card-header py-2 bg-light">
+            <small class="fw-semibold text-muted"><i class="bi bi-eye me-1"></i>Message Preview</small>
+        </div>
+        <div class="card-body py-2">
+            <div class="row">
+                <div class="col-md-6" id="previewEnCol">
+                    <div class="small text-muted mb-1">English</div>
+                    <pre class="mb-0 text-wrap small bg-light p-2 rounded">@prefixEn<span id="previewEn">@(Model.EnglishBody ?? "[Your message here]")</span>@suffixEn</pre>
+                </div>
+                <div class="col-md-6" id="previewFilCol">
+                    <div class="small text-muted mb-1">Filipino</div>
+                    <pre class="mb-0 text-wrap small bg-light p-2 rounded">@prefixFil<span id="previewFil">@(Model.FilipinoBody ?? "[Your message here]")</span>@suffixFil</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    (function () {
+        var maxLen = @maxLen;
+
+        function updateCharCount(textarea, countEl, hintEl) {
+            var len = textarea.value.length;
+            countEl.textContent = len;
+            if (hintEl) {
+                hintEl.textContent = len > 160 ? Math.ceil(len / 153) + ' SMS parts' : '';
+            }
+        }
+
+        var enBody = document.getElementById('enBody');
+        var filBody = document.getElementById('filBody');
+        var enCount = document.getElementById('enCharCount');
+        var filCount = document.getElementById('filCharCount');
+        var enHint = document.getElementById('enPartsHint');
+        var filHint = document.getElementById('filPartsHint');
+        var previewEn = document.getElementById('previewEn');
+        var previewFil = document.getElementById('previewFil');
+
+        if (enBody) {
+            enBody.addEventListener('input', function () {
+                updateCharCount(this, enCount, enHint);
+                if (previewEn) previewEn.textContent = this.value || '[Your message here]';
+            });
+        }
+        if (filBody) {
+            filBody.addEventListener('input', function () {
+                updateCharCount(this, filCount, filHint);
+                if (previewFil) previewFil.textContent = this.value || '[Your message here]';
+            });
+        }
+
+        function applyMode(mode) {
+            var enSection = document.getElementById('enBodySection');
+            var filSection = document.getElementById('filBodySection');
+            var skipHint = document.getElementById('skipHint');
+            var previewEnCol = document.getElementById('previewEnCol');
+            var previewFilCol = document.getElementById('previewFilCol');
+
+            var showEn = mode !== 'FilipinoOnly';
+            var showFil = mode !== 'EnglishOnly';
+
+            if (enSection) enSection.style.display = showEn ? '' : 'none';
+            if (filSection) filSection.style.display = showFil ? '' : 'none';
+            if (previewEnCol) previewEnCol.style.display = showEn ? '' : 'none';
+            if (previewFilCol) previewFilCol.style.display = showFil ? '' : 'none';
+            if (skipHint) {
+                skipHint.classList.toggle('d-none', mode === 'Both');
+            }
+        }
+
+        // Initial state
+        var checkedMode = document.querySelector('input[name="MessageBodies.Mode"]:checked');
+        if (checkedMode) applyMode(checkedMode.value);
+
+        document.querySelectorAll('input[name="MessageBodies.Mode"]').forEach(function (radio) {
+            radio.addEventListener('change', function () { applyMode(this.value); });
+        });
+
+        // Expose for confirm modal
+        window.getMessageBodiesForModal = function () {
+            var mode = (document.querySelector('input[name="MessageBodies.Mode"]:checked') || {}).value || 'Both';
+            return {
+                mode: mode,
+                enBody: enBody ? enBody.value : '',
+                filBody: filBody ? filBody.value : ''
+            };
+        };
+    })();
+</script>

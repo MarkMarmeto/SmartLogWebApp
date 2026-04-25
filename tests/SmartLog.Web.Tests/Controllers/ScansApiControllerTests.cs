@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SmartLog.Web.Controllers.Api;
@@ -16,11 +15,8 @@ public class ScansApiControllerTests
     private readonly Mock<IQrCodeService> _qrCodeService = new();
     private readonly Mock<IDeviceService> _deviceService = new();
     private readonly Mock<ICalendarService> _calendarService = new();
-    private readonly Mock<ISmsService> _smsService = new();
     private readonly Mock<IAppSettingsService> _appSettingsService = new();
-    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
-    private readonly Mock<IServiceScope> _serviceScope = new();
-    private readonly Mock<IServiceProvider> _scopedServiceProvider = new();
+    private readonly Mock<ISmsService> _smsService = new();
     private readonly Mock<ILogger<ScansApiController>> _logger = new();
 
     private const string ValidApiKey = "sk_live_test123";
@@ -30,21 +26,13 @@ public class ScansApiControllerTests
 
     private ScansApiController CreateController(HttpContext? httpContext = null)
     {
-        // Wire up scope factory so background Task.Run resolves the same _smsService mock
-        _scopedServiceProvider
-            .Setup(p => p.GetService(typeof(ISmsService)))
-            .Returns(_smsService.Object);
-        _serviceScope.Setup(s => s.ServiceProvider).Returns(_scopedServiceProvider.Object);
-        _scopeFactory.Setup(f => f.CreateScope()).Returns(_serviceScope.Object);
-
         var controller = new ScansApiController(
             _context,
             _qrCodeService.Object,
             _deviceService.Object,
             _calendarService.Object,
-            _smsService.Object,
             _appSettingsService.Object,
-            _scopeFactory.Object,
+            _smsService.Object,
             _logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -88,11 +76,14 @@ public class ScansApiControllerTests
             GuardianRelationship = "Mother",
             ParentPhone = "09171234567",
             IsActive = true,
-            QrCode = new QrCode
+            QrCodes = new List<QrCode>
             {
-                Payload = ValidQrPayload,
-                HmacSignature = "BASE64HMAC",
-                IsValid = true
+                new QrCode
+                {
+                    Payload = ValidQrPayload,
+                    HmacSignature = "BASE64HMAC",
+                    IsValid = true
+                }
             }
         };
         _context.Students.Add(_activeStudent);
@@ -250,7 +241,7 @@ public class ScansApiControllerTests
     [Fact]
     public async Task SubmitScan_InvalidatedQrCode_Returns400()
     {
-        _activeStudent.QrCode!.IsValid = false;
+        _activeStudent.QrCodes.First().IsValid = false;
         _context.SaveChanges();
 
         var controller = CreateController();
@@ -395,23 +386,411 @@ public class ScansApiControllerTests
         Assert.Equal("EXIT", response.ScanType);
     }
 
+    // ========== US0054: Entry/Exit SMS Opt-In ==========
+
     [Fact]
-    public async Task SubmitScan_QueuesSmsNotification()
+    public async Task SubmitScan_EntryExitSmsDisabled_DoesNotQueueSms()
     {
+        // Default _activeStudent has EntryExitSmsEnabled=false
         var controller = CreateController();
         var request = CreateValidRequest();
 
         await controller.SubmitScan(request);
 
-        // Give the fire-and-forget task a moment to execute
-        await Task.Delay(100);
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitScan_EntryExitSmsEnabled_QueuesAttendanceSms()
+    {
+        _activeStudent.SmsEnabled = true;
+        _activeStudent.EntryExitSmsEnabled = true;
+        await _context.SaveChangesAsync();
+
+        _smsService.Setup(s => s.QueueAttendanceNotificationAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(_activeStudent.Id, "ENTRY", It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SubmitScan_MasterSmsDisabled_DoesNotQueueEvenIfEntryExitEnabled()
+    {
+        _activeStudent.SmsEnabled = false;
+        _activeStudent.EntryExitSmsEnabled = true;
+        await _context.SaveChangesAsync();
+
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        await controller.SubmitScan(request);
 
         _smsService.Verify(
-            s => s.QueueAttendanceNotificationAsync(
-                _activeStudent.Id,
-                "ENTRY",
-                It.IsAny<DateTime>(),
-                It.IsAny<Guid>()),
-            Times.Once);
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    // ========== US0073: Visitor Scan Tests ==========
+
+    private const string VisitorQrPayload = "SMARTLOG-V:VISITOR-005:1739512547:VISITOR_HMAC";
+    private const string VisitorCode = "VISITOR-005";
+
+    private VisitorPass SeedVisitorPass(string code = VisitorCode, bool isActive = true, string status = "Available")
+    {
+        var pass = new VisitorPass
+        {
+            Id = Guid.NewGuid(),
+            PassNumber = 5,
+            Code = code,
+            QrPayload = VisitorQrPayload,
+            HmacSignature = "VISITOR_HMAC",
+            QrImageBase64 = "base64img",
+            IsActive = isActive,
+            IssuedAt = DateTime.UtcNow,
+            CurrentStatus = status
+        };
+        _context.VisitorPasses.Add(pass);
+        _context.SaveChanges();
+        return pass;
+    }
+
+    private void SetupVisitorMocks(bool hmacValid = true)
+    {
+        _qrCodeService.Setup(q => q.ParseVisitorQrPayload(VisitorQrPayload))
+            .Returns((VisitorCode, 1739512547L, "VISITOR_HMAC"));
+        _qrCodeService.Setup(q => q.VerifyVisitorQrAsync(VisitorCode, 1739512547L, "VISITOR_HMAC"))
+            .ReturnsAsync(hmacValid);
+    }
+
+    private static ScanSubmissionRequest CreateVisitorRequest(string scanType = "ENTRY", DateTime? scannedAt = null) => new()
+    {
+        QrPayload = VisitorQrPayload,
+        ScannedAt = scannedAt ?? DateTime.UtcNow,
+        ScanType = scanType
+    };
+
+    [Fact]
+    public async Task SubmitScan_VisitorPrefix_RoutesToVisitorHandler()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<VisitorScanResponse>(ok.Value);
+    }
+
+    [Fact]
+    public async Task SubmitScan_StudentPrefix_StillRoutesToStudentHandler()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<ScanResponse>(ok.Value);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorInvalidHmac_ReturnsRejected()
+    {
+        SetupVisitorMocks(hmacValid: false);
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("InvalidQrCode", error.Error);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorPassNotFound_ReturnsRejected()
+    {
+        SetupVisitorMocks();
+        // Don't seed any visitor pass
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("InvalidQrCode", error.Error);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorPassInactive_ReturnsRejected()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(isActive: false);
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("PassInactive", error.Error);
+        Assert.Equal("REJECTED_PASS_INACTIVE", error.Status);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorDuplicate_ReturnsDuplicate()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var scannedAt = DateTime.UtcNow;
+
+        // Seed an existing accepted visitor scan within 5-min window
+        _context.VisitorScans.Add(new VisitorScan
+        {
+            Id = Guid.NewGuid(),
+            VisitorPassId = pass.Id,
+            DeviceId = _activeDevice.Id,
+            ScanType = "ENTRY",
+            ScannedAt = scannedAt.AddMinutes(-2),
+            ReceivedAt = DateTime.UtcNow,
+            Status = "ACCEPTED"
+        });
+        _context.SaveChanges();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest(scannedAt: scannedAt);
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("DUPLICATE", response.Status);
+        Assert.Equal(VisitorCode, response.PassCode);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorEntry_SetsPassToInUse()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass(status: "Available");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("ENTRY");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        Assert.Equal("ENTRY", response.ScanType);
+
+        var updatedPass = _context.VisitorPasses.Find(pass.Id);
+        Assert.Equal("InUse", updatedPass!.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorExit_SetsPassToAvailable()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass(status: "InUse");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("EXIT");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        Assert.Equal("EXIT", response.ScanType);
+
+        var updatedPass = _context.VisitorPasses.Find(pass.Id);
+        Assert.Equal("Available", updatedPass!.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_NoSmsQueued()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        await controller.SubmitScan(request);
+
+        _smsService.Verify(
+            s => s.QueueAttendanceNotificationAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_ResponseHasPassFields()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal(VisitorCode, response.PassCode);
+        Assert.Equal(5, response.PassNumber);
+        Assert.NotEqual(Guid.Empty, response.ScanId);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_CreatesVisitorScanRecord()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+
+        await controller.SubmitScan(request);
+
+        var scan = _context.VisitorScans.FirstOrDefault(s => s.VisitorPassId == pass.Id);
+        Assert.NotNull(scan);
+        Assert.Equal("ENTRY", scan.ScanType);
+        Assert.Equal("ACCEPTED", scan.Status);
+        Assert.Equal(_activeDevice.Id, scan.DeviceId);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorExitWhenAvailable_StillAccepted()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(status: "Available");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("EXIT");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorEntryWhenInUse_StillAccepted()
+    {
+        SetupVisitorMocks();
+        SeedVisitorPass(status: "InUse");
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest("ENTRY");
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<VisitorScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+    }
+
+    // ========== Camera Identity Tests (US0093) ==========
+
+    [Fact]
+    public async Task SubmitScan_WithCameraIdentity_PersistsBothFields()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraIndex = 2;
+        request.CameraName = "Main Gate Left";
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        var scan = _context.Scans.Single();
+        Assert.Equal(2, scan.CameraIndex);
+        Assert.Equal("Main Gate Left", scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_WithCameraIdentity_PersistsBothFields()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+        request.CameraIndex = 1;
+        request.CameraName = "Side Entrance";
+
+        await controller.SubmitScan(request);
+
+        var scan = _context.VisitorScans.Single(s => s.VisitorPassId == pass.Id);
+        Assert.Equal(1, scan.CameraIndex);
+        Assert.Equal("Side Entrance", scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithoutCameraFields_IsAccepted()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        var scan = _context.Scans.Single();
+        Assert.Null(scan.CameraIndex);
+        Assert.Null(scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithInvalidCameraIndex_Returns400()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraIndex = 99;
+
+        // Simulate ModelState invalid (framework validates [Range])
+        controller.ModelState.AddModelError("CameraIndex", "CameraIndex must be between 1 and 8");
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithOverLongCameraName_TruncatesTo100Chars()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraName = new string('A', 120);
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        var scan = _context.Scans.Single();
+        Assert.Equal(100, scan.CameraName?.Length);
+        Assert.Equal(new string('A', 100), scan.CameraName);
     }
 }

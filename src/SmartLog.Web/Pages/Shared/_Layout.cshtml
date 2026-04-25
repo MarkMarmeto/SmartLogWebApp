@@ -470,6 +470,10 @@
                         <i class="bi bi-book"></i>
                         <span>Grade Levels</span>
                     </a>
+                    <a asp-page="/Admin/Programs" class="menu-item">
+                        <i class="bi bi-diagram-3"></i>
+                        <span>Programs</span>
+                    </a>
                     <a asp-page="/Admin/Sections" class="menu-item">
                         <i class="bi bi-grid-3x3"></i>
                         <span>Sections</span>
@@ -564,6 +568,10 @@
                         <i class="bi bi-qr-code-scan"></i>
                         <span>Scan Logs</span>
                     </a>
+                    <a asp-page="/Admin/VisitorPasses" class="menu-item">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Visitor Passes</span>
+                    </a>
                     @if (User.IsInRole("SuperAdmin"))
                     {
                         <a asp-page="/Admin/Devices" class="menu-item">
@@ -578,6 +586,10 @@
                     <a asp-page="/Admin/Settings" class="menu-item">
                         <i class="bi bi-gear"></i>
                         <span>Settings</span>
+                    </a>
+                    <a asp-page="/Admin/Settings/Retention" class="menu-item">
+                        <i class="bi bi-archive"></i>
+                        <span>Retention</span>
                     </a>
                     <a asp-page="/Admin/About" class="menu-item">
                         <i class="bi bi-info-circle"></i>

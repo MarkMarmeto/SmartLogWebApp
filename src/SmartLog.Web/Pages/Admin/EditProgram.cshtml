@@ -1,0 +1,89 @@
+@page "{id:guid}"
+@model SmartLog.Web.Pages.Admin.EditProgramModel
+@{
+    ViewData["Title"] = "Edit Program";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0"><i class="bi bi-pencil me-2"></i>Edit Program</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-route-id="@Model.ProgramId">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Code" class="form-label">Code <span class="text-danger">*</span></label>
+                            <input asp-for="Input.Code" class="form-control" />
+                            <div class="form-text">Up to 20 characters. Letters, numbers, hyphens and underscores only.</div>
+                            <span asp-validation-for="Input.Code" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Name" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input asp-for="Input.Name" class="form-control" />
+                            <span asp-validation-for="Input.Name" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Description" class="form-label">Description</label>
+                            <textarea asp-for="Input.Description" class="form-control" rows="2"></textarea>
+                            <span asp-validation-for="Input.Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.SortOrder" class="form-label">Sort Order</label>
+                            <input asp-for="Input.SortOrder" type="number" class="form-control" style="max-width: 120px;" />
+                            <span asp-validation-for="Input.SortOrder" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="Input.IsActive" class="form-check-input" type="checkbox" role="switch" />
+                                <label asp-for="Input.IsActive" class="form-check-label">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Grade Levels</label>
+                            <div class="form-text mb-2">Select which grade levels this program is available for.</div>
+                            <div class="row row-cols-2 row-cols-md-3 g-2">
+                                @foreach (var grade in Model.GradeLevels)
+                                {
+                                    <div class="col">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="Input.GradeLevelIds"
+                                                   value="@grade.Id"
+                                                   id="grade_@grade.Id"
+                                                   @(Model.Input.GradeLevelIds.Contains(grade.Id) ? "checked" : "") />
+                                            <label class="form-check-label" for="grade_@grade.Id">
+                                                @grade.Name
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Save Changes
+                            </button>
+                            <a asp-page="/Admin/Programs" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

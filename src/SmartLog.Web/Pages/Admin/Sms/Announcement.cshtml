@@ -28,6 +28,15 @@
         </div>
     }
 
+    @if (!Model.IsSmsEnabled)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>SMS sending is globally disabled.</strong> Messages will be queued but not sent until SMS is re-enabled in
+            <a asp-page="/Admin/Sms/Settings" class="alert-link">Settings</a>.
+        </div>
+    }
+
     <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>
         Use this for general reminders and announcements — school events, upcoming activities, reminders, etc.
@@ -40,25 +49,15 @@
                 <i class="bi bi-megaphone me-2"></i>Broadcast Message
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="message" name="Message" rows="4"
-                              required maxlength="160" placeholder="Enter your announcement..."></textarea>
-                    <div class="d-flex justify-content-between form-text">
-                        <span>Characters: <span id="charCount">0</span> / 160</span>
-                        <span id="smsPartsHint" class="text-muted"></span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="language" class="form-label">Language</label>
-                    <select class="form-select" id="language" name="Language">
-                        <option value="">Use student's preferred language</option>
-                        <option value="EN">English only</option>
-                        <option value="FIL">Filipino only</option>
-                    </select>
-                    <div class="form-text">Choose a specific language or let students receive in their preferred language</div>
-                </div>
+                @{
+                    ViewData["TemplatePrefixEn"]  = Model.TemplatePrefixEn;
+                    ViewData["TemplateSuffixEn"]  = Model.TemplateSuffixEn;
+                    ViewData["TemplatePrefixFil"] = Model.TemplatePrefixFil;
+                    ViewData["TemplateSuffixFil"] = Model.TemplateSuffixFil;
+                    ViewData["MaxLength"] = 160;
+                    ViewData["FormId"] = "announcementForm";
+                }
+                <partial name="_MessageBodiesInput" model="Model.MessageBodies" />
 
                 <div class="mb-3">
                     <label for="scheduledAtLocal" class="form-label">
@@ -68,55 +67,31 @@
                            name="ScheduledAtLocal" />
                     <div class="form-text">Leave blank to send immediately. Time is in Philippine Standard Time (PHT, UTC+8).</div>
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Affected Grade Levels (Optional)</label>
-                    <div class="row">
-                        @foreach (var grade in Model.AvailableGrades)
-                        {
-                            <div class="col-md-3 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input grade-checkbox" type="checkbox"
-                                           name="AffectedGrades" value="@grade" id="grade_@grade" />
-                                    <label class="form-check-label" for="grade_@grade">
-                                        Grade @grade
-                                    </label>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                    <div class="form-text">Leave unchecked to send to all grade levels</div>
-                </div>
             </div>
         </div>
 
         <div class="card mb-4">
             <div class="card-header">
-                <i class="bi bi-eye me-2"></i>Preview
+                <i class="bi bi-funnel me-2"></i>Target Audience
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>English</h6>
-                        <div class="bg-light p-3 rounded">
-                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixEn<span id="previewEn">[Your message here]</span>@Model.TemplateSuffixEn</pre>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Filipino</h6>
-                        <div class="bg-light p-3 rounded">
-                            <pre class="mb-0 text-wrap">@Model.TemplatePrefixFil<span id="previewFil">[Your message here]</span>@Model.TemplateSuffixFil</pre>
-                        </div>
-                    </div>
-                </div>
+                <p class="text-muted small mb-3">Select the programs and grade levels to include. All programs and grades are selected by default.</p>
+                <partial name="_ProgramFirstTargeting" model="Model.ProgramsWithGrades" />
+            </div>
+        </div>
 
-                <div id="recipientAlert" class="alert alert-info mt-3 mb-0">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-people me-2"></i>Estimated Recipients
+            </div>
+            <div class="card-body">
+                <div id="recipientAlert" class="alert alert-info mb-0">
                     <i class="bi bi-people me-2"></i>
                     <strong>Estimated Recipients:</strong>
                     <span id="recipientCount">@Model.TotalActiveStudents</span> students
-                    <span id="gradeFilter" class="ms-1 text-muted small"></span>
+                    <span id="targetingSummary" class="ms-1 text-muted small"></span>
                     <span id="noRecipientsWarning" class="d-none ms-2 fw-bold text-danger">
-                        <i class="bi bi-exclamation-circle me-1"></i>No recipients — adjust grade filter or enable SMS for students.
+                        <i class="bi bi-exclamation-circle me-1"></i>No recipients — adjust filter or check that students have SMS enabled.
                     </span>
                 </div>
             </div>
@@ -143,41 +118,38 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body px-4 py-3">
-
-                <!-- Recipient count badge -->
                 <div class="text-center mb-4">
                     <div class="display-6 fw-bold text-primary" id="modalRecipientCount">0</div>
                     <div class="text-muted">recipients will receive this message</div>
-                    <div class="text-muted small mt-1" id="modalGradeScope"></div>
+                    <div class="text-muted small mt-1" id="modalTargetScope"></div>
                 </div>
-
-                <!-- Summary rows -->
                 <ul class="list-group list-group-flush mb-3">
-                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start">
+                    <li class="list-group-item px-0 d-flex justify-content-between">
                         <span class="text-muted small">Delivery</span>
-                        <span class="fw-semibold text-end" id="modalDelivery">Immediately</span>
+                        <span class="fw-semibold" id="modalDelivery">Immediately</span>
                     </li>
-                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start">
-                        <span class="text-muted small">Language</span>
-                        <span class="fw-semibold" id="modalLanguage">Student's preferred</span>
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span class="text-muted small">Language mode</span>
+                        <span class="fw-semibold" id="modalLanguage">Both</span>
                     </li>
                     <li class="list-group-item px-0">
-                        <div class="text-muted small mb-1">Message preview</div>
-                        <div class="bg-light rounded p-2 small text-break" id="modalMessagePreview" style="max-height:80px;overflow:hidden;"></div>
+                        <div class="text-muted small mb-1">English preview</div>
+                        <div class="bg-light rounded p-2 small text-break" id="modalEnPreview" style="max-height:60px;overflow:hidden;"></div>
+                    </li>
+                    <li class="list-group-item px-0 d-none" id="modalFilRow">
+                        <div class="text-muted small mb-1">Filipino preview</div>
+                        <div class="bg-light rounded p-2 small text-break" id="modalFilPreview" style="max-height:60px;overflow:hidden;"></div>
                     </li>
                 </ul>
-
                 <div class="alert alert-warning mb-0 py-2 small">
-                    <i class="bi bi-info-circle me-1"></i>
-                    SMS credits will be consumed. This action cannot be undone.
+                    <i class="bi bi-info-circle me-1"></i>SMS credits will be consumed. This action cannot be undone.
                 </div>
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0">
                 <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">
                     <i class="bi bi-x-lg me-1"></i>Go Back
                 </button>
-                <button type="button" class="btn btn-primary flex-fill" id="modalConfirmBtn"
-                        onclick="submitForm()">
+                <button type="button" class="btn btn-primary flex-fill" id="modalConfirmBtn" onclick="submitForm()">
                     <i class="bi bi-send me-1"></i><span id="modalConfirmLabel">Send Now</span>
                 </button>
             </div>
@@ -186,63 +158,44 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/sms-broadcast-targeting.js"></script>
     <script>
-        const gradeCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StudentCountByGrade));
         const totalStudents = @Model.TotalActiveStudents;
         let currentRecipientCount = totalStudents;
 
-        document.getElementById('message').addEventListener('input', function () {
-            const len = this.value.length;
-            document.getElementById('charCount').textContent = len;
-            document.getElementById('smsPartsHint').textContent =
-                len > 160 ? `${Math.ceil(len / 153)} SMS parts` : '';
-            const val = this.value || '[Your message here]';
-            document.getElementById('previewEn').textContent = val;
-            document.getElementById('previewFil').textContent = val;
-        });
-
-        document.querySelectorAll('.grade-checkbox').forEach(cb => {
-            cb.addEventListener('change', updateRecipientCount);
-        });
-
         document.getElementById('scheduledAtLocal').addEventListener('change', function () {
             const btn = document.getElementById('submitBtn');
-            if (this.value) {
-                btn.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Schedule Announcement';
-            } else {
-                btn.innerHTML = '<i class="bi bi-send me-1"></i>Send Announcement';
-            }
+            btn.innerHTML = this.value
+                ? '<i class="bi bi-calendar-check me-1"></i>Schedule Announcement'
+                : '<i class="bi bi-send me-1"></i>Send Announcement';
         });
 
-        function updateRecipientCount() {
-            const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
-                .map(cb => cb.value);
+        window.onTargetingChanged = function (json) {
+            const filters = JSON.parse(json || '[]');
+            fetchRecipientCount(filters.length > 0 ? json : null);
+        };
 
-            let count = 0;
-            let gradeText = '';
+        function fetchRecipientCount(targetingJson) {
+            const params = targetingJson
+                ? `?handler=RecipientCount&targetingJson=${encodeURIComponent(targetingJson)}`
+                : '?handler=RecipientCount';
+            fetch(params).then(r => r.json()).then(data => {
+                currentRecipientCount = data.count;
+                document.getElementById('recipientCount').textContent = data.count;
+                applyRecipientWarning(data.count);
+            });
+        }
 
-            if (selectedGrades.length === 0) {
-                count = totalStudents;
-                gradeText = 'All grades';
-            } else {
-                selectedGrades.forEach(grade => { count += gradeCounts[grade] || 0; });
-                gradeText = `Grade ${selectedGrades.join(', ')}`;
-            }
-
-            currentRecipientCount = count;
-            document.getElementById('recipientCount').textContent = count;
-            document.getElementById('gradeFilter').textContent = `(${gradeText})`;
-
+        function applyRecipientWarning(count) {
             const alertEl = document.getElementById('recipientAlert');
             const warning = document.getElementById('noRecipientsWarning');
             const submitBtn = document.getElementById('submitBtn');
-
             if (count === 0) {
-                alertEl.className = 'alert alert-danger mt-3 mb-0';
+                alertEl.className = 'alert alert-danger mb-0';
                 warning.classList.remove('d-none');
                 submitBtn.disabled = true;
             } else {
-                alertEl.className = 'alert alert-info mt-3 mb-0';
+                alertEl.className = 'alert alert-info mb-0';
                 warning.classList.add('d-none');
                 submitBtn.disabled = false;
             }
@@ -250,42 +203,31 @@
 
         function openConfirmModal() {
             const form = document.getElementById('announcementForm');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
+            if (!form.checkValidity()) { form.reportValidity(); return; }
             if (currentRecipientCount === 0) return;
 
-            const selectedGrades = Array.from(document.querySelectorAll('.grade-checkbox:checked'))
-                .map(cb => cb.value);
-            const gradeScope = selectedGrades.length === 0
-                ? 'Sending to all grade levels'
-                : `Grade ${selectedGrades.join(', ')} only`;
-
+            const bodies = window.getMessageBodiesForModal ? window.getMessageBodiesForModal() : {};
+            const modeLabels = { Both: 'Both (EN + Filipino)', EnglishOnly: 'English only', FilipinoOnly: 'Filipino only' };
             const scheduled = document.getElementById('scheduledAtLocal').value;
-            const langSelect = document.getElementById('language');
-            const langText = langSelect.options[langSelect.selectedIndex].text;
-            const messageText = document.getElementById('message').value;
 
             document.getElementById('modalRecipientCount').textContent = currentRecipientCount.toLocaleString();
-            document.getElementById('modalGradeScope').textContent = gradeScope;
-            document.getElementById('modalDelivery').textContent = scheduled
-                ? `Scheduled — ${scheduled} PHT`
-                : 'Immediately';
-            document.getElementById('modalLanguage').textContent = langText;
-            document.getElementById('modalMessagePreview').textContent =
-                messageText.length > 120 ? messageText.substring(0, 120) + '…' : messageText;
+            document.getElementById('modalTargetScope').textContent =
+                document.getElementById('targetingSummary').textContent || 'All programs and grades';
+            document.getElementById('modalDelivery').textContent = scheduled ? `Scheduled — ${scheduled} PHT` : 'Immediately';
+            document.getElementById('modalLanguage').textContent = modeLabels[bodies.mode] || bodies.mode;
 
-            const confirmLabel = document.getElementById('modalConfirmLabel');
-            const confirmBtn = document.getElementById('modalConfirmBtn');
-            if (scheduled) {
-                confirmLabel.textContent = 'Schedule';
-                confirmBtn.className = 'btn btn-primary flex-fill';
+            const truncate = t => t && t.length > 80 ? t.substring(0, 80) + '…' : (t || '');
+            document.getElementById('modalEnPreview').textContent = truncate(bodies.enBody);
+
+            const filRow = document.getElementById('modalFilRow');
+            if (bodies.mode !== 'EnglishOnly' && bodies.filBody) {
+                filRow.classList.remove('d-none');
+                document.getElementById('modalFilPreview').textContent = truncate(bodies.filBody);
             } else {
-                confirmLabel.textContent = 'Send Now';
-                confirmBtn.className = 'btn btn-primary flex-fill';
+                filRow.classList.add('d-none');
             }
 
+            document.getElementById('modalConfirmLabel').textContent = scheduled ? 'Schedule' : 'Send Now';
             new bootstrap.Modal(document.getElementById('confirmModal')).show();
         }
 
@@ -295,5 +237,9 @@
                 '<span class="spinner-border spinner-border-sm me-1"></span>Sending…';
             document.getElementById('announcementForm').submit();
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.initBroadcastTargeting();
+        });
     </script>
 }

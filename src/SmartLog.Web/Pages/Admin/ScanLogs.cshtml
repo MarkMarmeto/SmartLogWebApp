@@ -79,6 +79,16 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label for="cameraFilter" class="form-label">Camera</label>
+                    <select class="form-select" id="cameraFilter" name="cameraFilter">
+                        <option value="">All</option>
+                        @foreach (var cam in Model.AvailableCameras)
+                        {
+                            <option value="@cam.FilterValue" selected="@(Model.CameraFilter == cam.FilterValue)">@cam.DisplayText</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="studentSearch" class="form-label">Student</label>
                     <input type="text" class="form-control" id="studentSearch" name="studentSearch"
                            value="@Model.StudentSearch" placeholder="Name or ID..." />
@@ -122,6 +132,7 @@
                             <th>Type</th>
                             <th>Status</th>
                             <th>Device</th>
+                            <th>Camera</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -130,8 +141,8 @@
                             @foreach (var scan in Model.Scans)
                             {
                                 <tr class="@(scan.Status.StartsWith("REJECTED") ? "table-danger" : "")">
-                                    <td class="text-nowrap">@scan.ScannedAt.ToLocalTime().ToString("MMM dd HH:mm:ss")</td>
-                                    <td class="text-nowrap">@scan.ReceivedAt.ToLocalTime().ToString("MMM dd HH:mm:ss")</td>
+                                    <td class="text-nowrap">@scan.ScannedAt.ToString("MMM dd hh:mm:ss tt")</td>
+                                    <td class="text-nowrap">@scan.ReceivedAt.ToString("MMM dd hh:mm:ss tt")</td>
                                     <td>@scan.StudentId</td>
                                     <td>@scan.StudentName</td>
                                     <td>@scan.GradeLevel</td>
@@ -173,13 +184,14 @@
                                         }
                                     </td>
                                     <td><span class="badge text-dark bg-light border">@scan.DeviceName</span></td>
+                                    <td class="text-nowrap">@(scan.CameraIndex.HasValue ? $"{scan.CameraIndex} · {scan.CameraName ?? "—"}" : "—")</td>
                                 </tr>
                             }
                         }
                         else
                         {
                             <tr>
-                                <td colspan="9" class="text-center text-muted">No scan records found</td>
+                                <td colspan="10" class="text-center text-muted">No scan records found</td>
                             </tr>
                         }
                     </tbody>
@@ -198,6 +210,7 @@
                                asp-route-statusFilter="@Model.StatusFilter"
                                asp-route-scanTypeFilter="@Model.ScanTypeFilter"
                                asp-route-deviceFilter="@Model.DeviceFilter"
+                               asp-route-cameraFilter="@Model.CameraFilter"
                                asp-route-studentSearch="@Model.StudentSearch"
                                asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">Previous</a>
@@ -210,6 +223,7 @@
                                    asp-route-statusFilter="@Model.StatusFilter"
                                    asp-route-scanTypeFilter="@Model.ScanTypeFilter"
                                    asp-route-deviceFilter="@Model.DeviceFilter"
+                                   asp-route-cameraFilter="@Model.CameraFilter"
                                    asp-route-studentSearch="@Model.StudentSearch"
                                    asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                    asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">@i</a>
@@ -221,6 +235,7 @@
                                asp-route-statusFilter="@Model.StatusFilter"
                                asp-route-scanTypeFilter="@Model.ScanTypeFilter"
                                asp-route-deviceFilter="@Model.DeviceFilter"
+                               asp-route-cameraFilter="@Model.CameraFilter"
                                asp-route-studentSearch="@Model.StudentSearch"
                                asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")">Next</a>

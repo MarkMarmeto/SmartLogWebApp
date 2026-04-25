@@ -37,6 +37,7 @@ public class AttendanceDashboardModel : PageModel
     public List<string> Grades { get; set; } = new();
     public List<Data.Entities.GradeLevel> GradeLevelList { get; set; } = new();
     public List<string> Sections { get; set; } = new();
+    public List<Data.Entities.Program> ProgramList { get; set; } = new();
     public List<AcademicYear> AcademicYears { get; set; } = new();
     public AcademicYear? CurrentAcademicYear { get; set; }
 
@@ -57,6 +58,9 @@ public class AttendanceDashboardModel : PageModel
 
     [BindProperty(SupportsGet = true)]
     public string? StatusFilter { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? ProgramFilter { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public int PageNumber { get; set; } = 1;
@@ -81,15 +85,15 @@ public class AttendanceDashboardModel : PageModel
 
         // Load summary statistics (US0034-AC1, AC2)
         Summary = await _attendanceService.GetAttendanceSummaryAsync(
-            targetDate, GradeFilter, SectionFilter);
+            targetDate, GradeFilter, SectionFilter, ProgramFilter);
 
         // Load attendance list (US0034-AC3)
         AttendanceRecords = await _attendanceService.GetAttendanceListAsync(
-            targetDate, GradeFilter, SectionFilter, SearchTerm, StatusFilter, PageNumber, 50);
+            targetDate, GradeFilter, SectionFilter, SearchTerm, StatusFilter, PageNumber, 50, ProgramFilter);
 
         // Get total count for pagination (US0034-AC6)
         TotalRecords = await _attendanceService.GetAttendanceCountAsync(
-            targetDate, GradeFilter, SectionFilter, SearchTerm, StatusFilter);
+            targetDate, GradeFilter, SectionFilter, SearchTerm, StatusFilter, ProgramFilter);
 
         TotalPages = (int)Math.Ceiling(TotalRecords / 50.0);
 
@@ -113,6 +117,13 @@ public class AttendanceDashboardModel : PageModel
             .ToListAsync();
 
         Grades = GradeLevelList.Select(g => g.Code).ToList();
+
+        // Get programs
+        ProgramList = await _context.Programs
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Code)
+            .ToListAsync();
 
         // Get unique sections
         Sections = await _context.Students
