@@ -315,7 +315,7 @@ if ($pullExitCode -ne 0) {
     Write-Host $pullOutput -ForegroundColor Red
     Write-Host ""
     Write-Warn "Starting service back up..."
-    Start-Service -Name $Script:ServiceName
+    try { Start-Service -Name $Script:ServiceName -ErrorAction Stop } catch { Write-Warn "Could not restart service: $_" }
     Pop-Location
     Read-Host "  Press Enter to exit"
     exit 1
@@ -340,7 +340,7 @@ if ($LASTEXITCODE -ne 0) {
         Copy-Item "$backupPath\*" $Script:InstallDir -Recurse -Force
         Write-Detail "Previous version restored from backup"
     }
-    Start-Service -Name $Script:ServiceName
+    try { Start-Service -Name $Script:ServiceName -ErrorAction Stop } catch { Write-Warn "Could not restart service: $_" }
     Pop-Location
     Read-Host "  Press Enter to exit"
     exit 1
@@ -353,7 +353,93 @@ Write-Success "Application published to $($Script:InstallDir)"
 Write-StepHeader -Step 6 -Total $totalSteps -Title "Starting Service & Verifying"
 
 Write-Detail "Starting service..."
-Start-Service -Name $Script:ServiceName
+$serviceStarted = $false
+try {
+    Start-Service -Name $Script:ServiceName -ErrorAction Stop
+    $serviceStarted = $true
+}
+catch {
+    Write-Fail "Service failed to start: $_"
+    Write-Host ""
+    Write-Host "  Diagnostics" -ForegroundColor Yellow
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
+
+    # Show current service status
+    try {
+        $svc = Get-Service -Name $Script:ServiceName -ErrorAction SilentlyContinue
+        if ($svc) { Write-Detail "Service status: $($svc.Status), StartType: $($svc.StartType)" }
+    } catch { }
+
+    # Show service binary path (helps spot missing exe / wrong path)
+    try {
+        $wmi = Get-CimInstance -ClassName Win32_Service -Filter "Name='$($Script:ServiceName)'" -ErrorAction SilentlyContinue
+        if ($wmi) {
+            Write-Detail "PathName: $($wmi.PathName)"
+            Write-Detail "StartName (account): $($wmi.StartName)"
+        }
+    } catch { }
+
+    # Recent Windows Application Event Log entries for this service
+    Write-Host ""
+    Write-Detail "Recent Application event log entries:"
+    try {
+        $events = Get-WinEvent -FilterHashtable @{
+            LogName    = 'Application'
+            ProviderName = $Script:ServiceName
+            StartTime  = (Get-Date).AddMinutes(-10)
+        } -MaxEvents 5 -ErrorAction SilentlyContinue
+        if (-not $events) {
+            $events = Get-WinEvent -FilterHashtable @{
+                LogName   = 'System'
+                Id        = 7000, 7001, 7009, 7011, 7023, 7024, 7031, 7034
+                StartTime = (Get-Date).AddMinutes(-10)
+            } -MaxEvents 5 -ErrorAction SilentlyContinue | Where-Object { $_.Message -match $Script:ServiceName }
+        }
+        if ($events) {
+            foreach ($e in $events) {
+                $msg = $e.Message
+                if ($msg.Length -gt 400) { $msg = $msg.Substring(0, 400) + "..." }
+                Write-Host "    [$($e.TimeCreated)] $msg" -ForegroundColor Red
+            }
+        }
+        else {
+            Write-Detail "(no recent events found for '$($Script:ServiceName)')"
+        }
+    } catch {
+        Write-Detail "Could not read event log: $_"
+    }
+
+    # Tail the most recent app log file
+    Write-Host ""
+    if (Test-Path $Script:LogDir) {
+        $latestLog = Get-ChildItem $Script:LogDir -Filter "*.log" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($latestLog) {
+            Write-Detail "Last 20 lines of $($latestLog.Name):"
+            Get-Content $latestLog.FullName -Tail 20 -ErrorAction SilentlyContinue | ForEach-Object {
+                Write-Host "    $_" -ForegroundColor Gray
+            }
+        }
+        else {
+            Write-Detail "No log files found in $($Script:LogDir) — app may have failed before logging started."
+        }
+    }
+
+    Write-Host ""
+    Write-Host "  Common causes" -ForegroundColor Yellow
+    Write-Host "  $('-' * 50)" -ForegroundColor DarkGray
+    Write-Detail "- Missing/invalid SMARTLOG_DB_CONNECTION (Machine env var)"
+    Write-Detail "- Missing SMARTLOG_HMAC_SECRET_KEY"
+    Write-Detail "- SQL Server unreachable or DB credentials wrong"
+    Write-Detail "- Port already in use (check ASPNETCORE_URLS / port 8080)"
+    Write-Detail "- Service account lacks permission on $($Script:InstallDir)"
+    Write-Detail "- Migrations failed on startup — review the log tail above"
+    Write-Host ""
+    Pop-Location
+    Read-Host "  Press Enter to exit"
+    exit 1
+}
+
 Start-Sleep -Seconds 5
 
 $service = Get-Service -Name $Script:ServiceName
