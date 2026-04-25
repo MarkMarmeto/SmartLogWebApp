@@ -296,7 +296,19 @@ Write-StepHeader -Step 4 -Total $totalSteps -Title "Stopping Service & Pulling U
 if ($service.Status -eq 'Running') {
     Write-Detail "Stopping service..."
     Stop-Service -Name $Script:ServiceName -Force
-    Start-Sleep -Seconds 3
+    # Wait for the process to fully exit before overwriting binaries — a 3-second
+    # sleep is not enough when the app is mid-shutdown; file locks cause a partial
+    # publish that then fails to start.
+    $killWait = 0
+    while ((Get-Process -Name "SmartLog.Web" -ErrorAction SilentlyContinue) -and $killWait -lt 30) {
+        Start-Sleep -Seconds 1
+        $killWait++
+    }
+    if (Get-Process -Name "SmartLog.Web" -ErrorAction SilentlyContinue) {
+        Write-Warn "Process still alive after 30s — force-killing..."
+        Get-Process -Name "SmartLog.Web" -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Sleep -Seconds 2
+    }
     Write-Success "Service stopped"
 }
 else {
@@ -352,6 +364,30 @@ Write-Success "Application published to $($Script:InstallDir)"
 # ============================================================
 Write-StepHeader -Step 6 -Total $totalSteps -Title "Starting Service & Verifying"
 
+# Determine HTTP / HTTPS ports.
+# When SMARTLOG_CERT_PATH + SMARTLOG_CERT_PASSWORD are set, Program.cs uses explicit
+# Kestrel config on ports 5050 (HTTP) and 5051 (HTTPS), ignoring ASPNETCORE_URLS.
+# Without a cert it falls back to ASPNETCORE_URLS (default 8080).
+$Script:CertPath     = [System.Environment]::GetEnvironmentVariable("SMARTLOG_CERT_PATH",     "Machine")
+$Script:CertPassword = [System.Environment]::GetEnvironmentVariable("SMARTLOG_CERT_PASSWORD", "Machine")
+$httpsEnabled        = $Script:CertPath -and $Script:CertPassword -and (Test-Path $Script:CertPath)
+
+if ($httpsEnabled) {
+    $httpPort  = 5050
+    $httpsPort = 5051
+    $storedHttpsPort = [System.Environment]::GetEnvironmentVariable("SMARTLOG_HTTPS_PORT", "Machine")
+    if ($storedHttpsPort) { $httpsPort = [int]$storedHttpsPort }
+    Write-Detail "HTTPS enabled — HTTP :$httpPort  HTTPS :$httpsPort"
+}
+else {
+    $httpPort = 8080
+    $aspnetUrls = [System.Environment]::GetEnvironmentVariable("ASPNETCORE_URLS", "Machine")
+    if ($aspnetUrls -match 'http://[^;]*:(\d+)') {
+        $httpPort = [int]$Matches[1]
+    }
+    Write-Detail "HTTP only — port :$httpPort"
+}
+
 Write-Detail "Starting service..."
 $serviceStarted = $false
 try {
@@ -384,9 +420,9 @@ catch {
     Write-Detail "Recent Application event log entries:"
     try {
         $events = Get-WinEvent -FilterHashtable @{
-            LogName    = 'Application'
+            LogName      = 'Application'
             ProviderName = $Script:ServiceName
-            StartTime  = (Get-Date).AddMinutes(-10)
+            StartTime    = (Get-Date).AddMinutes(-10)
         } -MaxEvents 5 -ErrorAction SilentlyContinue
         if (-not $events) {
             $events = Get-WinEvent -FilterHashtable @{
@@ -431,43 +467,73 @@ catch {
     Write-Detail "- Missing/invalid SMARTLOG_DB_CONNECTION (Machine env var)"
     Write-Detail "- Missing SMARTLOG_HMAC_SECRET_KEY"
     Write-Detail "- SQL Server unreachable or DB credentials wrong"
-    Write-Detail "- Port already in use (check ASPNETCORE_URLS / port 8080)"
+    Write-Detail "- Port already in use (HTTP :$httpPort$(if ($httpsEnabled) { `", HTTPS :$httpsPort`" }))"
     Write-Detail "- Service account lacks permission on $($Script:InstallDir)"
     Write-Detail "- Migrations failed on startup — review the log tail above"
+    if ($httpsEnabled) {
+        Write-Detail "- Certificate missing or wrong password: $($Script:CertPath)"
+    }
     Write-Host ""
     Pop-Location
     Read-Host "  Press Enter to exit"
     exit 1
 }
 
-Start-Sleep -Seconds 5
+# Poll until Running (up to 60 s) — DB migrations on startup can take >5s
+Write-Detail "Waiting for service to reach Running state..."
+$pollSecs = 0
+do {
+    Start-Sleep -Seconds 2
+    $pollSecs += 2
+    $service = Get-Service -Name $Script:ServiceName
+} while ($service.Status -notin @('Running', 'Stopped') -and $pollSecs -lt 60)
 
-$service = Get-Service -Name $Script:ServiceName
 if ($service.Status -eq 'Running') {
     Write-Success "Service is running"
 }
 else {
-    Write-Warn "Service status: $($service.Status)"
+    Write-Warn "Service status: $($service.Status) (after ${pollSecs}s)"
     Write-Detail "Check logs at: $($Script:LogDir)"
 }
 
-# Verify HTTP response
-$httpPort = 8080
-$aspnetUrls = [System.Environment]::GetEnvironmentVariable("ASPNETCORE_URLS", "Machine")
-if ($aspnetUrls -match 'http://.*:(\d+)') {
-    $httpPort = $Matches[1]
-}
-
+# Health check — HTTP
 Write-Detail "Checking HTTP response on port $httpPort..."
 Start-Sleep -Seconds 3
 try {
     $response = Invoke-WebRequest -Uri "http://localhost:$httpPort" -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-    Write-Success "Application responding (HTTP $($response.StatusCode))"
+    Write-Success "HTTP responding ($($response.StatusCode)) on port $httpPort"
 }
 catch {
-    Write-Warn "HTTP check failed -- app may still be starting"
-    Write-Detail "Try accessing http://localhost:$httpPort in a few seconds"
+    Write-Warn "HTTP check on port $httpPort failed — app may still be starting"
+    Write-Detail "Try: http://localhost:$httpPort"
     Write-Detail "Check logs at: $($Script:LogDir)"
+}
+
+# Health check — HTTPS
+if ($httpsEnabled) {
+    Write-Detail "Checking HTTPS response on port $httpsPort..."
+    try {
+        # Bypass self-signed certificate validation for this health check
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            $response = Invoke-WebRequest -Uri "https://localhost:$httpsPort" -UseBasicParsing `
+                -TimeoutSec 10 -SkipCertificateCheck -ErrorAction Stop
+        }
+        else {
+            [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+            try {
+                $response = Invoke-WebRequest -Uri "https://localhost:$httpsPort" -UseBasicParsing `
+                    -TimeoutSec 10 -ErrorAction Stop
+            }
+            finally {
+                [Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+            }
+        }
+        Write-Success "HTTPS responding ($($response.StatusCode)) on port $httpsPort"
+    }
+    catch {
+        Write-Warn "HTTPS check on port $httpsPort failed — self-signed cert may cause browser warning"
+        Write-Detail "Try in a browser: https://localhost:$httpsPort"
+    }
 }
 
 Pop-Location
@@ -487,13 +553,20 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 Write-Host "  Version:  $currentHash" -ForegroundColor White
 Write-Host "  Service:  $($service.Status)" -ForegroundColor White
-Write-Host "  URL:      http://localhost:$httpPort" -ForegroundColor White
+Write-Host "  HTTP:     http://localhost:$httpPort" -ForegroundColor White
+if ($httpsEnabled) {
+    Write-Host "  HTTPS:    https://localhost:$httpsPort" -ForegroundColor White
+}
 Write-Host ""
 Write-Host "  Useful commands:" -ForegroundColor Gray
-Write-Host "    sc.exe query SmartLogWeb        Check service status" -ForegroundColor DarkGray
-Write-Host "    sc.exe stop SmartLogWeb         Stop service" -ForegroundColor DarkGray
-Write-Host "    sc.exe start SmartLogWeb        Start service" -ForegroundColor DarkGray
+Write-Host "    sc.exe query SmartLogWeb                      Check service status" -ForegroundColor DarkGray
+Write-Host "    sc.exe stop SmartLogWeb                       Stop service" -ForegroundColor DarkGray
+Write-Host "    sc.exe start SmartLogWeb                      Start service" -ForegroundColor DarkGray
 Write-Host "    Get-Content C:\SmartLog\logs\*.log -Tail 50   View logs" -ForegroundColor DarkGray
+if ($httpsEnabled) {
+    Write-Host "    [Net.ServicePointManager]::ServerCertificateValidationCallback = { `$true }" -ForegroundColor DarkGray
+    Write-Host "    (Invoke-WebRequest https://localhost:$httpsPort/health).StatusCode    HTTPS test" -ForegroundColor DarkGray
+}
 Write-Host ""
 
 if (-not $SkipBackup) {
