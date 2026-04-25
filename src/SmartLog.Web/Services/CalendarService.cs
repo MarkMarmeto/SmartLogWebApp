@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 
 namespace SmartLog.Web.Services;
 
@@ -203,6 +204,7 @@ public class CalendarService : ICalendarService
         existing.AffectsAttendance = calendarEvent.AffectsAttendance;
         existing.AffectsClasses = calendarEvent.AffectsClasses;
         existing.AffectedGrades = calendarEvent.AffectedGrades;
+        existing.SuppressesNoScanAlert = calendarEvent.SuppressesNoScanAlert;
         existing.Location = calendarEvent.Location;
         existing.IsRecurring = calendarEvent.IsRecurring;
         existing.RecurrencePattern = calendarEvent.RecurrencePattern;
@@ -263,6 +265,41 @@ public class CalendarService : ICalendarService
         }
 
         return schoolDays;
+    }
+
+    public async Task<List<AlertSuppression>> GetTodaysSuppressionsAsync(DateOnly today)
+    {
+        var dateTime = today.ToDateTime(TimeOnly.MinValue);
+
+        var events = await _context.CalendarEvents
+            .Where(e =>
+                e.IsActive &&
+                e.StartDate.Date <= dateTime &&
+                e.EndDate.Date >= dateTime &&
+                (e.EventType == EventType.Holiday ||
+                 e.EventType == EventType.Suspension ||
+                 (e.EventType == EventType.Event && e.SuppressesNoScanAlert == true)))
+            .ToListAsync();
+
+        var suppressions = new List<AlertSuppression>();
+        foreach (var ev in events)
+        {
+            var grades = new List<string>();
+            if (!string.IsNullOrWhiteSpace(ev.AffectedGrades))
+            {
+                try
+                {
+                    grades = JsonSerializer.Deserialize<List<string>>(ev.AffectedGrades) ?? new List<string>();
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Malformed AffectedGrades JSON for event {EventId} — treating as all-grade suppression", ev.Id);
+                }
+            }
+            suppressions.Add(new AlertSuppression { Reason = ev.Title, GradeLevels = grades });
+        }
+
+        return suppressions;
     }
 
     public async Task<Dictionary<string, int>> GetEventStatisticsAsync(Guid academicYearId)

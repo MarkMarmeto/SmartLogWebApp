@@ -191,8 +191,9 @@ Philippine K-12 schools organize students by program/strand (e.g., STEM, ABM, TV
 | [US0063](../stories/US0063-attendance-report-program-filter.md) | Attendance & Report Program Filter | 5 | Done |
 | [US0064](../stories/US0064-student-program-denormalization.md) | Student Program Denormalization | 3 | Done |
 | [US0065](../stories/US0065-programs-data-migration.md) | Programs Data Migration | 3 | Done |
+| [US0087](../stories/US0087-student-details-program-code-display.md) | Student Details — Display Program Code with Grade & Section | 2 | Draft |
 
-**Total:** 32 story points across 8 stories
+**Total:** 34 story points across 9 stories
 
 ---
 
@@ -216,3 +217,4 @@ Philippine K-12 schools organize students by program/strand (e.g., STEM, ABM, TV
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-04-16 | Claude | Initial epic created from V2 feature brainstorm |
+| 2026-04-24 | Claude | Added US0087 — Student Details Program Code display (V2.1 UX enhancement) |

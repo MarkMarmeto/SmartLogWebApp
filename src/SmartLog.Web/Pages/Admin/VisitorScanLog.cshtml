@@ -60,6 +60,26 @@
                            value="@Model.SearchTerm" placeholder="e.g. VISITOR-005" />
                 </div>
                 <div class="col-auto">
+                    <label for="deviceFilter" class="form-label">Device</label>
+                    <select class="form-select" id="deviceFilter" name="DeviceFilter">
+                        <option value="">All</option>
+                        @foreach (var device in Model.Devices)
+                        {
+                            <option value="@device.Id" selected="@(Model.DeviceFilter == device.Id.ToString())">@device.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label for="cameraFilter" class="form-label">Camera</label>
+                    <select class="form-select" id="cameraFilter" name="CameraFilter">
+                        <option value="">All</option>
+                        @foreach (var cam in Model.AvailableCameras)
+                        {
+                            <option value="@cam.FilterValue" selected="@(Model.CameraFilter == cam.FilterValue)">@cam.DisplayText</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-funnel me-1"></i>Filter
                     </button>
@@ -92,6 +112,7 @@
                                 <th>Exit Time</th>
                                 <th>Duration</th>
                                 <th>Device</th>
+                                <th>Camera</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -133,6 +154,7 @@
                                         }
                                     </td>
                                     <td>@visit.DeviceName</td>
+                                    <td class="text-nowrap">@(visit.CameraIndex.HasValue ? $"{visit.CameraIndex} · {visit.CameraName ?? "—"}" : "—")</td>
                                     <td>
                                         @if (visit.Status == "Completed")
                                         {
@@ -160,7 +182,9 @@
                                        asp-route-PageNumber="@i"
                                        asp-route-StartDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
                                        asp-route-EndDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
-                                       asp-route-SearchTerm="@Model.SearchTerm">@i</a>
+                                       asp-route-SearchTerm="@Model.SearchTerm"
+                                       asp-route-DeviceFilter="@Model.DeviceFilter"
+                                       asp-route-CameraFilter="@Model.CameraFilter">@i</a>
                                 </li>
                             }
                         </ul>

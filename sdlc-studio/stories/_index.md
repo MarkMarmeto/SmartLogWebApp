@@ -1,7 +1,7 @@
 # Story Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-22
+**Last Updated:** 2026-04-24
 
 ---
 
@@ -9,15 +9,17 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Stories | 83 |
+| Total Stories | 102 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
-| V2 Stories (Planned) | 0 |
+| V2.1 Stories (Draft) | 19 |
 | In Progress | 0 |
 | Done | 83 |
+| Draft | 19 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
-| **Total Story Points** | **262** |
+| V2.1 Story Points | ~50 |
+| **Total Story Points** | **~316** |
 
 ---
 
@@ -90,6 +92,7 @@
 | [US0036](./US0036-attendance-filter.md) | Attendance Filtering and Search | Done | 2 | Admin Amy |
 | [US0037](./US0037-dashboard-refresh.md) | Dashboard Auto-Refresh | Done | 2 | Admin Amy |
 | [US0038](./US0038-historical-date.md) | Historical Date Selection | Done | 2 | Admin Amy |
+| [US0093](./US0093-scan-logs-camera-column.md) | Scan Logs — Record and Display Camera Identity | Draft | 3 | Admin Amy |
 
 ### EP0007: SMS Notifications (19 pts)
 
@@ -126,8 +129,11 @@
 | [US0057](./US0057-sms-queue-type-filtering.md) | SMS Queue Message Type Filtering | Done | 2 | Admin Amy |
 | [US0082](./US0082-no-scan-alert-next-run-label.md) | No-Scan Alert Next Run Label | Done | 1 | Admin Amy |
 | [US0083](./US0083-sms-settings-restructure.md) | SMS Settings Restructure — Alert Toggle, Global Guard & Default Provider | Done | 3 | Admin Amy |
+| [US0084](./US0084-broadcast-program-first-targeting.md) | Broadcast Targeting — Program-First with Nested Grade Levels | Draft | 5 | Admin Amy |
+| [US0085](./US0085-broadcast-per-language-message-inputs.md) | Broadcast — Separate EN and FIL Message Inputs | Draft | 3 | Admin Amy |
+| [US0086](./US0086-no-scan-alert-calendar-integration.md) | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | Draft | 3 | Admin Amy |
 
-### EP0010: Programs & Sections Overhaul (32 pts)
+### EP0010: Programs & Sections Overhaul (34 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -139,8 +145,9 @@
 | [US0063](./US0063-attendance-report-program-filter.md) | Attendance & Report Program Filter | Done | 5 | Admin Amy |
 | [US0064](./US0064-student-program-denormalization.md) | Student Program Denormalization | Done | 3 | Admin Amy |
 | [US0065](./US0065-programs-data-migration.md) | Programs Data Migration | Done | 3 | Admin Amy |
+| [US0087](./US0087-student-details-program-code-display.md) | Student Details — Display Program Code with Grade & Section | Draft | 2 | Admin Amy |
 
-### EP0011: Multi-Camera Scanning (31 pts)
+### EP0011: Multi-Camera Scanning (43 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -150,6 +157,13 @@
 | [US0069](./US0069-per-camera-scan-type.md) | Per-Camera Scan Type Configuration | Done | 3 | Guard |
 | [US0070](./US0070-camera-error-isolation.md) | Camera Error Isolation & Health | Done | 5 | Guard |
 | [US0071](./US0071-multi-camera-setup-page.md) | Multi-Camera Setup Page | Done | 5 | Guard |
+| [US0088](../../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification | Draft | 3 | Tony |
+| [US0089](../../../SmartLogScannerApp/sdlc-studio/stories/US0089-unify-scan-type-to-device-level.md) | Unify Scan Type to Device-Level (Deprecates US0069) | Draft | 3 | Guard |
+| [US0090](../../../SmartLogScannerApp/sdlc-studio/stories/US0090-scan-payload-camera-identity.md) | Scan Payload — Include Camera Index and Camera Name | Draft | 3 | Admin Amy |
+| [US0091](../../../SmartLogScannerApp/sdlc-studio/stories/US0091-scanner-section-name-trim-and-program-code.md) | Scanner Tile — Fix Section Name Trimming, Show Program Code | Draft | 2 | Guard |
+| [US0092](../../../SmartLogScannerApp/sdlc-studio/stories/US0092-scanner-datetime-prominent-leftmost.md) | Scanner Header — Enlarge Date/Time, Anchor Left-Most | Draft | 1 | Guard |
+
+> Stories US0088-US0092 primary files live in the ScannerApp registry (cross-project shadowing — same pattern as US0066-US0071). Links above point there.
 
 ### EP0012: Visitor Pass System (21 pts)
 
@@ -170,6 +184,20 @@
 | [US0079](./US0079-qr-invalidation-audit.md) | QR Invalidation & Audit Trail | Done | 3 | Admin Amy |
 | [US0080](./US0080-qr-regeneration-dialog.md) | QR Regeneration with Confirmation Dialog | Done | 3 | Admin Amy |
 | [US0081](./US0081-invalidate-without-regen.md) | Invalidate QR Without Regeneration | Done | 2 | Admin Amy |
+
+### EP0017: Data Retention & Archival (24 pts)
+
+| ID | Title | Status | Points | Persona |
+|----|-------|--------|--------|---------|
+| [US0094](./US0094-retention-policy-entity-and-admin-ui.md) | Retention Policy Entity & Admin UI | Draft | 3 | Admin Amy |
+| [US0095](./US0095-smsqueue-retention-handler.md) | SmsQueue Retention Handler | Draft | 3 | Tony |
+| [US0096](./US0096-smslog-retention-handler.md) | SmsLog Retention Handler | Draft | 3 | Tony |
+| [US0097](./US0097-broadcast-retention-handler.md) | Broadcast Retention Handler | Draft | 2 | Tony |
+| [US0098](./US0098-scan-retention-handler.md) | Scan Retention Handler | Draft | 3 | Tony |
+| [US0099](./US0099-auditlog-retention-with-legal-hold.md) | AuditLog Retention with Legal Hold | Draft | 3 | Tony |
+| [US0100](./US0100-visitorscan-retention-handler.md) | VisitorScan Retention Handler | Draft | 2 | Tony |
+| [US0101](./US0101-retention-scheduled-service-and-dry-run.md) | Scheduled Retention Service + Manual Run + Dry-Run | Draft | 3 | Tony |
+| [US0102](./US0102-retention-archive-to-file-export.md) | Archive-to-File Export Before Purge | Draft | 2 | Tony |
 
 ---
 

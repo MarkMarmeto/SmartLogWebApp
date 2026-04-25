@@ -159,6 +159,8 @@ public class NoScanAlertRunStatus
 {
     public bool HasRun { get; init; }
     public bool WasSuppressed { get; init; }
+    public string? SuppressReason { get; init; }
+    public string? SuppressedGrades { get; init; }
     public DateTime? RunAt { get; init; }
     public int AlertsQueued { get; init; }
 
@@ -168,16 +170,29 @@ public class NoScanAlertRunStatus
 
         var suppressed = log.Action == "NO_SCAN_ALERT_SUPPRESSED";
         var count = 0;
-        if (!suppressed && log.Details != null)
+        string? suppressReason = null;
+        string? suppressedGrades = null;
+
+        if (suppressed && log.Details != null)
         {
-            var match = Regex.Match(log.Details, @"Alerts queued: (\d+)");
-            if (match.Success) int.TryParse(match.Groups[1].Value, out count);
+            var reasonMatch = Regex.Match(log.Details, @"Suppressed by calendar event: (.+)\.");
+            if (reasonMatch.Success) suppressReason = reasonMatch.Groups[1].Value;
+        }
+        else if (log.Details != null)
+        {
+            var countMatch = Regex.Match(log.Details, @"Alerts queued: (\d+)");
+            if (countMatch.Success) int.TryParse(countMatch.Groups[1].Value, out count);
+
+            var gradesMatch = Regex.Match(log.Details, @"Grades suppressed by calendar: (.+)\.");
+            if (gradesMatch.Success) suppressedGrades = gradesMatch.Groups[1].Value;
         }
 
         return new NoScanAlertRunStatus
         {
             HasRun = true,
             WasSuppressed = suppressed,
+            SuppressReason = suppressReason,
+            SuppressedGrades = suppressedGrades,
             RunAt = log.Timestamp,
             AlertsQueued = count
         };

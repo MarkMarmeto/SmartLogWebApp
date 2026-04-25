@@ -37,6 +37,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GradeLevelProgram> GradeLevelPrograms => Set<GradeLevelProgram>();
     public DbSet<VisitorPass> VisitorPasses => Set<VisitorPass>();
     public DbSet<VisitorScan> VisitorScans => Set<VisitorScan>();
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
+    public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -188,6 +190,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(e => e.ReceivedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.CameraName)
+                .HasMaxLength(100);
         });
 
         // Configure GradeLevel
@@ -458,6 +463,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(e => e.ReceivedAt)
                 .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.CameraName)
+                .HasMaxLength(100);
+        });
+
+        // Configure RetentionPolicy (EP0017)
+        builder.Entity<RetentionPolicy>(entity =>
+        {
+            entity.HasIndex(e => e.EntityName).IsUnique();
+            entity.Property(e => e.EntityName).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.UpdatedBy).HasMaxLength(256);
+        });
+
+        // Configure RetentionRun (EP0017)
+        builder.Entity<RetentionRun>(entity =>
+        {
+            entity.HasIndex(e => new { e.EntityName, e.StartedAt });
+            entity.Property(e => e.EntityName).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RunMode).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(4000);
+            entity.Property(e => e.TriggeredBy).HasMaxLength(256);
         });
     }
 

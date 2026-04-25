@@ -112,6 +112,14 @@
                                         Classes are suspended or modified
                                     </div>
                                 </div>
+
+                                <div class="form-check mt-2" id="suppressAlertDiv" style="display:none">
+                                    <input asp-for="Input.SuppressesNoScanAlert" type="checkbox" class="form-check-input" />
+                                    <label asp-for="Input.SuppressesNoScanAlert" class="form-check-label"></label>
+                                    <div class="form-text">
+                                        Skip the end-of-day No-Scan Alert for affected grades on this event's date(s)
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -164,8 +172,10 @@
             // Show/hide location field (only for Events)
             if (eventType === 'Event') {
                 $('#locationDiv').show();
+                $('#suppressAlertDiv').show();
             } else {
                 $('#locationDiv').hide();
+                $('#suppressAlertDiv').hide();
             }
         }
 

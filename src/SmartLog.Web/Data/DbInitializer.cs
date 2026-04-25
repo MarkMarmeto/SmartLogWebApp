@@ -183,6 +183,9 @@ public static class DbInitializer
 
         // Migrate existing students to enrollments
         await MigrateExistingStudentsToEnrollmentsAsync(context, logger);
+
+        // Seed default retention policies (EP0017)
+        await SeedRetentionPoliciesAsync(context, logger);
     }
 
     private static async Task SeedUserAsync(
@@ -912,5 +915,35 @@ public static class DbInitializer
 
         await context.SaveChangesAsync();
         logger.LogWarning("Reset {Count} SMS message(s) stuck in Processing status back to Pending", stuck.Count);
+    }
+
+    private static async Task SeedRetentionPoliciesAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var defaults = new[]
+        {
+            new RetentionPolicy { EntityName = "SmsQueue",    RetentionDays = 90,   ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "SmsLog",      RetentionDays = 180,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "Broadcast",   RetentionDays = 365,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "Scan",        RetentionDays = 730,  ArchiveEnabled = false },
+            new RetentionPolicy { EntityName = "AuditLog",    RetentionDays = 1095, ArchiveEnabled = true  },
+            new RetentionPolicy { EntityName = "VisitorScan", RetentionDays = 365,  ArchiveEnabled = false },
+        };
+
+        int added = 0;
+        foreach (var def in defaults)
+        {
+            if (!await context.RetentionPolicies.AnyAsync(p => p.EntityName == def.EntityName))
+            {
+                def.UpdatedAt = DateTime.UtcNow;
+                context.RetentionPolicies.Add(def);
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            await context.SaveChangesAsync();
+            logger.LogInformation("RetentionPolicies: {Count} default row(s) seeded", added);
+        }
     }
 }

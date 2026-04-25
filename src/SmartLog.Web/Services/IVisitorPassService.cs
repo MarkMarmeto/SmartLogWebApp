@@ -52,7 +52,7 @@ public interface IVisitorPassService
     /// <summary>
     /// Get visitor scan log with ENTRY/EXIT pairing and duration calculation.
     /// </summary>
-    Task<VisitorLogResult> GetVisitorLogAsync(DateTime? startDate, DateTime? endDate, string? passCodeFilter, int page, int pageSize);
+    Task<VisitorLogResult> GetVisitorLogAsync(DateTime? startDate, DateTime? endDate, string? passCodeFilter, int page, int pageSize, string? deviceFilter = null, string? cameraFilter = null);
 }
 
 /// <summary>
@@ -77,6 +77,8 @@ public class VisitorVisit
     public string Duration { get; set; } = string.Empty;
     public string DeviceName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public int? CameraIndex { get; set; }
+    public string? CameraName { get; set; }
 }
 
 /// <summary>

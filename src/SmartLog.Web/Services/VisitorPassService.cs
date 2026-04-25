@@ -204,7 +204,7 @@ public class VisitorPassService : IVisitorPassService
     }
 
     /// <inheritdoc />
-    public async Task<VisitorLogResult> GetVisitorLogAsync(DateTime? startDate, DateTime? endDate, string? passCodeFilter, int page, int pageSize)
+    public async Task<VisitorLogResult> GetVisitorLogAsync(DateTime? startDate, DateTime? endDate, string? passCodeFilter, int page, int pageSize, string? deviceFilter = null, string? cameraFilter = null)
     {
         // Query ENTRY scans as the base for visit pairing
         var entryQuery = _context.VisitorScans
@@ -218,6 +218,26 @@ public class VisitorPassService : IVisitorPassService
             entryQuery = entryQuery.Where(s => s.ScannedAt < endDate.Value.Date.AddDays(1));
         if (!string.IsNullOrWhiteSpace(passCodeFilter))
             entryQuery = entryQuery.Where(s => s.VisitorPass!.Code.Contains(passCodeFilter));
+
+        if (Guid.TryParse(deviceFilter, out var deviceGuid))
+            entryQuery = entryQuery.Where(s => s.DeviceId == deviceGuid);
+
+        if (!string.IsNullOrWhiteSpace(cameraFilter))
+        {
+            if (cameraFilter == "unknown")
+            {
+                entryQuery = entryQuery.Where(s => s.CameraIndex == null);
+            }
+            else
+            {
+                var parts = cameraFilter.Split('|', 2);
+                if (int.TryParse(parts[0], out var idx))
+                {
+                    var name = parts.Length > 1 && parts[1].Length > 0 ? parts[1] : null;
+                    entryQuery = entryQuery.Where(s => s.CameraIndex == idx && s.CameraName == name);
+                }
+            }
+        }
 
         var totalCount = await entryQuery.CountAsync();
 
@@ -269,7 +289,9 @@ public class VisitorPassService : IVisitorPassService
                 ExitTime = matchingExit?.ScannedAt,
                 Duration = duration,
                 DeviceName = entry.Device?.Name ?? "Unknown",
-                Status = status
+                Status = status,
+                CameraIndex = entry.CameraIndex,
+                CameraName = entry.CameraName
             });
         }
 

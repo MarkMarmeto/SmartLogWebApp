@@ -1,6 +1,6 @@
 # EP0006: Attendance Tracking
 
-> **Status:** Done
+> **Status:** In Progress (re-opened 2026-04-24 — US0093 scan camera identity)
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-02-03
@@ -157,8 +157,9 @@ Teachers need to know which students are present without manual roll call. Admin
 | [US0036](../stories/US0036-attendance-filter-search.md) | Attendance Filtering and Search | 2 | Done |
 | [US0037](../stories/US0037-dashboard-auto-refresh.md) | Dashboard Auto-Refresh | 2 | Done |
 | [US0038](../stories/US0038-historical-attendance.md) | Historical Date Selection | 2 | Done |
+| [US0093](../stories/US0093-scan-logs-camera-column.md) | Scan Logs — Record and Display Camera Identity (Scan + VisitorScan) | 3 | Draft |
 
-**Total:** 14 story points across 5 stories
+**Total:** 17 story points across 6 stories (5 Done, 1 Draft)
 
 ---
 

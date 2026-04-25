@@ -1,0 +1,54 @@
+@using SmartLog.Web.Models.Sms
+@model List<ProgramWithGrades>
+
+<div id="programTargetingPanel">
+    <div class="mb-2">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="select-all-programs" checked />
+            <label class="form-check-label fw-semibold" for="select-all-programs">
+                All Programs / All Grades
+            </label>
+        </div>
+    </div>
+
+    @foreach (var prog in Model)
+    {
+        var hasGrades = prog.Grades.Any();
+        <div class="border rounded p-2 mb-2 program-entry">
+            <div class="form-check mb-1">
+                <input class="form-check-input program-cb" type="checkbox"
+                       id="prog_@prog.Code"
+                       data-program-code="@prog.Code"
+                       @(hasGrades ? "" : "disabled")
+                       checked="@hasGrades" />
+                <label class="form-check-label fw-semibold" for="prog_@prog.Code">
+                    @prog.Code — @prog.Name
+                    @if (!hasGrades)
+                    {
+                        <span class="badge bg-secondary ms-1" title="No grade levels configured for this program">No grades</span>
+                    }
+                </label>
+            </div>
+            @if (hasGrades)
+            {
+                <div class="grade-list ms-4" data-program-code="@prog.Code">
+                    @foreach (var grade in prog.Grades)
+                    {
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input grade-cb" type="checkbox"
+                                   id="grade_@(prog.Code)_@grade.Code"
+                                   data-program-code="@prog.Code"
+                                   data-grade-code="@grade.Code"
+                                   checked />
+                            <label class="form-check-label small" for="grade_@(prog.Code)_@grade.Code">
+                                @grade.Name
+                            </label>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<input type="hidden" id="targeting-json" name="TargetingJson" />

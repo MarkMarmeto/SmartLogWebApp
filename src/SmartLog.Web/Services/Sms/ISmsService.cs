@@ -1,4 +1,5 @@
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 
 namespace SmartLog.Web.Services.Sms;
 
@@ -18,29 +19,36 @@ public interface ISmsService
     Task QueueCalendarEventNotificationsAsync(Guid calendarEventId);
 
     /// <summary>
-    /// Queue emergency announcement to all or filtered by grade/program. Returns the Broadcast Id.
+    /// Queue emergency announcement to all or filtered by grade/program. Returns (broadcastId, skippedCount).
+    /// Pass preResolvedStudentIds to skip the internal grade/program query (program-first targeting).
     /// </summary>
-    Task<Guid> QueueEmergencyAnnouncementAsync(
-        string message,
-        string? language = null,
+    Task<(Guid broadcastId, int skipped)> QueueEmergencyAnnouncementAsync(
+        BroadcastMessageBodies bodies,
         List<string>? affectedGrades = null,
         List<string>? affectedPrograms = null,
         string? createdByUserId = null,
         string? createdByName = null,
-        string? preferredProvider = null);
+        string? preferredProvider = null,
+        List<Guid>? preResolvedStudentIds = null);
 
     /// <summary>
-    /// Queue general announcement to all or filtered by grade/program. Returns the Broadcast Id.
+    /// Queue general announcement to all or filtered by grade/program. Returns (broadcastId, skippedCount).
+    /// Pass preResolvedStudentIds to skip the internal grade/program query (program-first targeting).
     /// </summary>
-    Task<Guid> QueueAnnouncementAsync(
-        string message,
-        string? language = null,
+    Task<(Guid broadcastId, int skipped)> QueueAnnouncementAsync(
+        BroadcastMessageBodies bodies,
         List<string>? affectedGrades = null,
         List<string>? affectedPrograms = null,
         DateTime? scheduledAt = null,
         string? createdByUserId = null,
         string? createdByName = null,
-        string? preferredProvider = null);
+        string? preferredProvider = null,
+        List<Guid>? preResolvedStudentIds = null);
+
+    /// <summary>
+    /// Resolve student IDs from a program-first filter: UNION of (Program=X AND GradeLevel IN (Y...)) per entry.
+    /// </summary>
+    Task<List<Guid>> ResolveStudentIdsByFiltersAsync(List<ProgramGradeFilter> filters, bool activeOnly = true, bool smsEnabledOnly = true);
 
     /// <summary>
     /// Queue custom SMS message

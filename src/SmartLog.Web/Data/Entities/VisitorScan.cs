@@ -49,6 +49,18 @@ public class VisitorScan
     /// </summary>
     public Guid? AcademicYearId { get; set; }
 
+    /// <summary>
+    /// 1-based slot index (1..N) of the camera that captured this scan on a multi-camera device.
+    /// Null for scans from single-camera devices or older scanner versions that do not send this field.
+    /// </summary>
+    public int? CameraIndex { get; set; }
+
+    /// <summary>
+    /// User-assigned name of the camera (e.g. "Main Gate Left"). Companion to <see cref="CameraIndex"/>.
+    /// Null when the scanner does not provide a name. Max 100 characters.
+    /// </summary>
+    public string? CameraName { get; set; }
+
     // Navigation properties
     public virtual VisitorPass VisitorPass { get; set; } = null!;
     public virtual Device Device { get; set; } = null!;

@@ -204,11 +204,41 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
         // Read alert-specific provider
         var alertProvider = await appSettingsService.GetAsync("Sms:NoScanAlertProvider");
 
-        // Guard: not a school day
+        // Guard: not a school day (weekends, holidays, system-wide suspensions)
         if (!await calendarService.IsSchoolDayAsync(DateTime.Today))
         {
             _logger.LogInformation("No-scan alert skipped: not a school day ({Date:yyyy-MM-dd})", DateTime.Today);
             return 0;
+        }
+
+        // Calendar-driven per-grade suppression:
+        // Holiday / Suspension → system-wide or per-grade (in addition to IsSchoolDayAsync above)
+        // Event + SuppressesNoScanAlert == true → per-grade (or system-wide if AffectedGrades is null)
+        var todayDateOnly = DateOnly.FromDateTime(DateTime.Today);
+        var suppressions = await calendarService.GetTodaysSuppressionsAsync(todayDateOnly);
+
+        HashSet<string> suppressedGrades = new(StringComparer.OrdinalIgnoreCase);
+        if (suppressions.Count > 0)
+        {
+            var systemWide = suppressions.FirstOrDefault(s => s.GradeLevels.Count == 0);
+            if (systemWide is not null)
+            {
+                _logger.LogInformation(
+                    "No-scan alert skipped: suppressed by calendar event '{Reason}' ({Date:yyyy-MM-dd})",
+                    systemWide.Reason, DateTime.Today);
+
+                context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "NO_SCAN_ALERT_SUPPRESSED",
+                    Details = $"Date: {todayDateOnly:yyyy-MM-dd}. Suppressed by calendar event: {systemWide.Reason}.",
+                    Timestamp = DateTime.UtcNow
+                });
+                await context.SaveChangesAsync(stoppingToken);
+                return 0;
+            }
+            // Per-grade suppressions only — collect affected grades; students in these grades are skipped below
+            foreach (var grade in suppressions.SelectMany(s => s.GradeLevels))
+                suppressedGrades.Add(grade);
         }
 
         var today = DateTime.UtcNow.Date;
@@ -246,10 +276,12 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
         }
 
         // Query students with no scans today: active + enrolled + SmsEnabled + ParentPhone set + no accepted scan today
+        // Excludes grades suppressed by calendar events (per-grade suppression)
         var studentsWithNoScans = await context.Students
             .Where(s => s.IsActive
                 && s.SmsEnabled
                 && !string.IsNullOrEmpty(s.ParentPhone)
+                && (suppressedGrades.Count == 0 || !suppressedGrades.Contains(s.GradeLevel))
                 && context.StudentEnrollments.Any(se =>
                     se.StudentId == s.Id
                     && se.AcademicYearId == currentYear.Id
@@ -264,7 +296,9 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
         if (studentsWithNoScans.Count == 0)
         {
             _logger.LogInformation("No-scan alert: all students have scans today — 0 alerts queued");
-            await WriteAuditLogAsync(context, today, 0, sw.ElapsedMilliseconds, stoppingToken);
+            await WriteAuditLogAsync(context, today, 0, sw.ElapsedMilliseconds,
+                suppressedGrades.Count > 0 ? string.Join(", ", suppressedGrades) : null,
+                stoppingToken);
             return 0;
         }
 
@@ -340,10 +374,13 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
 
         sw.Stop();
         _logger.LogInformation(
-            "No-scan alert executed: {Queued}/{Total} alerts queued in {Elapsed}ms ({Date:yyyy-MM-dd})",
-            queued, studentsWithNoScans.Count, sw.ElapsedMilliseconds, today);
+            "No-scan alert executed: {Queued}/{Total} alerts queued in {Elapsed}ms ({Date:yyyy-MM-dd}){GradeSuppression}",
+            queued, studentsWithNoScans.Count, sw.ElapsedMilliseconds, today,
+            suppressedGrades.Count > 0 ? $" (grades suppressed: {string.Join(", ", suppressedGrades)})" : "");
 
-        await WriteAuditLogAsync(context, today, queued, sw.ElapsedMilliseconds, stoppingToken);
+        await WriteAuditLogAsync(context, today, queued, sw.ElapsedMilliseconds,
+            suppressedGrades.Count > 0 ? string.Join(", ", suppressedGrades) : null,
+            stoppingToken);
         return queued;
     }
 
@@ -352,12 +389,17 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
         DateTime date,
         int alertsQueued,
         long elapsedMs,
+        string? suppressedGradeList,
         CancellationToken cancellationToken)
     {
+        var details = $"Date: {date:yyyy-MM-dd}. Alerts queued: {alertsQueued}. Duration: {elapsedMs}ms.";
+        if (!string.IsNullOrEmpty(suppressedGradeList))
+            details += $" Grades suppressed by calendar: {suppressedGradeList}.";
+
         context.AuditLogs.Add(new AuditLog
         {
             Action = "NO_SCAN_ALERT_EXECUTED",
-            Details = $"Date: {date:yyyy-MM-dd}. Alerts queued: {alertsQueued}. Duration: {elapsedMs}ms.",
+            Details = details,
             Timestamp = DateTime.UtcNow
         });
         await context.SaveChangesAsync(cancellationToken);

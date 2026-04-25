@@ -711,4 +711,86 @@ public class ScansApiControllerTests
         var response = Assert.IsType<VisitorScanResponse>(ok.Value);
         Assert.Equal("ACCEPTED", response.Status);
     }
+
+    // ========== Camera Identity Tests (US0093) ==========
+
+    [Fact]
+    public async Task SubmitScan_WithCameraIdentity_PersistsBothFields()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraIndex = 2;
+        request.CameraName = "Main Gate Left";
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        var scan = _context.Scans.Single();
+        Assert.Equal(2, scan.CameraIndex);
+        Assert.Equal("Main Gate Left", scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_VisitorScan_WithCameraIdentity_PersistsBothFields()
+    {
+        SetupVisitorMocks();
+        var pass = SeedVisitorPass();
+
+        var controller = CreateController();
+        var request = CreateVisitorRequest();
+        request.CameraIndex = 1;
+        request.CameraName = "Side Entrance";
+
+        await controller.SubmitScan(request);
+
+        var scan = _context.VisitorScans.Single(s => s.VisitorPassId == pass.Id);
+        Assert.Equal(1, scan.CameraIndex);
+        Assert.Equal("Side Entrance", scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithoutCameraFields_IsAccepted()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+
+        var result = await controller.SubmitScan(request);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ScanResponse>(ok.Value);
+        Assert.Equal("ACCEPTED", response.Status);
+        var scan = _context.Scans.Single();
+        Assert.Null(scan.CameraIndex);
+        Assert.Null(scan.CameraName);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithInvalidCameraIndex_Returns400()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraIndex = 99;
+
+        // Simulate ModelState invalid (framework validates [Range])
+        controller.ModelState.AddModelError("CameraIndex", "CameraIndex must be between 1 and 8");
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task SubmitScan_WithOverLongCameraName_TruncatesTo100Chars()
+    {
+        var controller = CreateController();
+        var request = CreateValidRequest();
+        request.CameraName = new string('A', 120);
+
+        var result = await controller.SubmitScan(request);
+
+        Assert.IsType<OkObjectResult>(result);
+        var scan = _context.Scans.Single();
+        Assert.Equal(100, scan.CameraName?.Length);
+        Assert.Equal(new string('A', 100), scan.CameraName);
+    }
 }

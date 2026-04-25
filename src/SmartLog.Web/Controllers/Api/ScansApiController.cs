@@ -52,6 +52,9 @@ public class ScansApiController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> SubmitScan([FromBody] ScanSubmissionRequest request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         // US0030-AC2: API Key Authentication
         if (!Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) ||
             string.IsNullOrWhiteSpace(apiKeyHeader))
@@ -91,11 +94,17 @@ public class ScansApiController : ControllerBase
         // Update device last seen
         device.LastSeenAt = DateTime.UtcNow;
 
+        var cameraName = request.CameraName is { Length: > 100 }
+            ? request.CameraName[..100]
+            : request.CameraName;
+        if (request.CameraName is { Length: > 100 })
+            _logger.LogWarning("CameraName truncated from {Original} to 100 chars on device {DeviceId}", request.CameraName.Length, device.Id);
+
         // US0073-AC1: Route by QR prefix — SMARTLOG-V: for visitors, SMARTLOG: for students
         var visitorParsed = _qrCodeService.ParseVisitorQrPayload(request.QrPayload);
         if (visitorParsed != null)
         {
-            return await HandleVisitorScanAsync(device, visitorParsed.Value, request);
+            return await HandleVisitorScanAsync(device, visitorParsed.Value, request, cameraName);
         }
 
         // US0031-AC1, AC2: Parse and validate QR payload (student)
@@ -218,6 +227,7 @@ public class ScansApiController : ControllerBase
                 StudentName = student.FullName,
                 Grade = student.GradeLevel,
                 Section = student.Section,
+                Program = student.Program,
                 ScanType = request.ScanType,
                 ScannedAt = scannedAtUtc,
                 Status = "DUPLICATE",
@@ -237,7 +247,8 @@ public class ScansApiController : ControllerBase
             ReceivedAt = DateTime.UtcNow,
             ScanType = request.ScanType,
             Status = "ACCEPTED",
-            CameraIndex = request.CameraIndex
+            CameraIndex = request.CameraIndex,
+            CameraName = cameraName
         };
 
         _context.Scans.Add(scan);
@@ -269,6 +280,7 @@ public class ScansApiController : ControllerBase
             StudentName = student.FullName,
             Grade = student.GradeLevel,
             Section = student.Section,
+            Program = student.Program,
             ScanType = request.ScanType,
             ScannedAt = scannedAtUtc,
             Status = "ACCEPTED"
@@ -281,7 +293,8 @@ public class ScansApiController : ControllerBase
     private async Task<IActionResult> HandleVisitorScanAsync(
         Device device,
         (string Code, long Timestamp, string Signature) visitor,
-        ScanSubmissionRequest request)
+        ScanSubmissionRequest request,
+        string? cameraName)
     {
         // US0073-AC2: HMAC verification
         if (!await _qrCodeService.VerifyVisitorQrAsync(visitor.Code, visitor.Timestamp, visitor.Signature))
@@ -348,7 +361,9 @@ public class ScansApiController : ControllerBase
             ScanType = request.ScanType,
             ScannedAt = scannedAtUtc,
             ReceivedAt = DateTime.UtcNow,
-            Status = "ACCEPTED"
+            Status = "ACCEPTED",
+            CameraIndex = request.CameraIndex,
+            CameraName = cameraName
         };
 
         // Set current academic year if available
@@ -456,10 +471,17 @@ public class ScanSubmissionRequest
     public string ScanType { get; set; } = string.Empty;
 
     /// <summary>
-    /// Zero-based index of the camera that captured this scan on a multi-camera device.
+    /// 1-based slot index (1..N) of the camera that captured this scan on a multi-camera device.
     /// Omitted or null for single-camera devices and older scanner versions.
     /// </summary>
+    [Range(1, 8, ErrorMessage = "CameraIndex must be between 1 and 8")]
     public int? CameraIndex { get; set; }
+
+    /// <summary>
+    /// User-assigned name of the camera (e.g. "Main Gate Left").
+    /// Omitted or null when not provided. Over-length values are silently truncated to 100 characters.
+    /// </summary>
+    public string? CameraName { get; set; }
 }
 
 /// <summary>
@@ -473,6 +495,7 @@ public class ScanResponse
     public string StudentName { get; set; } = string.Empty;
     public string Grade { get; set; } = string.Empty;
     public string Section { get; set; } = string.Empty;
+    public string? Program { get; set; }
     public string ScanType { get; set; } = string.Empty;
     public DateTime ScannedAt { get; set; }
     public string Status { get; set; } = string.Empty;

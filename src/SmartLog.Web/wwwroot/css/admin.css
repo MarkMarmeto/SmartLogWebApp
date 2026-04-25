@@ -90,6 +90,10 @@
     border-width: 1px;
 }
 
+.main-content .alert-dismissible .btn-close {
+    padding: 0.75rem 1rem;
+}
+
 .main-content .alert-success {
     background-color: #F0F9F4;
     border-color: var(--success);
@@ -290,9 +294,14 @@
 }
 
 /* Toggle Switches */
+.main-content .form-switch {
+    padding-left: 3.25rem;
+}
+
 .main-content .form-switch .form-check-input {
     width: 2.5rem;
     height: 1.25rem;
+    margin-left: -3.25rem;
 }
 
 .main-content .form-switch .form-check-input:checked {

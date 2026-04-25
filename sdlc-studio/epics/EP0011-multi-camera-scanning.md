@@ -1,6 +1,6 @@
 # EP0011: Multi-Camera Scanning
 
-> **Status:** Done
+> **Status:** In Progress (re-opened 2026-04-24 — V2.1 scanner additions US0088-US0092)
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16
@@ -174,8 +174,13 @@ Schools with wide gates or multiple entry points need simultaneous scanning stat
 | [US0069](../stories/US0069-per-camera-scan-type.md) | Per-Camera Scan Type Configuration | 3 | Done |
 | [US0070](../stories/US0070-camera-error-isolation.md) | Camera Error Isolation & Health | 5 | Done |
 | [US0071](../stories/US0071-multi-camera-setup-page.md) | Multi-Camera Setup Page | 5 | Done |
+| [US0088](../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification (Scanner) | 3 | Draft |
+| [US0089](../../SmartLogScannerApp/sdlc-studio/stories/US0089-unify-scan-type-to-device-level.md) | Unify Scan Type to Device-Level (deprecates US0069) (Scanner) | 3 | Draft |
+| [US0090](../../SmartLogScannerApp/sdlc-studio/stories/US0090-scan-payload-camera-identity.md) | Scan Payload — Include CameraIndex + CameraName (Scanner) | 3 | Draft |
+| [US0091](../../SmartLogScannerApp/sdlc-studio/stories/US0091-scanner-section-name-trim-and-program-code.md) | Scanner Tile — Fix Section Name Trimming, Show Program Code (Scanner) | 2 | Draft |
+| [US0092](../../SmartLogScannerApp/sdlc-studio/stories/US0092-scanner-datetime-prominent-leftmost.md) | Scanner Header — Enlarge Date/Time, Anchor Left-Most (Scanner) | 1 | Draft |
 
-**Total:** 31 story points across 6 stories
+**Total:** 43 story points across 11 stories (6 Done, 5 Draft)
 
 ---
 
@@ -198,3 +203,4 @@ Schools with wide gates or multiple entry points need simultaneous scanning stat
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-04-16 | Claude | Initial epic created from V2 feature brainstorm |
+| 2026-04-24 | Claude | Re-opened for V2.1 scanner-side additions: Windows compat (US0088), unify scan type to device-level / deprecate US0069 (US0089), camera identity in scan payload (US0090), section-name fix (US0091), date/time prominence (US0092). Primary story files live in the Scanner project registry. |

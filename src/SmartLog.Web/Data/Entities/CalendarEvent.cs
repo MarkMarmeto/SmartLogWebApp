@@ -47,6 +47,10 @@ public class CalendarEvent
     [StringLength(100)]
     public string? AffectedGrades { get; set; }
 
+    // When EventType == Event: true suppresses the No-Scan Alert for AffectedGrades (null = all grades).
+    // Holiday and Suspension always suppress regardless of this flag.
+    public bool? SuppressesNoScanAlert { get; set; }
+
     [StringLength(200)]
     public string? Location { get; set; }
 

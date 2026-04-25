@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SmartLog.Web.Data.Entities;
+using SmartLog.Web.Models.Sms;
 using SmartLog.Web.Services;
 using SmartLog.Web.Services.Sms;
 using SmartLog.Web.Tests.Helpers;
@@ -65,6 +66,8 @@ public class NoScanAlertServiceTests
         var mock = new Mock<ICalendarService>();
         mock.Setup(m => m.IsSchoolDayAsync(It.IsAny<DateTime>(), It.IsAny<string?>()))
             .ReturnsAsync(isSchoolDay);
+        mock.Setup(m => m.GetTodaysSuppressionsAsync(It.IsAny<DateOnly>()))
+            .ReturnsAsync(new List<AlertSuppression>());
         return mock;
     }
 

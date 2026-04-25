@@ -79,6 +79,9 @@ public class CreateEventModel : PageModel
         [StringLength(200)]
         public string? Location { get; set; }
 
+        [Display(Name = "Suppress No-Scan Alert")]
+        public bool SuppressesNoScanAlert { get; set; }
+
         [Required]
         [Display(Name = "Academic Year")]
         public Guid AcademicYearId { get; set; }
@@ -135,6 +138,7 @@ public class CreateEventModel : PageModel
                 AffectsAttendance = Input.AffectsAttendance,
                 AffectsClasses = Input.AffectsClasses,
                 Location = Input.Location,
+                SuppressesNoScanAlert = Input.EventType == EventType.Event ? Input.SuppressesNoScanAlert : null,
                 AcademicYearId = Input.AcademicYearId,
                 CreatedBy = user.Id,
                 IsActive = true

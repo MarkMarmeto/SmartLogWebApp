@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using SmartLog.Web.Data;
 using SmartLog.Web.Services;
 
 namespace SmartLog.Web.Pages.Admin;
@@ -13,11 +15,22 @@ namespace SmartLog.Web.Pages.Admin;
 public class VisitorScanLogModel : PageModel
 {
     private readonly IVisitorPassService _visitorPassService;
+    private readonly ApplicationDbContext _context;
 
-    public VisitorScanLogModel(IVisitorPassService visitorPassService)
+    public VisitorScanLogModel(IVisitorPassService visitorPassService, ApplicationDbContext context)
     {
         _visitorPassService = visitorPassService;
+        _context = context;
     }
+
+    [BindProperty(SupportsGet = true)]
+    public string? DeviceFilter { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? CameraFilter { get; set; }
+
+    public List<DeviceInfo> Devices { get; set; } = new();
+    public List<CameraInfo> AvailableCameras { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public DateTime? StartDate { get; set; }
@@ -46,8 +59,32 @@ public class VisitorScanLogModel : PageModel
 
         if (PageNumber < 1) PageNumber = 1;
 
+        // Load devices for filter dropdown
+        Devices = await _context.Devices
+            .Select(d => new DeviceInfo { Id = d.Id, Name = d.Name })
+            .OrderBy(d => d.Name)
+            .ToListAsync();
+
+        // Load distinct camera combos scoped to selected device
+        var deviceGuid = Guid.TryParse(DeviceFilter, out var parsedDevId) ? parsedDevId : (Guid?)null;
+        var knownCameras = await _context.VisitorScans
+            .Where(s => deviceGuid == null || s.DeviceId == deviceGuid)
+            .Where(s => s.CameraIndex != null)
+            .Select(s => new { s.CameraIndex, s.CameraName })
+            .Distinct()
+            .OrderBy(x => x.CameraIndex).ThenBy(x => x.CameraName)
+            .ToListAsync();
+        var hasLegacyRows = await _context.VisitorScans
+            .Where(s => deviceGuid == null || s.DeviceId == deviceGuid)
+            .AnyAsync(s => s.CameraIndex == null);
+        AvailableCameras = knownCameras
+            .Select(x => new CameraInfo { Index = x.CameraIndex, Name = x.CameraName })
+            .ToList();
+        if (hasLegacyRows)
+            AvailableCameras.Insert(0, new CameraInfo { Index = null, Name = null });
+
         var result = await _visitorPassService.GetVisitorLogAsync(
-            StartDate, EndDate, SearchTerm, PageNumber, PageSize);
+            StartDate, EndDate, SearchTerm, PageNumber, PageSize, DeviceFilter, CameraFilter);
 
         Visits = result.Visits;
         TotalVisits = result.TotalCount;
@@ -56,5 +93,19 @@ public class VisitorScanLogModel : PageModel
 
         if (PageNumber > TotalPages && TotalPages > 0)
             PageNumber = TotalPages;
+    }
+
+    public class DeviceInfo
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class CameraInfo
+    {
+        public int? Index { get; set; }
+        public string? Name { get; set; }
+        public string FilterValue => Index.HasValue ? $"{Index}|{Name ?? ""}" : "unknown";
+        public string DisplayText => Index.HasValue ? $"{Index} · {Name ?? "—"}" : "(unknown)";
     }
 }

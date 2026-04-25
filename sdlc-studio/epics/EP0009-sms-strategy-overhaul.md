@@ -1,6 +1,6 @@
 # EP0009: SMS Strategy Overhaul
 
-> **Status:** Done
+> **Status:** In Progress (re-opened 2026-04-24 — V2.1 additions US0084-US0086)
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16
@@ -182,8 +182,11 @@ The current entry/exit SMS model sends ~11,400 SMS/day for a 1,900-student schoo
 | [US0057](../stories/US0057-sms-queue-type-filtering.md) | SMS Queue Message Type Filtering | 2 | Done |
 | [US0082](../stories/US0082-no-scan-alert-next-run-label.md) | No-Scan Alert Next Run Label | 1 | Done |
 | [US0083](../stories/US0083-sms-settings-restructure.md) | SMS Settings Restructure — Alert Toggle, Global Guard & Default Provider | 3 | Done |
+| [US0084](../stories/US0084-broadcast-program-first-targeting.md) | Broadcast Targeting — Program-First with Nested Grade Levels | 5 | Draft |
+| [US0085](../stories/US0085-broadcast-per-language-message-inputs.md) | Broadcast — Separate EN and FIL Message Inputs | 3 | Draft |
+| [US0086](../stories/US0086-no-scan-alert-calendar-integration.md) | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | 3 | Draft |
 
-**Total:** 22 story points across 8 stories (all Done)
+**Total:** 33 story points across 11 stories (8 Done, 3 Draft)
 
 ---
 
@@ -207,3 +210,4 @@ The current entry/exit SMS model sends ~11,400 SMS/day for a 1,900-student schoo
 |------|--------|--------|
 | 2026-04-16 | Claude | Initial epic created from V2 feature brainstorm |
 | 2026-04-22 | Claude | Closed out — all 8 stories Done; synced Story Breakdown statuses |
+| 2026-04-24 | Claude | Re-opened for V2.1 additions: US0084 (Program-first targeting), US0085 (per-language message input), US0086 (calendar-driven alert suppression) |
