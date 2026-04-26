@@ -43,7 +43,7 @@ public class BulkSendModel : PageModel
     public bool ActiveOnly { get; set; } = true;
 
     public bool IsSmsEnabled { get; set; }
-    public List<ProgramWithGrades> ProgramsWithGrades { get; set; } = new();
+    public BroadcastTargetingViewModel Targeting { get; set; } = new();
     public List<string> AvailableSections { get; set; } = new();
     public int TotalActiveStudents { get; set; }
 
@@ -175,7 +175,7 @@ public class BulkSendModel : PageModel
 
     private async Task LoadFormDataAsync()
     {
-        ProgramsWithGrades = await _context.Programs
+        Targeting.ProgramsWithGrades = await _context.Programs
             .Where(p => p.IsActive)
             .OrderBy(p => p.SortOrder).ThenBy(p => p.Code)
             .Select(p => new ProgramWithGrades
@@ -191,6 +191,13 @@ public class BulkSendModel : PageModel
                     })
                     .ToList()
             })
+            .ToListAsync();
+
+        Targeting.NonGradedSections = await _context.Sections
+            .Include(s => s.GradeLevel)
+            .Where(s => s.IsActive && s.GradeLevel.Code == "NG")
+            .OrderBy(s => s.Name)
+            .Select(s => new NonGradedSectionItem { Name = s.Name })
             .ToListAsync();
 
         AvailableSections = await _context.Students

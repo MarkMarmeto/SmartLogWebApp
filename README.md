@@ -38,9 +38,10 @@ For production deployment on a Windows machine, see [docs/DEPLOYMENT.md](docs/DE
 ```
 SmartLogWebApp/
 ├── src/SmartLog.Web/     # ASP.NET Core application
-├── tests/                # xUnit test suite
+├── tests/                # xUnit test suite (~302 tests)
 ├── deploy/               # Windows deployment scripts
 ├── docs/                 # Technical documentation
+├── sdlc-studio/          # SDLC artefacts (epics, stories, bugs)
 └── docker-compose.yml
 ```
 

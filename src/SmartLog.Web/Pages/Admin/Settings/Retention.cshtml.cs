@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Retention;
 
 namespace SmartLog.Web.Pages.Admin.Settings;
 
@@ -14,6 +16,8 @@ public class RetentionModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IAuditService _audit;
     private readonly ILogger<RetentionModel> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IConfiguration _config;
 
     private static readonly Dictionary<string, int> MinFloors = new()
     {
@@ -42,6 +46,9 @@ public class RetentionModel : PageModel
     public List<RetentionPolicyViewModel> Policies { get; set; } = new();
 
     public List<RetentionRun> RecentRuns { get; set; } = new();
+    public int HeldAuditLogCount { get; set; }
+    public string ArchiveDirectory { get; set; } = "./archives";
+    public string ArchiveDiskUsage { get; set; } = "—";
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -49,11 +56,13 @@ public class RetentionModel : PageModel
     [TempData]
     public string? ErrorMessage { get; set; }
 
-    public RetentionModel(ApplicationDbContext db, IAuditService audit, ILogger<RetentionModel> logger)
+    public RetentionModel(ApplicationDbContext db, IAuditService audit, ILogger<RetentionModel> logger, IServiceScopeFactory scopeFactory, IConfiguration config)
     {
         _db = db;
         _audit = audit;
         _logger = logger;
+        _scopeFactory = scopeFactory;
+        _config = config;
     }
 
     public async Task OnGetAsync()
@@ -88,6 +97,35 @@ public class RetentionModel : PageModel
             .OrderByDescending(r => r.StartedAt)
             .Take(20)
             .ToListAsync();
+
+        HeldAuditLogCount = await _db.AuditLogs.CountAsync(a => a.LegalHold);
+
+        ArchiveDirectory = _config["Retention:ArchiveDirectory"] ?? "./archives";
+        ArchiveDiskUsage = ComputeDiskUsage(ArchiveDirectory);
+    }
+
+    private static string ComputeDiskUsage(string directory)
+    {
+        try
+        {
+            if (!Directory.Exists(directory))
+                return "0 B (directory not yet created)";
+
+            var totalBytes = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+                .Sum(f => new FileInfo(f).Length);
+
+            return totalBytes switch
+            {
+                < 1024 => $"{totalBytes} B",
+                < 1024 * 1024 => $"{totalBytes / 1024.0:F1} KB",
+                < 1024L * 1024 * 1024 => $"{totalBytes / (1024.0 * 1024):F1} MB",
+                _ => $"{totalBytes / (1024.0 * 1024 * 1024):F2} GB"
+            };
+        }
+        catch
+        {
+            return "N/A (unable to read directory)";
+        }
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -145,6 +183,74 @@ public class RetentionModel : PageModel
         _logger.LogInformation("Retention policies updated by {User}", User.Identity?.Name);
 
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRunNowAsync(string entityName)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider
+            .GetServices<IEntityRetentionHandler>()
+            .FirstOrDefault(h => h.EntityName == entityName);
+
+        if (handler is null)
+        {
+            ErrorMessage = $"No retention handler found for '{entityName}'.";
+            return RedirectToPage();
+        }
+
+        var result = await handler.ExecuteAsync(dryRun: false, ct: HttpContext.RequestAborted, runMode: "Manual");
+
+        if (result.Status == "Success")
+            StatusMessage = $"Purge for {entityName}: {result.RowsAffected:N0} rows removed.";
+        else if (result.Status == "Partial")
+        {
+            StatusMessage = $"Purge for {entityName} partially completed: {result.RowsAffected:N0} rows removed.";
+            ErrorMessage = result.ErrorMessage;
+        }
+        else
+            ErrorMessage = $"Purge for {entityName} failed. {result.ErrorMessage}";
+
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostDryRunAsync(string entityName)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider
+            .GetServices<IEntityRetentionHandler>()
+            .FirstOrDefault(h => h.EntityName == entityName);
+
+        if (handler is null)
+        {
+            ErrorMessage = $"No retention handler found for '{entityName}'.";
+            return RedirectToPage();
+        }
+
+        var result = await handler.ExecuteAsync(dryRun: true, ct: HttpContext.RequestAborted, runMode: "DryRun");
+        StatusMessage = $"Dry run for {entityName}: {result.RowsAffected:N0} rows would be affected.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnGetRunStatusAsync(string entityName)
+    {
+        var run = await _db.RetentionRuns
+            .AsNoTracking()
+            .Where(r => r.EntityName == entityName)
+            .OrderByDescending(r => r.StartedAt)
+            .FirstOrDefaultAsync();
+
+        if (run is null) return new JsonResult(null);
+
+        return new JsonResult(new
+        {
+            run.Status,
+            run.RowsAffected,
+            run.DurationMs,
+            run.RunMode,
+            StartedAt = run.StartedAt.ToString("HH:mm:ss"),
+            CompletedAt = run.CompletedAt?.ToString("HH:mm:ss"),
+            run.ErrorMessage
+        });
     }
 
     private async Task RepopulateDisplayFieldsAsync()

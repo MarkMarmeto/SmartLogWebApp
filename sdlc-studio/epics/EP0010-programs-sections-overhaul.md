@@ -1,6 +1,6 @@
 # EP0010: Programs & Sections Overhaul
 
-> **Status:** Done
+> **Status:** In Progress
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16
@@ -8,7 +8,7 @@
 
 ## Summary
 
-Introduce a self-referencing `Program` entity with parent-child hierarchy (max 2 levels), mandatory section-program linking, a `GradeLevelProgram` junction table, and a seeded "Non-Graded" grade level. Sections must belong to a program; schools that don't use special programs assign sections to "REGULAR". Broadcast messaging, attendance, and reports gain program-based filtering.
+Introduce a self-referencing `Program` entity with parent-child hierarchy (max 2 levels), mandatory section-program linking for graded levels, a `GradeLevelProgram` junction table, and a seeded "Non-Graded" grade level. Sections in graded levels must belong to a program; schools that don't use special programs assign sections to "REGULAR". **Non-Graded sections have no Program assignment** (re-opened 2026-04-26 — supersedes the earlier NG→REGULAR design). Broadcast messaging, attendance, and reports gain program-based filtering, with NG handled as a sibling branch outside the Program system.
 
 ## Inherited Constraints
 
@@ -90,6 +90,14 @@ Philippine K-12 schools organize students by program/strand (e.g., STEM, ABM, TV
 - [ ] Reports include program filter and group by program within grade
 - [ ] Student.Program is auto-set from section's leaf program on enrollment
 - [ ] Existing sections migrated to REGULAR program without data loss
+- [ ] **Non-Graded sections have no Program** — `Section.ProgramId` is nullable; required for graded levels, forbidden for NG (re-open 2026-04-26)
+- [ ] NG seeded with 4 sections: LEVEL 1, LEVEL 2, LEVEL 3, LEVEL 4 — all with `ProgramId = null`
+- [ ] No `GradeLevelProgram` rows reference the NG GradeLevel
+- [ ] `Student.Program` is `null` for NG-enrolled students; auto-set/cleared on enrollment
+- [ ] Section create/edit UI hides Program dropdown when GradeLevel = NG
+- [ ] Broadcast targeting exposes Non-Graded as a sibling branch with LEVEL 1–4 selectable sections
+- [ ] Attendance/Report `?program=` filter excludes NG; `?gradeLevel=NG` shortcut returns NG only; reports show "—" for Program column on NG rows
+- [ ] Student Details, list, ID card, and enrollment sticker render NG students without a Program token
 
 ---
 

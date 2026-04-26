@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using SmartLog.Web.Data;
@@ -23,7 +25,11 @@ public class RetentionPageTests
     {
         var audit = new Mock<IAuditService>();
         var logger = NullLogger<RetentionModel>.Instance;
-        var model = new RetentionModel(db, audit.Object, logger);
+        var services = new ServiceCollection();
+        services.AddSingleton(db);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        var config = new ConfigurationBuilder().Build();
+        var model = new RetentionModel(db, audit.Object, logger, scopeFactory, config);
 
         // Wire up enough Razor Pages infrastructure for TempData and ModelState
         var httpContext = new DefaultHttpContext();
@@ -169,7 +175,11 @@ public class RetentionPageTests
 
         var audit = new Mock<IAuditService>();
         var logger = NullLogger<RetentionModel>.Instance;
-        var model = new RetentionModel(db, audit.Object, logger);
+        var services2 = new ServiceCollection();
+        services2.AddSingleton(db);
+        var scopeFactory2 = services2.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        var config2 = new ConfigurationBuilder().Build();
+        var model = new RetentionModel(db, audit.Object, logger, scopeFactory2, config2);
 
         // Minimal page context
         var httpContext = new DefaultHttpContext();

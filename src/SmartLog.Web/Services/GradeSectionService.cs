@@ -132,7 +132,7 @@ public class GradeSectionService : IGradeSectionService
 
         return await query
             .OrderBy(s => s.GradeLevel.SortOrder)
-            .ThenBy(s => s.Program.SortOrder)
+            .ThenBy(s => s.Program == null ? int.MaxValue : s.Program.SortOrder)
             .ThenBy(s => s.Name)
             .ToListAsync();
     }
@@ -149,7 +149,7 @@ public class GradeSectionService : IGradeSectionService
             query = query.Where(s => s.IsActive);
 
         return await query
-            .OrderBy(s => s.Program.SortOrder)
+            .OrderBy(s => s.Program == null ? int.MaxValue : s.Program.SortOrder)
             .ThenBy(s => s.Name)
             .ToListAsync();
     }
@@ -163,7 +163,7 @@ public class GradeSectionService : IGradeSectionService
             .FirstOrDefaultAsync(s => s.Id == id);
     }
 
-    public async Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid programId, Guid? adviserId = null, int capacity = 40)
+    public async Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid? programId, Guid? adviserId = null, int capacity = 40)
     {
         var gradeLevel = await _context.GradeLevels.FindAsync(gradeLevelId);
         if (gradeLevel == null)
@@ -176,9 +176,24 @@ public class GradeSectionService : IGradeSectionService
                 throw new InvalidOperationException($"Faculty with ID {adviserId.Value} not found.");
         }
 
-        var program = await _context.Programs.FindAsync(programId);
-        if (program == null)
-            throw new InvalidOperationException($"Program with ID {programId} not found.");
+        // US0103: ProgramId is required for graded levels, forbidden for Non-Graded.
+        if (programId == Guid.Empty) programId = null;
+        var isNonGraded = string.Equals(gradeLevel.Code, "NG", StringComparison.OrdinalIgnoreCase);
+        Entities.Program? program = null;
+
+        if (isNonGraded)
+        {
+            if (programId.HasValue)
+                throw new InvalidOperationException("Non-Graded sections must not have a Program.");
+        }
+        else
+        {
+            if (!programId.HasValue)
+                throw new InvalidOperationException("Program is required for graded sections.");
+            program = await _context.Programs.FindAsync(programId.Value);
+            if (program == null)
+                throw new InvalidOperationException($"Program with ID {programId.Value} not found.");
+        }
 
         var section = new Section
         {
@@ -195,7 +210,7 @@ public class GradeSectionService : IGradeSectionService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Created section: {Grade} - {Program} - {Section} (ID: {Id})",
-            gradeLevel.Name, program.Code, name, section.Id);
+            gradeLevel.Name, program?.Code ?? "(none)", name, section.Id);
 
         return section;
     }
@@ -216,6 +231,15 @@ public class GradeSectionService : IGradeSectionService
 
     public async Task UpdateSectionAsync(Section section)
     {
+        // US0103: enforce Program rule against current GradeLevel.
+        if (section.ProgramId == Guid.Empty) section.ProgramId = null;
+        var gl = await _context.GradeLevels.AsNoTracking().FirstOrDefaultAsync(g => g.Id == section.GradeLevelId);
+        var isNonGraded = string.Equals(gl?.Code, "NG", StringComparison.OrdinalIgnoreCase);
+        if (isNonGraded && section.ProgramId.HasValue)
+            throw new InvalidOperationException("Non-Graded sections must not have a Program.");
+        if (!isNonGraded && !section.ProgramId.HasValue)
+            throw new InvalidOperationException("Program is required for graded sections.");
+
         _context.Sections.Update(section);
         await _context.SaveChangesAsync();
 

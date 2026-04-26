@@ -21,15 +21,15 @@
                                 <option value="">Select grade level...</option>
                                 @foreach (var grade in Model.GradeLevels)
                                 {
-                                    <option value="@grade.Id">@grade.Name</option>
+                                    <option value="@grade.Id" data-code="@grade.Code">@grade.Name</option>
                                 }
                             </select>
                             <span asp-validation-for="Input.GradeLevelId" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Input.ProgramId" class="form-label">Program <span class="text-danger">*</span></label>
-                            <select asp-for="Input.ProgramId" class="form-select" id="programSelect" required>
+                        <div class="mb-3" id="programGroup">
+                            <label asp-for="Input.ProgramId" class="form-label">Program <span class="text-danger" id="programRequiredMark">*</span></label>
+                            <select asp-for="Input.ProgramId" class="form-select" id="programSelect">
                                 <option value="">Select grade level first...</option>
                                 @foreach (var program in Model.Programs)
                                 {
@@ -37,6 +37,9 @@
                                 }
                             </select>
                             <span asp-validation-for="Input.ProgramId" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3 text-muted small" id="ngProgramNote" hidden>
+                            Non-Graded sections do not use a Program.
                         </div>
 
                         <div class="mb-3">
@@ -80,9 +83,35 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.getElementById('gradeLevelSelect').addEventListener('change', function () {
+        const gradeSelect = document.getElementById('gradeLevelSelect');
+        const programGroup = document.getElementById('programGroup');
+        const programSelect = document.getElementById('programSelect');
+        const programNote = document.getElementById('ngProgramNote');
+        const programMark = document.getElementById('programRequiredMark');
+
+        function setNonGraded(isNg) {
+            if (isNg) {
+                programSelect.value = '';
+                programGroup.hidden = true;
+                programNote.hidden = false;
+                programSelect.required = false;
+                if (programMark) programMark.hidden = true;
+            } else {
+                programGroup.hidden = false;
+                programNote.hidden = true;
+                programSelect.required = true;
+                if (programMark) programMark.hidden = false;
+            }
+        }
+
+        gradeSelect.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            const isNg = opt && opt.dataset.code === 'NG';
+            setNonGraded(isNg);
+
+            if (isNg) return; // skip AJAX
+
             const gradeId = this.value;
-            const programSelect = document.getElementById('programSelect');
             programSelect.innerHTML = '<option value="">Loading...</option>';
             programSelect.disabled = true;
 
@@ -97,10 +126,10 @@
                 .then(programs => {
                     programSelect.innerHTML = '<option value="">Select program...</option>';
                     programs.forEach(p => {
-                        const opt = document.createElement('option');
-                        opt.value = p.id;
-                        opt.textContent = `${p.code} — ${p.name}`;
-                        programSelect.appendChild(opt);
+                        const o = document.createElement('option');
+                        o.value = p.id;
+                        o.textContent = `${p.code} — ${p.name}`;
+                        programSelect.appendChild(o);
                     });
                     programSelect.disabled = false;
                 })
@@ -109,5 +138,9 @@
                     programSelect.disabled = false;
                 });
         });
+
+        // On initial load (e.g., post-back with model errors), apply state from current selection.
+        const initialOpt = gradeSelect.options[gradeSelect.selectedIndex];
+        setNonGraded(!!(initialOpt && initialOpt.dataset.code === 'NG'));
     </script>
 }

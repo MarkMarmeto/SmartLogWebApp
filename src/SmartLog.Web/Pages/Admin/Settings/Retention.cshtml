@@ -29,6 +29,17 @@
     </div>
 }
 
+@* Per-entity action forms (outside the save form; buttons reference these via form="..." attribute) *@
+@foreach (var p in Model.Policies)
+{
+    <form id="form-run-now-@p.EntityName" method="post" asp-page-handler="RunNow">
+        <input type="hidden" name="entityName" value="@p.EntityName" />
+    </form>
+    <form id="form-dry-run-@p.EntityName" method="post" asp-page-handler="DryRun">
+        <input type="hidden" name="entityName" value="@p.EntityName" />
+    </form>
+}
+
 <form method="post">
     <div asp-validation-summary="All" class="alert alert-danger" style="display:@(ViewContext.ModelState.IsValid ? "none" : "block")"></div>
 
@@ -70,6 +81,11 @@
                                         <span class="badge bg-danger small"
                                               title="Audit logs are compliance evidence (RA 10173)">Archive strongly recommended</span>
                                     }
+                                    @if (policy.EntityName == "AuditLog" && Model.HeldAuditLogCount > 0)
+                                    {
+                                        <span class="badge bg-info small"
+                                              title="These rows are exempt from retention purge">On legal hold: @Model.HeldAuditLogCount</span>
+                                    }
                                 </td>
                                 <td style="width:160px">
                                     <input type="number" asp-for="Policies[i].RetentionDays"
@@ -105,12 +121,15 @@
                                         : "—")
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-outline-primary btn-sm"
-                                            disabled title="Available after US0101 ships">
+                                    <button type="submit"
+                                            form="form-run-now-@policy.EntityName"
+                                            class="btn btn-outline-primary btn-sm"
+                                            onclick="return confirm('Run retention purge for @policy.FriendlyName now? This will permanently delete eligible rows.')">
                                         <i class="bi bi-play me-1"></i>Run Now
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm"
-                                            disabled title="Available after US0101 ships">
+                                    <button type="submit"
+                                            form="form-dry-run-@policy.EntityName"
+                                            class="btn btn-outline-secondary btn-sm">
                                         <i class="bi bi-eye me-1"></i>Dry Run
                                     </button>
                                 </td>
@@ -127,6 +146,21 @@
         </div>
     </div>
 </form>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Archive Location</h5>
+    </div>
+    <div class="card-body">
+        <p class="mb-1">
+            <strong>Directory:</strong> <code>@Model.ArchiveDirectory</code>
+        </p>
+        <p class="mb-0 text-muted small">
+            <strong>Disk usage:</strong> @Model.ArchiveDiskUsage
+            &nbsp;·&nbsp; Archives are written before purge when <em>Archive</em> is enabled on a policy.
+        </p>
+    </div>
+</div>
 
 @if (Model.RecentRuns.Any())
 {

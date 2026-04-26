@@ -44,7 +44,7 @@ public class EmergencyModel : PageModel
     public string? TargetingJson { get; set; }
 
     public bool IsSmsEnabled { get; set; }
-    public List<ProgramWithGrades> ProgramsWithGrades { get; set; } = new();
+    public BroadcastTargetingViewModel Targeting { get; set; } = new();
     public int TotalActiveStudents { get; set; }
     public string TemplatePrefixEn { get; set; } = "[ALERT]";
     public string TemplatePrefixFil { get; set; } = "[ALERTO]";
@@ -74,7 +74,7 @@ public class EmergencyModel : PageModel
     {
         IsSmsEnabled = await _smsSettingsService.IsSmsEnabledAsync();
 
-        ProgramsWithGrades = await _context.Programs
+        Targeting.ProgramsWithGrades = await _context.Programs
             .Where(p => p.IsActive)
             .OrderBy(p => p.SortOrder).ThenBy(p => p.Code)
             .Select(p => new ProgramWithGrades
@@ -90,6 +90,13 @@ public class EmergencyModel : PageModel
                     })
                     .ToList()
             })
+            .ToListAsync();
+
+        Targeting.NonGradedSections = await _context.Sections
+            .Include(s => s.GradeLevel)
+            .Where(s => s.IsActive && s.GradeLevel.Code == "NG")
+            .OrderBy(s => s.Name)
+            .Select(s => new NonGradedSectionItem { Name = s.Name })
             .ToListAsync();
 
         TotalActiveStudents = await _context.Students
@@ -176,7 +183,13 @@ public class EmergencyModel : PageModel
             var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
 
             var historyGrades = filters.SelectMany(f => f.GradeLevelCodes).Distinct().ToList();
-            var historyPrograms = filters.Select(f => f.ProgramCode).Distinct().ToList();
+            var historyPrograms = filters
+                .Where(f => !string.IsNullOrEmpty(f.ProgramCode))
+                .Select(f => f.ProgramCode)
+                .Distinct()
+                .ToList();
+            if (filters.Any(f => string.IsNullOrEmpty(f.ProgramCode) && f.SectionNames is { Count: > 0 }))
+                historyPrograms.Add("Non-Graded");
 
             var (_, skipped) = await _smsService.QueueEmergencyAnnouncementAsync(
                 MessageBodies,

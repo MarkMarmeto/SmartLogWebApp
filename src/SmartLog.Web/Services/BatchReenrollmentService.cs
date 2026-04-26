@@ -269,6 +269,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
             var sectionIds = assignments.Where(a => a.SectionId.HasValue).Select(a => a.SectionId!.Value).Distinct().ToList();
             var sections = await _context.Sections
                 .Include(s => s.GradeLevel)
+                .Include(s => s.Program)
                 .Where(s => sectionIds.Contains(s.Id))
                 .ToDictionaryAsync(s => s.Id);
 
@@ -361,6 +362,7 @@ public class BatchReenrollmentService : IBatchReenrollmentService
                             student.CurrentEnrollmentId = enrollment.Id;
                             student.GradeLevel = section.GradeLevel.Code;
                             student.Section = section.Name;
+                            student.Program = section.Program?.Code; // null for Non-Graded sections (US0106)
                             student.UpdatedAt = DateTime.UtcNow;
 
                             result.PromotedCount++;

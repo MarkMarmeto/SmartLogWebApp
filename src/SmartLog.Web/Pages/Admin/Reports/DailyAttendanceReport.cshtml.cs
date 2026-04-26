@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
@@ -33,6 +34,7 @@ public class DailyAttendanceReportModel : PageModel
     public string? SectionFilter { get; set; }
 
     public DateTime ReportDate => SelectedDate ?? DateTime.Today;
+    public DateTime? ScanRetentionHorizon { get; private set; }
     public AttendanceSummary Summary { get; set; } = new();
     public List<StudentAttendanceRecord> PresentStudents { get; set; } = new();
     public List<StudentAttendanceRecord> AbsentStudents { get; set; } = new();
@@ -60,5 +62,17 @@ public class DailyAttendanceReportModel : PageModel
         PresentStudents = allRecords.Where(r => r.Status == "Present").ToList();
         AbsentStudents = allRecords.Where(r => r.Status == "Absent").ToList();
         DepartedStudents = allRecords.Where(r => r.Status == "Departed").ToList();
+
+        ScanRetentionHorizon = await LoadScanRetentionHorizonAsync();
+    }
+
+    private async Task<DateTime?> LoadScanRetentionHorizonAsync()
+    {
+        var policy = await _context.RetentionPolicies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.EntityName == "Scan");
+        return policy is { Enabled: true }
+            ? DateTime.UtcNow.AddDays(-policy.RetentionDays)
+            : null;
     }
 }

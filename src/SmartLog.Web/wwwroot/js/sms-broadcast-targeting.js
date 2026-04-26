@@ -1,4 +1,4 @@
-// Program-first broadcast targeting component (US0084).
+// Program-first broadcast targeting component (US0084, extended US0107).
 // Manages checkbox state, serialises filter to #targeting-json, and triggers recipient count updates.
 (function () {
     'use strict';
@@ -19,6 +19,15 @@
             document.querySelectorAll('.grade-cb').forEach(function (cb) {
                 cb.checked = checked;
             });
+            // US0107: also flip NG group
+            var ngParent = document.querySelector('.nongraded-cb');
+            if (ngParent) {
+                ngParent.checked = checked;
+                ngParent.indeterminate = false;
+                document.querySelectorAll('.nongraded-section-cb').forEach(function (cb) {
+                    cb.checked = checked;
+                });
+            }
             serializeAndUpdate();
         });
 
@@ -44,6 +53,29 @@
                 serializeAndUpdate();
             });
         });
+
+        // US0107: NG parent toggle
+        var ngParent = document.querySelector('.nongraded-cb');
+        if (ngParent) {
+            ngParent.addEventListener('change', function () {
+                var checked = this.checked;
+                document.querySelectorAll('.nongraded-section-cb').forEach(function (cb) {
+                    cb.checked = checked;
+                });
+                this.indeterminate = false;
+                updateSelectAllState();
+                serializeAndUpdate();
+            });
+        }
+
+        // US0107: NG section checkboxes
+        document.querySelectorAll('.nongraded-section-cb').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                updateNonGradedIndeterminate();
+                updateSelectAllState();
+                serializeAndUpdate();
+            });
+        });
     }
 
     function updateProgramIndeterminate(programCode) {
@@ -64,6 +96,24 @@
         }
     }
 
+    function updateNonGradedIndeterminate() {
+        var ngParent = document.querySelector('.nongraded-cb');
+        if (!ngParent) return;
+        var sections = document.querySelectorAll('.nongraded-section-cb');
+        var checkedCount = 0;
+        sections.forEach(function (cb) { if (cb.checked) checkedCount++; });
+        if (checkedCount === 0) {
+            ngParent.checked = false;
+            ngParent.indeterminate = false;
+        } else if (checkedCount === sections.length) {
+            ngParent.checked = true;
+            ngParent.indeterminate = false;
+        } else {
+            ngParent.checked = false;
+            ngParent.indeterminate = true;
+        }
+    }
+
     function updateSelectAllState() {
         var selectAll = document.getElementById('select-all-programs');
         if (!selectAll) return;
@@ -75,6 +125,16 @@
             else if (cb.checked) checkedCount++;
         });
         var total = allCbs.length;
+
+        // US0107: include NG group in "all" assessment
+        var ngParent = document.querySelector('.nongraded-cb');
+        var ngContributes = false;
+        if (ngParent) {
+            total++;
+            if (ngParent.indeterminate) indetermCount++;
+            else if (ngParent.checked) { checkedCount++; ngContributes = true; }
+        }
+
         if (checkedCount === total && indetermCount === 0) {
             selectAll.checked = true;
             selectAll.indeterminate = false;
@@ -91,7 +151,6 @@
         var filters = [];
         document.querySelectorAll('.program-cb:not([disabled])').forEach(function (progCb) {
             var code = progCb.dataset.programCode;
-            // Collect checked grades (if indeterminate or checked, iterate grades)
             var gradeCodes = [];
             document.querySelectorAll('.grade-cb[data-program-code="' + code + '"]:checked').forEach(function (g) {
                 gradeCodes.push(g.dataset.gradeCode);
@@ -100,6 +159,19 @@
                 filters.push({ programCode: code, gradeLevelCodes: gradeCodes });
             }
         });
+
+        // US0107: NG branch — emit entry with empty programCode + sectionNames
+        var ngParent = document.querySelector('.nongraded-cb');
+        if (ngParent) {
+            var sectionNames = [];
+            document.querySelectorAll('.nongraded-section-cb:checked').forEach(function (s) {
+                sectionNames.push(s.dataset.sectionName);
+            });
+            if (sectionNames.length > 0) {
+                filters.push({ programCode: '', gradeLevelCodes: [], sectionNames: sectionNames });
+            }
+        }
+
         return filters;
     }
 

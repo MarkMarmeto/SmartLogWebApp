@@ -1,6 +1,6 @@
 # PL0020: Scheduled Retention Service + Manual Run + Dry-Run — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0101: Scheduled Retention Service + Manual Run + Dry-Run](../stories/US0101-retention-scheduled-service-and-dry-run.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

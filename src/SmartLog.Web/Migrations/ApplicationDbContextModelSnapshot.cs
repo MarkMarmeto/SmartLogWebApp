@@ -355,6 +355,11 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("nvarchar(45)");
 
+                    b.Property<bool>("LegalHold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PerformedByUserId")
                         .HasColumnType("nvarchar(450)");
 
@@ -1026,7 +1031,7 @@ namespace SmartLog.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("ProgramId")
+                    b.Property<Guid?>("ProgramId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -1742,8 +1747,7 @@ namespace SmartLog.Web.Migrations
                     b.HasOne("SmartLog.Web.Data.Entities.Program", "Program")
                         .WithMany("Sections")
                         .HasForeignKey("ProgramId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Adviser");
 

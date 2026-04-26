@@ -250,13 +250,25 @@ public class SmsService : ISmsService
         var allIds = new HashSet<Guid>();
         foreach (var filter in filters)
         {
-            if (string.IsNullOrEmpty(filter.ProgramCode)) continue;
+            IQueryable<Student> query;
 
-            var query = _context.Students
-                .Where(s => s.Program == filter.ProgramCode);
-
-            if (filter.GradeLevelCodes.Count > 0)
-                query = query.Where(s => filter.GradeLevelCodes.Contains(s.GradeLevel));
+            // US0107: Non-Graded branch — empty ProgramCode + populated SectionNames.
+            if (string.IsNullOrEmpty(filter.ProgramCode) && filter.SectionNames is { Count: > 0 })
+            {
+                var sectionNames = filter.SectionNames;
+                query = _context.Students
+                    .Where(s => s.GradeLevel == "NG" && sectionNames.Contains(s.Section));
+            }
+            else if (!string.IsNullOrEmpty(filter.ProgramCode))
+            {
+                query = _context.Students.Where(s => s.Program == filter.ProgramCode);
+                if (filter.GradeLevelCodes.Count > 0)
+                    query = query.Where(s => filter.GradeLevelCodes.Contains(s.GradeLevel));
+            }
+            else
+            {
+                continue; // ill-formed filter
+            }
 
             if (activeOnly) query = query.Where(s => s.IsActive);
             if (smsEnabledOnly) query = query.Where(s => s.SmsEnabled);
@@ -303,7 +315,9 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "EMERGENCY",
-                Message = bodies.EnglishBody,
+                Message = bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty),
                 Language = bodies.Mode switch
                 {
                     BroadcastLanguageMode.EnglishOnly => "EN",
@@ -328,7 +342,9 @@ public class SmsService : ISmsService
             var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var basePlaceholders = new Dictionary<string, string>
             {
-                { "Message", bodies.EnglishBody },
+                { "Message", bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty) },
                 { "SchoolPhone", schoolPhone }
             };
 
@@ -388,7 +404,9 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "ANNOUNCEMENT",
-                Message = bodies.EnglishBody,
+                Message = bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty),
                 Language = bodies.Mode switch
                 {
                     BroadcastLanguageMode.EnglishOnly => "EN",
@@ -415,7 +433,9 @@ public class SmsService : ISmsService
             var basePlaceholders = new Dictionary<string, string>
             {
                 { "SchoolName", schoolName },
-                { "Message", bodies.EnglishBody },
+                { "Message", bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty) },
                 { "SchoolPhone", schoolPhone }
             };
 

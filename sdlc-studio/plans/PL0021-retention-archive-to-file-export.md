@@ -1,6 +1,6 @@
 # PL0021: Archive-to-File Export Before Purge — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0102: Archive-to-File Export Before Purge](../stories/US0102-retention-archive-to-file-export.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

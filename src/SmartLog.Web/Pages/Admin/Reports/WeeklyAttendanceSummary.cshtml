@@ -23,6 +23,16 @@
         </div>
     </div>
 
+    @* US0098: Retention boundary warning *@
+    @if (Model.ScanRetentionHorizon.HasValue && Model.WeekStart < Model.ScanRetentionHorizon.Value)
+    {
+        <div class="alert alert-warning no-print" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Data before <strong>@Model.ScanRetentionHorizon.Value.ToString("yyyy-MM-dd")</strong> may have been purged per
+            <a asp-page="/Admin/Settings/Retention">retention policy</a>. Results may be incomplete.
+        </div>
+    }
+
     @* US0046: Filter Form *@
     <div class="card mb-3 no-print">
         <div class="card-body">

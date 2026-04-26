@@ -1,6 +1,6 @@
 # EP0017: Data Retention & Archival
 
-> **Status:** Draft
+> **Status:** Done
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-24

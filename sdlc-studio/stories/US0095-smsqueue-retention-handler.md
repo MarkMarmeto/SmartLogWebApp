@@ -1,8 +1,9 @@
 # US0095: SmsQueue Retention Handler
 
-> **Status:** Draft
+> **Status:** Done
+> **Marked Done:** 2026-04-26
 > **Epic:** [EP0017: Data Retention & Archival](../epics/EP0017-data-retention-archival.md)
-> **Owner:** TBD
+> **Owner:** AI Assistant
 > **Created:** 2026-04-24
 
 ## User Story

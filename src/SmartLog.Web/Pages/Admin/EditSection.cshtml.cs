@@ -36,15 +36,16 @@ public class EditSectionModel : PageModel
     public List<Entities.Program> Programs { get; set; } = new();
     public List<Faculty> Faculty { get; set; } = new();
     public string GradeLevelName { get; set; } = string.Empty;
+    public string GradeLevelCode { get; set; } = string.Empty;
     public Guid GradeLevelId { get; set; }
+    public bool IsNonGraded => string.Equals(GradeLevelCode, "NG", StringComparison.OrdinalIgnoreCase);
 
     public class InputModel
     {
         public Guid Id { get; set; }
 
-        [Required]
         [Display(Name = "Program")]
-        public Guid ProgramId { get; set; }
+        public Guid? ProgramId { get; set; }
 
         [Required]
         [StringLength(50)]
@@ -77,6 +78,7 @@ public class EditSectionModel : PageModel
         };
 
         GradeLevelName = section.GradeLevel.Name;
+        GradeLevelCode = section.GradeLevel.Code;
         GradeLevelId = section.GradeLevelId;
         Programs = await _gradeSectionService.GetProgramsForGradeAsync(section.GradeLevelId);
         Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
@@ -92,6 +94,7 @@ public class EditSectionModel : PageModel
             if (section != null)
             {
                 GradeLevelName = section.GradeLevel.Name;
+                GradeLevelCode = section.GradeLevel.Code;
                 GradeLevelId = section.GradeLevelId;
                 Programs = await _gradeSectionService.GetProgramsForGradeAsync(section.GradeLevelId);
             }
@@ -118,6 +121,24 @@ public class EditSectionModel : PageModel
 
             TempData["StatusMessage"] = $"Section '{Input.Name}' updated successfully.";
             return RedirectToPage("/Admin/Sections");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // US0103: validation errors (NG vs Program rule) routed to ProgramId field.
+            var key = ex.Message.Contains("Program", StringComparison.OrdinalIgnoreCase)
+                ? nameof(Input.ProgramId)
+                : string.Empty;
+            ModelState.AddModelError(key, ex.Message);
+            var section = await _gradeSectionService.GetSectionByIdAsync(Input.Id);
+            if (section != null)
+            {
+                GradeLevelName = section.GradeLevel.Name;
+                GradeLevelCode = section.GradeLevel.Code;
+                GradeLevelId = section.GradeLevelId;
+                Programs = await _gradeSectionService.GetProgramsForGradeAsync(section.GradeLevelId);
+            }
+            Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
+            return Page();
         }
         catch (Exception ex)
         {

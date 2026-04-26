@@ -21,17 +21,26 @@
                             <input type="text" class="form-control" value="@Model.GradeLevelName" readonly />
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Input.ProgramId" class="form-label">Program <span class="text-danger">*</span></label>
-                            <select asp-for="Input.ProgramId" class="form-select" required>
-                                <option value="">Select program...</option>
-                                @foreach (var program in Model.Programs)
-                                {
-                                    <option value="@program.Id">@program.Code — @program.Name</option>
-                                }
-                            </select>
-                            <span asp-validation-for="Input.ProgramId" class="text-danger"></span>
-                        </div>
+                        @if (!Model.IsNonGraded)
+                        {
+                            <div class="mb-3">
+                                <label asp-for="Input.ProgramId" class="form-label">Program <span class="text-danger">*</span></label>
+                                <select asp-for="Input.ProgramId" class="form-select" required>
+                                    <option value="">Select program...</option>
+                                    @foreach (var program in Model.Programs)
+                                    {
+                                        <option value="@program.Id">@program.Code — @program.Name</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.ProgramId" class="text-danger"></span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3 text-muted small">
+                                Non-Graded sections do not use a Program.
+                            </div>
+                        }
 
                         <div class="mb-3">
                             <label asp-for="Input.Name" class="form-label">Section Name</label>

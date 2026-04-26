@@ -22,7 +22,7 @@ public interface IGradeSectionService
     Task<List<Section>> GetAllSectionsAsync(bool activeOnly = true);
     Task<List<Section>> GetSectionsByGradeAsync(Guid gradeLevelId, bool activeOnly = true);
     Task<Section?> GetSectionByIdAsync(Guid id);
-    Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid programId, Guid? adviserId = null, int capacity = 40);
+    Task<Section> CreateSectionAsync(Guid gradeLevelId, string name, Guid? programId, Guid? adviserId = null, int capacity = 40);
     Task UpdateSectionAsync(Section section);
     Task DeactivateSectionAsync(Guid id);
     /// <summary>Permanently deletes a section. Throws if it has any enrollments.</summary>

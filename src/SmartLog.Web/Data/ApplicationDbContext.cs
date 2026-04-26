@@ -71,6 +71,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Action);
+            entity.Property(e => e.LegalHold).HasDefaultValue(false);
 
             entity.HasOne(e => e.User)
                 .WithMany()
@@ -421,11 +422,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configure Section.ProgramId FK (required — US0060)
+        // Configure Section.ProgramId FK (nullable — required for graded levels, null for NG per US0103)
         builder.Entity<Section>()
             .HasOne(e => e.Program)
             .WithMany(p => p.Sections)
             .HasForeignKey(e => e.ProgramId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Configure VisitorPass (US0072)
