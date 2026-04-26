@@ -1,7 +1,7 @@
 # Implementation Plans Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-25
+**Last Updated:** 2026-04-26
 
 ---
 
@@ -9,10 +9,10 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Plans | 25 |
+| Total Plans | 32 |
 | Draft | 19 |
 | In Progress | 0 |
-| Complete | 6 |
+| Complete | 13 |
 
 ---
 
@@ -41,6 +41,12 @@
 | [PL0023](./PL0023-broadcast-en-fil-message-inputs.md) | US0085 | Broadcast — Separate EN and FIL Message Inputs | Draft | 2026-04-25 |
 | [PL0024](./PL0024-no-scan-alert-calendar-integration.md) | US0086 | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | Draft | 2026-04-25 |
 
+### EP0013: QR Permanence & Card Redesign
+
+| ID | Story | Title | Status | Created |
+|----|-------|-------|--------|---------|
+| [PL0032](./PL0032-remove-enrollment-sticker.md) | US0110 | Remove Enrollment Sticker Feature | Complete | 2026-04-26 |
+
 ### EP0012: Visitor Pass System
 
 | ID | Story | Title | Status | Created |
@@ -62,6 +68,12 @@
 | ID | Story | Title | Status | Created |
 |----|-------|-------|--------|---------|
 | [PL0025](./PL0025-student-details-program-code-display.md) | US0087 | Student Details — Display Program Code with Grade & Section | Draft | 2026-04-25 |
+| [PL0026](./PL0026-section-programid-nullable.md) | US0103 | Section.ProgramId Nullable — Allow Sections Without Program (NG) | Complete | 2026-04-26 |
+| [PL0027](./PL0027-seed-ng-gradelevel-and-sections.md) | US0105 | Seed Non-Graded Grade Level + LEVEL 1–4 Sections Without Program | Complete | 2026-04-26 |
+| [PL0028](./PL0028-section-ui-hide-program-for-ng.md) | US0104 | Section Create/Edit — Hide Program Dropdown for Non-Graded | Complete | 2026-04-26 |
+| [PL0029](./PL0029-student-program-null-for-ng.md) | US0106 | Student.Program Denormalisation — Null for Non-Graded Enrollments | Complete | 2026-04-26 |
+| [PL0030](./PL0030-attendance-ng-filter-handling.md) | US0108 | Attendance — Non-Graded Filter Handling | Complete | 2026-04-26 |
+| [PL0031](./PL0031-broadcast-targeting-ng-branch.md) | US0107 | Broadcast Targeting — Add Non-Graded Branch Alongside Programs | Complete | 2026-04-26 |
 
 ### EP0017: Data Retention & Archival
 
@@ -97,3 +109,4 @@
 - PL0022–PL0025 (EP0009/EP0010 remaining stories) drafted 2026-04-25.
 - EP0014, EP0015, EP0016 deferred to V3 — open business questions unresolved; no stories or plans yet.
 - Next: implement EP0017 starting with US0095/PL0014 (SmsQueue Retention Handler).
+- 2026-04-26: PL0026 drafted for US0103 (NG no-Program foundation). Implementation order across the 7 NG stories: US0103 → US0105 → US0104 → US0106 → US0108 → US0107 → US0109.

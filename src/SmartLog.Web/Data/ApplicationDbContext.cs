@@ -421,11 +421,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configure Section.ProgramId FK (required — US0060)
+        // Configure Section.ProgramId FK (nullable — required for graded levels, null for NG per US0103)
         builder.Entity<Section>()
             .HasOne(e => e.Program)
             .WithMany(p => p.Sections)
             .HasForeignKey(e => e.ProgramId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Configure VisitorPass (US0072)

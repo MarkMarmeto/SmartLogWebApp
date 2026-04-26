@@ -81,7 +81,14 @@
                             @if (Model.CurrentEnrollment != null)
                             {
                                 <div class="alert alert-light mb-2">
-                                    <strong>@Model.CurrentEnrollment.Section.GradeLevel.Name</strong> - @(Model.CurrentEnrollment.Section.Program?.Code) - <strong>@Model.CurrentEnrollment.Section.Name</strong>
+                                    @if (Model.CurrentEnrollment.Section.Program != null)
+                                    {
+                                        <text><strong>@Model.CurrentEnrollment.Section.GradeLevel.Name</strong> — @Model.CurrentEnrollment.Section.Program.Code — <strong>@Model.CurrentEnrollment.Section.Name</strong></text>
+                                    }
+                                    else
+                                    {
+                                        <text><strong>Non-Graded</strong> — <strong>@Model.CurrentEnrollment.Section.Name</strong></text>
+                                    }
                                     @if (Model.CurrentEnrollment.Section.Adviser != null)
                                     {
                                         <br /><small class="text-muted">Adviser: @Model.CurrentEnrollment.Section.Adviser.FullName</small>
@@ -102,7 +109,7 @@
                                 @foreach (var section in Model.Sections)
                                 {
                                     <option value="@(section.Id)">
-                                        @(section.GradeLevel.Name) - @(section.Program?.Code) - @(section.Name)
+                                        @(section.Program != null ? $"{section.GradeLevel.Name} — {section.Program.Code} — {section.Name}" : $"Non-Graded — {section.Name}")
                                         @if (section.Adviser != null)
                                         {
                                             @:((@(section.Adviser.FullName)))

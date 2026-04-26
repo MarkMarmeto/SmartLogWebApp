@@ -1,7 +1,7 @@
 # Epic Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-24
+**Last Updated:** 2026-04-26
 
 ---
 
@@ -35,7 +35,7 @@
 | [EP0007](./EP0007-sms-notifications.md) | SMS Notifications | V1-P3 | Done | 6 |
 | [EP0008](./EP0008-reporting-analytics.md) | Reporting & Analytics | V1-P3 | Done | 7 |
 | [EP0009](./EP0009-sms-strategy-overhaul.md) | SMS Strategy Overhaul | V2-P2 | In Progress | 11 |
-| [EP0010](./EP0010-programs-sections-overhaul.md) | Programs & Sections Overhaul | V2-P2 | In Progress | 9 |
+| [EP0010](./EP0010-programs-sections-overhaul.md) | Programs & Sections Overhaul | V2-P2 | In Progress | 16 |
 | [EP0011](./EP0011-multi-camera-scanning.md) | Multi-Camera Scanning | V2-P2 | In Progress | 11 |
 | [EP0012](./EP0012-visitor-pass-system.md) | Visitor Pass System | V2-P2 | Done | 5 |
 | [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | Done | 5 |
@@ -193,3 +193,5 @@ Licensing, distribution, and legal compliance for commercial launch.
 | 2026-04-18 | EP0013 marked Done — CR80 card, enrollment stickers, QR audit trail, invalidation modals |
 | 2026-04-22 | EP0009 close-out — US0082 & US0083 added later and completed; all 8 stories Done; Story Breakdown table and epic AC synced |
 | 2026-04-24 | V2.1 planning wave — EP0009 re-opened (+US0084-86), EP0010 re-opened (+US0087), EP0011 re-opened (+US0088-92), EP0006 re-opened (+US0093), new EP0017 Data Retention & Archival drafted (US0094-102). Bugs BG0001-BG0003 filed for UI polish. Memory `project_v2_1_planning.md` records the session. |
+| 2026-04-26 | EP0010 re-opened again — Non-Graded learners now have **no Program** (supersedes earlier NG→REGULAR design). Stories US0103-US0109 drafted to make `Section.ProgramId` nullable, seed NG sections LEVEL 1–4, and propagate NG handling through enrollment, broadcast targeting, reports, student details, ID cards, and stickers. |
+| 2026-04-26 | NG-no-program implementation landed — US0103-US0108 marked Done (schema migration, NG seed, Section UI toggle, Student.Program null-for-NG, broadcast NG branch, attendance NG filter). 36 new tests across `SectionPagesNonGradedTests`, `DbInitializerNonGradedTests`, `AttendanceServiceNonGradedTests`. EP0010 remains In Progress pending US0087 + US0109. |

@@ -1,5 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
 using SmartLog.Web.Tests.Helpers;
@@ -270,5 +273,70 @@ public class BatchReenrollmentServiceTests
         var sameId = Guid.NewGuid();
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.ExecuteReenrollmentAsync(sameId, sameId, new List<StudentPromotionAssignment>(), "user"));
+    }
+
+    // US0106: Bulk re-enrollment honors NG (Student.Program nullable propagation).
+
+    [Fact]
+    public async Task ExecuteReenrollmentAsync_PromoteToNGSection_NullsStudentProgram()
+    {
+        using var context = TestDbContextFactory.Create();
+        TestDbContextFactory.SeedAll(context);
+        await DbInitializer.SeedNonGradedAsync(context, NullLogger.Instance);
+
+        var years = context.AcademicYears.ToList();
+        var ngSection = context.Sections.First(s => s.GradeLevel.Code == "NG" && s.Name == "LEVEL 1");
+
+        // Pre-state: student previously in graded section with Program = "REGULAR"
+        var student = TestDbContextFactory.CreateStudent(context, "Bridge", "Bound", "2025-07-2001", "7");
+        student.Program = "REGULAR";
+        context.SaveChanges();
+
+        var service = CreateService(context);
+        var assignments = new List<StudentPromotionAssignment>
+        {
+            new() { StudentId = student.Id, Action = PromotionAction.Promote, SectionId = ngSection.Id }
+        };
+
+        var result = await service.ExecuteReenrollmentAsync(years[0].Id, years[1].Id, assignments, "test-user");
+
+        Assert.Equal(1, result.PromotedCount);
+        Assert.Empty(result.Errors);
+
+        var updated = context.Students.AsNoTracking().Single(s => s.Id == student.Id);
+        Assert.Null(updated.Program);
+        Assert.Equal("NG", updated.GradeLevel);
+        Assert.Equal("LEVEL 1", updated.Section);
+    }
+
+    [Fact]
+    public async Task ExecuteReenrollmentAsync_PromoteToGradedSection_SetsStudentProgramCode()
+    {
+        using var context = TestDbContextFactory.Create();
+        TestDbContextFactory.SeedAll(context);
+        await DbInitializer.SeedNonGradedAsync(context, NullLogger.Instance);
+
+        var years = context.AcademicYears.ToList();
+        var grade8Section = context.Sections.Include(s => s.Program).First(s => s.GradeLevel.Code == "8");
+
+        // Pre-state: student in NG with Program = null
+        var student = TestDbContextFactory.CreateStudent(context, "Grad", "Bound", "2025-07-2002", "NG");
+        student.Program = null;
+        context.SaveChanges();
+
+        var service = CreateService(context);
+        var assignments = new List<StudentPromotionAssignment>
+        {
+            new() { StudentId = student.Id, Action = PromotionAction.Promote, SectionId = grade8Section.Id }
+        };
+
+        var result = await service.ExecuteReenrollmentAsync(years[0].Id, years[1].Id, assignments, "test-user");
+
+        Assert.Equal(1, result.PromotedCount);
+        Assert.Empty(result.Errors);
+
+        var updated = context.Students.AsNoTracking().Single(s => s.Id == student.Id);
+        Assert.Equal("REGULAR", updated.Program);
+        Assert.Equal("8", updated.GradeLevel);
     }
 }

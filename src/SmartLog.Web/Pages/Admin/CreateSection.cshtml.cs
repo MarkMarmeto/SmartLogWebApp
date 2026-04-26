@@ -43,9 +43,8 @@ public class CreateSectionModel : PageModel
         [Display(Name = "Grade Level")]
         public Guid GradeLevelId { get; set; }
 
-        [Required]
         [Display(Name = "Program")]
-        public Guid ProgramId { get; set; }
+        public Guid? ProgramId { get; set; }
 
         [Required]
         [StringLength(50)]
@@ -100,6 +99,19 @@ public class CreateSectionModel : PageModel
 
             TempData["StatusMessage"] = $"Section '{Input.Name}' created successfully.";
             return RedirectToPage("/Admin/Sections");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // US0103: validation errors (NG vs Program rule, missing FK lookups) bubble up here.
+            var key = ex.Message.Contains("Program", StringComparison.OrdinalIgnoreCase)
+                ? nameof(Input.ProgramId)
+                : string.Empty;
+            ModelState.AddModelError(key, ex.Message);
+            GradeLevels = await _gradeSectionService.GetAllGradeLevelsAsync(activeOnly: true);
+            if (Input.GradeLevelId != Guid.Empty)
+                Programs = await _gradeSectionService.GetProgramsForGradeAsync(Input.GradeLevelId);
+            Faculty = await _context.Faculties.Where(f => f.IsActive).OrderBy(f => f.LastName).ToListAsync();
+            return Page();
         }
         catch (Exception ex)
         {

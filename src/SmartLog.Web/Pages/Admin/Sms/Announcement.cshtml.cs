@@ -54,7 +54,7 @@ public class AnnouncementModel : PageModel
     public string? ScheduledAtLocal { get; set; }
 
     public bool IsSmsEnabled { get; set; }
-    public List<ProgramWithGrades> ProgramsWithGrades { get; set; } = new();
+    public BroadcastTargetingViewModel Targeting { get; set; } = new();
     public int TotalActiveStudents { get; set; }
     public string TemplatePrefixEn { get; set; } = string.Empty;
     public string TemplatePrefixFil { get; set; } = string.Empty;
@@ -171,7 +171,13 @@ public class AnnouncementModel : PageModel
             var provider = await _smsSettingsService.GetSettingAsync("Sms.DefaultProvider");
 
             var historyGrades = filters.SelectMany(f => f.GradeLevelCodes).Distinct().ToList();
-            var historyPrograms = filters.Select(f => f.ProgramCode).Distinct().ToList();
+            var historyPrograms = filters
+                .Where(f => !string.IsNullOrEmpty(f.ProgramCode))
+                .Select(f => f.ProgramCode)
+                .Distinct()
+                .ToList();
+            if (filters.Any(f => string.IsNullOrEmpty(f.ProgramCode) && f.SectionNames is { Count: > 0 }))
+                historyPrograms.Add("Non-Graded");
 
             var (broadcastId, skipped) = await _smsService.QueueAnnouncementAsync(
                 MessageBodies,
@@ -213,7 +219,7 @@ public class AnnouncementModel : PageModel
 
     private async Task LoadPageDataAsync()
     {
-        ProgramsWithGrades = await _context.Programs
+        Targeting.ProgramsWithGrades = await _context.Programs
             .Where(p => p.IsActive)
             .OrderBy(p => p.SortOrder).ThenBy(p => p.Code)
             .Select(p => new ProgramWithGrades
@@ -229,6 +235,13 @@ public class AnnouncementModel : PageModel
                     })
                     .ToList()
             })
+            .ToListAsync();
+
+        Targeting.NonGradedSections = await _context.Sections
+            .Include(s => s.GradeLevel)
+            .Where(s => s.IsActive && s.GradeLevel.Code == "NG")
+            .OrderBy(s => s.Name)
+            .Select(s => new NonGradedSectionItem { Name = s.Name })
             .ToListAsync();
 
         TotalActiveStudents = await _context.Students

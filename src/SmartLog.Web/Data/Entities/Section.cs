@@ -37,13 +37,13 @@ public class Section
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// FK to Program. Required — every section must belong to a program (US0060).
+    /// FK to Program. Required for graded grade levels; null for Non-Graded sections (US0103).
     /// </summary>
-    public Guid ProgramId { get; set; }
+    public Guid? ProgramId { get; set; }
 
     // Navigation properties
     public virtual GradeLevel GradeLevel { get; set; } = null!;
     public virtual Faculty? Adviser { get; set; }
-    public virtual Program Program { get; set; } = null!;
+    public virtual Program? Program { get; set; }
     public virtual ICollection<StudentEnrollment> Enrollments { get; set; } = new List<StudentEnrollment>();
 }

@@ -49,7 +49,19 @@
                         <dd class="col-sm-8">@Model.Student.FullName</dd>
 
                         <dt class="col-sm-4">Grade & Section:</dt>
-                        <dd class="col-sm-8">Grade @Model.Student.GradeLevel - @Model.Student.Section</dd>
+                        <dd class="col-sm-8">
+                            @if (Model.Student.GradeLevel == "NG")
+                            {
+                                <text>Non-Graded · @Model.Student.Section</text>
+                            }
+                            else
+                            {
+                                <text>Grade @Model.Student.GradeLevel@(Model.Student.Program != null ? $" — {Model.Student.Program}" : "") · @Model.Student.Section</text>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-4">Program:</dt>
+                        <dd class="col-sm-8">@(Model.Student.Program ?? "—")</dd>
 
                         <dt class="col-sm-4">Status:</dt>
                         <dd class="col-sm-8">
@@ -153,11 +165,6 @@
                             <a asp-page="/Admin/PrintQrCode" asp-route-id="@Model.Student.Id"
                                class="btn btn-primary" target="_blank">
                                 <i class="bi bi-printer me-1"></i>Print ID Card
-                            </a>
-                            <a asp-page="/Admin/PrintEnrollmentSticker"
-                               asp-page-handler="Student" asp-route-id="@Model.Student.Id"
-                               class="btn btn-outline-primary" target="_blank">
-                                <i class="bi bi-sticker me-1"></i>Print Enrollment Sticker
                             </a>
                             @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
                             {

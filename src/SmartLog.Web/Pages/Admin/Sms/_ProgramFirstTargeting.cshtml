@@ -1,17 +1,17 @@
 @using SmartLog.Web.Models.Sms
-@model List<ProgramWithGrades>
+@model BroadcastTargetingViewModel
 
 <div id="programTargetingPanel">
     <div class="mb-2">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="select-all-programs" checked />
             <label class="form-check-label fw-semibold" for="select-all-programs">
-                All Programs / All Grades
+                All Students
             </label>
         </div>
     </div>
 
-    @foreach (var prog in Model)
+    @foreach (var prog in Model.ProgramsWithGrades)
     {
         var hasGrades = prog.Grades.Any();
         <div class="border rounded p-2 mb-2 program-entry">
@@ -47,6 +47,34 @@
                     }
                 </div>
             }
+        </div>
+    }
+
+    @if (Model.NonGradedSections.Any())
+    {
+        <div class="border rounded p-2 mb-2 program-entry ng-entry">
+            <div class="form-check mb-1">
+                <input class="form-check-input nongraded-cb" type="checkbox"
+                       id="nongraded-group"
+                       checked />
+                <label class="form-check-label fw-semibold" for="nongraded-group">
+                    Non-Graded
+                </label>
+            </div>
+            <div class="grade-list ms-4">
+                @foreach (var sec in Model.NonGradedSections)
+                {
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input nongraded-section-cb" type="checkbox"
+                               id="ngsec_@sec.Name.Replace(" ", "_")"
+                               data-section-name="@sec.Name"
+                               checked />
+                        <label class="form-check-label small" for="ngsec_@sec.Name.Replace(" ", "_")">
+                            @sec.Name
+                        </label>
+                    </div>
+                }
+            </div>
         </div>
     }
 </div>

@@ -178,6 +178,9 @@ public static class DbInitializer
         // Reset any messages stuck in Processing status from a previous crash/restart
         await ResetStuckProcessingMessagesAsync(context, logger);
 
+        // Seed Non-Graded grade level + LEVEL 1-4 sections (US0105)
+        await SeedNonGradedAsync(context, logger);
+
         // Seed test students and attendance data
         await SeedStudentsAndScansAsync(context, logger);
 
@@ -945,5 +948,76 @@ public static class DbInitializer
             await context.SaveChangesAsync();
             logger.LogInformation("RetentionPolicies: {Count} default row(s) seeded", added);
         }
+    }
+
+    /// <summary>
+    /// Seeds the Non-Graded grade level and LEVEL 1–4 sections (US0105).
+    /// Idempotent. Also performs one-time cleanup of legacy NG→REGULAR links from the prior EP0010 design.
+    /// Public for direct invocation from tests.
+    /// </summary>
+    public static async Task SeedNonGradedAsync(ApplicationDbContext context, ILogger logger)
+    {
+        // 1. Ensure NG GradeLevel exists. Code is the identity key; Name preserved if admin-edited.
+        var ng = await context.GradeLevels.FirstOrDefaultAsync(g => g.Code == "NG");
+        if (ng == null)
+        {
+            ng = new GradeLevel
+            {
+                Code = "NG",
+                Name = "Non-Graded",
+                SortOrder = 99,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.GradeLevels.Add(ng);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded Non-Graded GradeLevel (ID: {Id})", ng.Id);
+        }
+
+        // 2. Remove any GradeLevelProgram rows referencing NG (legacy from NG→REGULAR design).
+        var staleJunction = await context.GradeLevelPrograms
+            .Where(j => j.GradeLevelId == ng.Id)
+            .ToListAsync();
+        if (staleJunction.Count > 0)
+        {
+            context.GradeLevelPrograms.RemoveRange(staleJunction);
+            logger.LogInformation("Removed {Count} legacy GradeLevelProgram row(s) for Non-Graded", staleJunction.Count);
+        }
+
+        // 3. Null any NG sections still pointing at a Program (legacy NG→REGULAR).
+        var legacyLinkedSections = await context.Sections
+            .Where(s => s.GradeLevelId == ng.Id && s.ProgramId != null)
+            .ToListAsync();
+        foreach (var s in legacyLinkedSections)
+        {
+            s.ProgramId = null;
+        }
+        if (legacyLinkedSections.Count > 0)
+        {
+            logger.LogInformation("Cleared ProgramId on {Count} legacy Non-Graded section(s)", legacyLinkedSections.Count);
+        }
+
+        // 4. Ensure LEVEL 1..4 sections exist for NG.
+        string[] levelNames = { "LEVEL 1", "LEVEL 2", "LEVEL 3", "LEVEL 4" };
+        foreach (var name in levelNames)
+        {
+            var exists = await context.Sections
+                .AnyAsync(s => s.GradeLevelId == ng.Id && s.Name == name);
+            if (!exists)
+            {
+                context.Sections.Add(new Section
+                {
+                    Name = name,
+                    GradeLevelId = ng.Id,
+                    ProgramId = null,
+                    Capacity = 40,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+                logger.LogInformation("Seeded Non-Graded section: {Name}", name);
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 }

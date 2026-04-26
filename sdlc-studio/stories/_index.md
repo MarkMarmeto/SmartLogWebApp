@@ -1,7 +1,7 @@
 # Story Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-24
+**Last Updated:** 2026-04-26
 
 ---
 
@@ -9,17 +9,18 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Stories | 102 |
+| Total Stories | 110 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
+| V2.1 Stories (Done) | 8 |
 | V2.1 Stories (Draft) | 19 |
 | In Progress | 0 |
-| Done | 83 |
+| Done | 91 |
 | Draft | 19 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
-| V2.1 Story Points | ~50 |
-| **Total Story Points** | **~316** |
+| V2.1 Story Points | ~73 |
+| **Total Story Points** | **~339** |
 
 ---
 
@@ -133,7 +134,7 @@
 | [US0085](./US0085-broadcast-per-language-message-inputs.md) | Broadcast — Separate EN and FIL Message Inputs | Draft | 3 | Admin Amy |
 | [US0086](./US0086-no-scan-alert-calendar-integration.md) | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | Draft | 3 | Admin Amy |
 
-### EP0010: Programs & Sections Overhaul (34 pts)
+### EP0010: Programs & Sections Overhaul (56 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -146,6 +147,13 @@
 | [US0064](./US0064-student-program-denormalization.md) | Student Program Denormalization | Done | 3 | Admin Amy |
 | [US0065](./US0065-programs-data-migration.md) | Programs Data Migration | Done | 3 | Admin Amy |
 | [US0087](./US0087-student-details-program-code-display.md) | Student Details — Display Program Code with Grade & Section | Draft | 2 | Admin Amy |
+| [US0103](./US0103-section-programid-nullable.md) | Section.ProgramId Nullable — Allow Sections Without Program (NG) | Done | 3 | Tech-Savvy Tony |
+| [US0104](./US0104-section-ui-hide-program-for-ng.md) | Section Create/Edit — Hide Program Dropdown for Non-Graded | Done | 2 | Admin Amy |
+| [US0105](./US0105-seed-ng-gradelevel-and-sections.md) | Seed Non-Graded Grade Level + LEVEL 1–4 Sections Without Program | Done | 2 | Tech-Savvy Tony |
+| [US0106](./US0106-student-program-null-for-ng.md) | Student.Program Denormalisation — Null for Non-Graded Enrollments | Done | 2 | Tech-Savvy Tony |
+| [US0107](./US0107-broadcast-targeting-ng-branch.md) | Broadcast Targeting — Add Non-Graded Branch Alongside Programs | Done | 5 | Admin Amy |
+| [US0108](./US0108-attendance-reports-ng-handling.md) | Attendance — Non-Graded Filter Handling | Done | 1 | Admin Amy |
+| [US0109](./US0109-student-details-card-ng-display.md) | Student Details, List & ID Card — Non-Graded Display | Done | 3 | Admin Amy |
 
 ### EP0011: Multi-Camera Scanning (43 pts)
 
@@ -184,6 +192,7 @@
 | [US0079](./US0079-qr-invalidation-audit.md) | QR Invalidation & Audit Trail | Done | 3 | Admin Amy |
 | [US0080](./US0080-qr-regeneration-dialog.md) | QR Regeneration with Confirmation Dialog | Done | 3 | Admin Amy |
 | [US0081](./US0081-invalidate-without-regen.md) | Invalidate QR Without Regeneration | Done | 2 | Admin Amy |
+| [US0110](./US0110-remove-enrollment-sticker.md) | Remove Enrollment Sticker Feature | Done | 1 | Admin Amy |
 
 ### EP0017: Data Retention & Archival (24 pts)
 
