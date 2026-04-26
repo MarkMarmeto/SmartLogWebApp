@@ -42,7 +42,7 @@
 | [EP0014](./EP0014-product-licensing.md) | Product Licensing | V3-P3 | Draft | TBD |
 | [EP0015](./EP0015-application-auto-update.md) | Application Auto-Update | V3-P3 | Draft | TBD |
 | [EP0016](./EP0016-pii-ra10173-compliance.md) | PII & RA 10173 Compliance | V3-P3 | Draft | TBD |
-| [EP0017](./EP0017-data-retention-archival.md) | Data Retention & Archival | V2-P2 | Draft | 9 |
+| [EP0017](./EP0017-data-retention-archival.md) | Data Retention & Archival | V2-P2 | Done | 9 |
 
 ---
 
@@ -195,4 +195,5 @@ Licensing, distribution, and legal compliance for commercial launch.
 | 2026-04-24 | V2.1 planning wave — EP0009 re-opened (+US0084-86), EP0010 re-opened (+US0087), EP0011 re-opened (+US0088-92), EP0006 re-opened (+US0093), new EP0017 Data Retention & Archival drafted (US0094-102). Bugs BG0001-BG0003 filed for UI polish. Memory `project_v2_1_planning.md` records the session. |
 | 2026-04-26 | EP0010 re-opened again — Non-Graded learners now have **no Program** (supersedes earlier NG→REGULAR design). Stories US0103-US0109 drafted to make `Section.ProgramId` nullable, seed NG sections LEVEL 1–4, and propagate NG handling through enrollment, broadcast targeting, reports, student details, ID cards, and stickers. |
 | 2026-04-26 | NG-no-program implementation landed — US0103-US0110 all Done (schema migration, NG seed, Section UI toggle, Student.Program null-for-NG, broadcast NG branch, attendance NG filter, student display, enrollment sticker removed). |
+| 2026-04-26 | EP0017 marked Done — all 9 stories (US0094-US0102) implemented. All 6 bugs (BG0001-BG0006) fixed. 0 open bugs, 0 draft stories. Only EP0014-EP0016 (V3 deferred) remain unplanned. |
 | 2026-04-26 | Registry reconciled — US0084-US0087, US0089-US0093 confirmed implemented; EP0009 and EP0010 marked Done. EP0011 remains In Progress (US0088 Windows compat verification pending). |
