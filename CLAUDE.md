@@ -28,20 +28,24 @@ SmartLogWebApp/
 │   │   └── Entities/                   # All entity classes
 │   ├── Services/                       # Business logic layer
 │   │   ├── Sms/                        # SMS subsystem (gateways, queue, templates)
+│   │   ├── Retention/                  # Data retention subsystem (EP0017)
 │   │   └── *.cs                        # All other services
+│   ├── Models/
+│   │   └── Sms/                        # SMS view/routing models (BroadcastMessageBodies, ProgramGradeFilter, etc.)
 │   ├── Pages/                          # Razor Pages UI
 │   │   ├── Account/                    # Login, Logout, Profile, ChangePassword
 │   │   └── Admin/                      # All admin pages
 │   │       ├── Sms/                    # SMS management pages
 │   │       ├── Calendar/               # Calendar event management
 │   │       ├── Reports/                # Attendance reports
+│   │       ├── Settings/               # Retention policy configuration
 │   │       └── *.cshtml                # Student, Faculty, Device, QR management
 │   ├── Middleware/                      # ForcePasswordChangeMiddleware
 │   ├── wwwroot/                        # Static files (CSS, JS, images)
 │   ├── Migrations/                     # EF Core migrations
 │   ├── Program.cs                      # Startup, DI, middleware, auth config
 │   └── appsettings.json                # Configuration
-└── tests/SmartLog.Web.Tests/           # xUnit tests (~160 tests across 14 files)
+└── tests/SmartLog.Web.Tests/           # xUnit tests (~302 tests across 27 test files)
 ```
 
 ---
@@ -71,6 +75,8 @@ SmartLogWebApp/
 | `AuditLog` | Security audit trail | Action, UserId, PerformedByUserId, IpAddress, UserAgent |
 | `AppSettings` | Dynamic config | Key, Value, Category, IsSensitive |
 | `SmsSettings` | SMS-specific config | Key, Value, Category (e.g. `Sms:NoScanAlertEnabled`, `Sms:NoScanAlertTime`, `Sms:NoScanAlertProvider`, `Sms:DefaultProvider`) |
+| `RetentionPolicy` | Per-entity retention config | EntityName (SmsLog/SmsQueue/Broadcast/Scan/AuditLog/VisitorScan), RetentionDays, Enabled, ArchiveEnabled, LastRunAt, LastRowsAffected |
+| `RetentionRun` | Audit log for each retention execution | EntityName, RunMode (Scheduled/Manual/DryRun), StartedAt, CompletedAt, Status (Success/Failed/Partial), RowsAffected, TriggeredBy |
 
 ---
 
@@ -199,7 +205,35 @@ Visitor returns pass → Guard scans at EXIT
 
 **QR prefix `SMARTLOG-V:`** is what distinguishes visitor passes from student QRs. QR generation for passes uses the same HMAC secret as student QRs but a different payload format.
 
-### 5. QR Regeneration & Invalidation (EP0013)
+### 5. SMS Broadcast Language Routing
+
+`BroadcastMessageBodies` (in `Models/Sms/`) holds the language mode and both message bodies for a broadcast. Two key methods:
+
+- **`ShouldSendToStudent(smsLanguage)`** — controls which students receive the message based on `BroadcastLanguageMode`:
+  - `EnglishOnly` → skip students with explicit `"FIL"` preference (null = include)
+  - `FilipinoOnly` → skip students with explicit `"EN"` preference (null = include)
+  - `Both` → send to all students
+- **`GetBodyForLanguage(smsLanguage)`** — returns `FilipinoBody` if student is FIL-preference and `FilipinoBody` is non-empty; otherwise returns `EnglishBody`
+
+`BroadcastLanguageMode` enum: `EnglishOnly`, `FilipinoOnly`, `Both` (default).
+
+### 6. Data Retention (EP0017)
+
+`RetentionService` (`BackgroundService`) runs all enabled `IEntityRetentionHandler` implementations daily at a configurable UTC time stored in `AppSettings` key `Retention:RunTime`. A per-entity daily idempotency guard (checked via `RetentionRun`) prevents double-deletion on Scheduled runs.
+
+**Entities with retention handlers:** `SmsLog`, `SmsQueue`, `Broadcast`, `Scan`, `AuditLog`, `VisitorScan`
+
+Each handler:
+1. Reads its `RetentionPolicy` row to get `RetentionDays` and `ArchiveEnabled`
+2. If `ArchiveEnabled`, calls `IArchiveService.ArchiveBatchAsync<T>()` (implemented by `CsvArchiveService`) — writes RFC-4180 CSV + schema JSON to the archive directory
+3. Batch-deletes rows older than the retention window (1,000 rows/batch for SmsLog/SmsQueue, 100 for others; 50ms yield between batches)
+4. Writes a `RetentionRun` record with status, row count, and duration
+
+Admins can view policy settings, trigger Manual or DryRun runs, and see per-entity last-run status at `/Admin/Settings/Retention`.
+
+Archive files are written to `Retention:ArchiveDirectory` (from `AppSettings`), organized as `{ArchiveDirectory}/{entity}/{yyyy-MM}/{entity}-{yyyy-MM-dd}.csv`. See `docs/retention-archive-restore.md` for the restore guide.
+
+### 7. QR Regeneration & Invalidation (EP0013)
 
 Student `StudentId` is permanent — the QR is regenerated only when a card is lost or re-issued.
 
