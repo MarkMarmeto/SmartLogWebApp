@@ -16,7 +16,7 @@ public class BroadcastMessageBodies
     public bool ShouldSendToStudent(string? smsLanguage) => Mode switch
     {
         BroadcastLanguageMode.EnglishOnly => smsLanguage != "FIL",
-        BroadcastLanguageMode.FilipinoOnly => true,
+        BroadcastLanguageMode.FilipinoOnly => smsLanguage != "EN",
         _ => true
     };
 }

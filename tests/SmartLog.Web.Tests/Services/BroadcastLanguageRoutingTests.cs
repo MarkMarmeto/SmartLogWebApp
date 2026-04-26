@@ -20,14 +20,15 @@ public class BroadcastLanguageRoutingTests
     }
 
     [Theory]
-    [InlineData("FIL")]
-    [InlineData("EN")]
-    [InlineData(null)]
-    public void FilipinoOnly_SendsToAllStudents_RegardlessOfPreference(string? smsLang)
+    [InlineData("FIL", true)]
+    [InlineData(null,  true)]
+    [InlineData("EN",  false)]
+    public void FilipinoOnly_SkipsExplicitEn_SendsFilAndNull(string? smsLang, bool expected)
     {
-        // FilipinoOnly = send in Filipino to everyone; individual preference does not gate delivery.
+        // Mirrors EnglishOnly: skip students who explicitly prefer the other language.
+        // Students with no preference (null) receive the Filipino message.
         var bodies = new BroadcastMessageBodies { Mode = BroadcastLanguageMode.FilipinoOnly };
-        Assert.True(bodies.ShouldSendToStudent(smsLang));
+        Assert.Equal(expected, bodies.ShouldSendToStudent(smsLang));
     }
 
     [Theory]
