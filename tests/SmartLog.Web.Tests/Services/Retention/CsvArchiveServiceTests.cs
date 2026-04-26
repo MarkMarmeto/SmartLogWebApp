@@ -171,15 +171,24 @@ public class CsvArchiveServiceTests : IDisposable
     [Fact]
     public async Task ArchiveBatch_InvalidDirectory_ReturnsFailResult()
     {
-        // Use a path with null bytes — invalid on all platforms
-        var badDir = "/dev/null/cannot-create-dir";
-        var svc = CreateService(badDir);
-        var rows = new List<SimpleRow> { new(1, "test") };
+        // Point archive dir inside an existing file — Directory.CreateDirectory throws
+        // IOException on both Windows and Unix when a path component is a file, not a dir.
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var badDir = Path.Combine(tempFile, "subdir");
+            var svc = CreateService(badDir);
+            var rows = new List<SimpleRow> { new(1, "test") };
 
-        var result = await svc.ArchiveBatchAsync("TestEntity", rows);
+            var result = await svc.ArchiveBatchAsync("TestEntity", rows);
 
-        Assert.False(result.Success);
-        Assert.NotNull(result.ErrorMessage);
+            Assert.False(result.Success);
+            Assert.NotNull(result.ErrorMessage);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
