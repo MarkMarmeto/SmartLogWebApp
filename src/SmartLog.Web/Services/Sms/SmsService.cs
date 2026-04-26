@@ -315,7 +315,9 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "EMERGENCY",
-                Message = bodies.EnglishBody,
+                Message = bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty),
                 Language = bodies.Mode switch
                 {
                     BroadcastLanguageMode.EnglishOnly => "EN",
@@ -340,7 +342,9 @@ public class SmsService : ISmsService
             var schoolPhone = await _appSettingsService.GetAsync("System.SchoolPhone") ?? "";
             var basePlaceholders = new Dictionary<string, string>
             {
-                { "Message", bodies.EnglishBody },
+                { "Message", bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty) },
                 { "SchoolPhone", schoolPhone }
             };
 
@@ -400,7 +404,9 @@ public class SmsService : ISmsService
             {
                 Id = broadcastId,
                 Type = "ANNOUNCEMENT",
-                Message = bodies.EnglishBody,
+                Message = bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty),
                 Language = bodies.Mode switch
                 {
                     BroadcastLanguageMode.EnglishOnly => "EN",
@@ -427,7 +433,9 @@ public class SmsService : ISmsService
             var basePlaceholders = new Dictionary<string, string>
             {
                 { "SchoolName", schoolName },
-                { "Message", bodies.EnglishBody },
+                { "Message", bodies.Mode == BroadcastLanguageMode.FilipinoOnly
+                    ? (bodies.FilipinoBody ?? string.Empty)
+                    : (bodies.EnglishBody ?? string.Empty) },
                 { "SchoolPhone", schoolPhone }
             };
 

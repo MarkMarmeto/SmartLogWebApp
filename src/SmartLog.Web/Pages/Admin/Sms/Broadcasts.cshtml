@@ -87,13 +87,25 @@
                                         }
                                     </td>
                                     <td>
-                                        @if (string.IsNullOrEmpty(b.AffectedGrades))
+                                        @{
+                                            var gradeList = string.IsNullOrEmpty(b.AffectedGrades)
+                                                ? new List<string>()
+                                                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(b.AffectedGrades) ?? new();
+                                            var programList = string.IsNullOrEmpty(b.AffectedPrograms)
+                                                ? new List<string>()
+                                                : System.Text.Json.JsonSerializer.Deserialize<List<string>>(b.AffectedPrograms) ?? new();
+                                            var hasNonGraded = programList.Any(p => p.Equals("Non-Graded", StringComparison.OrdinalIgnoreCase));
+                                            var displayParts = new List<string>();
+                                            if (gradeList.Any()) displayParts.Add(string.Join(", ", gradeList));
+                                            if (hasNonGraded) displayParts.Add("Non-Graded");
+                                        }
+                                        @if (!displayParts.Any())
                                         {
                                             <span class="text-muted">All</span>
                                         }
                                         else
                                         {
-                                            @b.AffectedGrades
+                                            @string.Join(", ", displayParts)
                                         }
                                     </td>
                                     <td class="text-center">@b.TotalRecipients</td>
