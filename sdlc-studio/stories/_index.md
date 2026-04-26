@@ -12,11 +12,12 @@
 | Total Stories | 110 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
-| V2.1 Stories (Done) | 8 |
-| V2.1 Stories (Draft) | 19 |
-| In Progress | 0 |
-| Done | 91 |
-| Draft | 19 |
+| V2.1 Stories (Done) | 17 |
+| V2.1 Stories (In Progress) | 1 |
+| V2.1 Stories (Draft) | 9 |
+| In Progress | 1 |
+| Done | 100 |
+| Draft | 9 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
 | V2.1 Story Points | ~73 |
@@ -93,7 +94,7 @@
 | [US0036](./US0036-attendance-filter.md) | Attendance Filtering and Search | Done | 2 | Admin Amy |
 | [US0037](./US0037-dashboard-refresh.md) | Dashboard Auto-Refresh | Done | 2 | Admin Amy |
 | [US0038](./US0038-historical-date.md) | Historical Date Selection | Done | 2 | Admin Amy |
-| [US0093](./US0093-scan-logs-camera-column.md) | Scan Logs — Record and Display Camera Identity | Draft | 3 | Admin Amy |
+| [US0093](./US0093-scan-logs-camera-column.md) | Scan Logs — Record and Display Camera Identity | Done | 3 | Admin Amy |
 
 ### EP0007: SMS Notifications (19 pts)
 
@@ -130,9 +131,9 @@
 | [US0057](./US0057-sms-queue-type-filtering.md) | SMS Queue Message Type Filtering | Done | 2 | Admin Amy |
 | [US0082](./US0082-no-scan-alert-next-run-label.md) | No-Scan Alert Next Run Label | Done | 1 | Admin Amy |
 | [US0083](./US0083-sms-settings-restructure.md) | SMS Settings Restructure — Alert Toggle, Global Guard & Default Provider | Done | 3 | Admin Amy |
-| [US0084](./US0084-broadcast-program-first-targeting.md) | Broadcast Targeting — Program-First with Nested Grade Levels | Draft | 5 | Admin Amy |
-| [US0085](./US0085-broadcast-per-language-message-inputs.md) | Broadcast — Separate EN and FIL Message Inputs | Draft | 3 | Admin Amy |
-| [US0086](./US0086-no-scan-alert-calendar-integration.md) | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | Draft | 3 | Admin Amy |
+| [US0084](./US0084-broadcast-program-first-targeting.md) | Broadcast Targeting — Program-First with Nested Grade Levels | Done | 5 | Admin Amy |
+| [US0085](./US0085-broadcast-per-language-message-inputs.md) | Broadcast — Separate EN and FIL Message Inputs | Done | 3 | Admin Amy |
+| [US0086](./US0086-no-scan-alert-calendar-integration.md) | No-Scan Alert — Calendar-Driven Auto-Disable & Event Prompt | Done | 3 | Admin Amy |
 
 ### EP0010: Programs & Sections Overhaul (56 pts)
 
@@ -146,7 +147,7 @@
 | [US0063](./US0063-attendance-report-program-filter.md) | Attendance & Report Program Filter | Done | 5 | Admin Amy |
 | [US0064](./US0064-student-program-denormalization.md) | Student Program Denormalization | Done | 3 | Admin Amy |
 | [US0065](./US0065-programs-data-migration.md) | Programs Data Migration | Done | 3 | Admin Amy |
-| [US0087](./US0087-student-details-program-code-display.md) | Student Details — Display Program Code with Grade & Section | Draft | 2 | Admin Amy |
+| [US0087](./US0087-student-details-program-code-display.md) | Student Details — Display Program Code with Grade & Section | Done | 2 | Admin Amy |
 | [US0103](./US0103-section-programid-nullable.md) | Section.ProgramId Nullable — Allow Sections Without Program (NG) | Done | 3 | Tech-Savvy Tony |
 | [US0104](./US0104-section-ui-hide-program-for-ng.md) | Section Create/Edit — Hide Program Dropdown for Non-Graded | Done | 2 | Admin Amy |
 | [US0105](./US0105-seed-ng-gradelevel-and-sections.md) | Seed Non-Graded Grade Level + LEVEL 1–4 Sections Without Program | Done | 2 | Tech-Savvy Tony |
@@ -165,11 +166,11 @@
 | [US0069](./US0069-per-camera-scan-type.md) | Per-Camera Scan Type Configuration | Done | 3 | Guard |
 | [US0070](./US0070-camera-error-isolation.md) | Camera Error Isolation & Health | Done | 5 | Guard |
 | [US0071](./US0071-multi-camera-setup-page.md) | Multi-Camera Setup Page | Done | 5 | Guard |
-| [US0088](../../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification | Draft | 3 | Tony |
-| [US0089](../../../SmartLogScannerApp/sdlc-studio/stories/US0089-unify-scan-type-to-device-level.md) | Unify Scan Type to Device-Level (Deprecates US0069) | Draft | 3 | Guard |
-| [US0090](../../../SmartLogScannerApp/sdlc-studio/stories/US0090-scan-payload-camera-identity.md) | Scan Payload — Include Camera Index and Camera Name | Draft | 3 | Admin Amy |
-| [US0091](../../../SmartLogScannerApp/sdlc-studio/stories/US0091-scanner-section-name-trim-and-program-code.md) | Scanner Tile — Fix Section Name Trimming, Show Program Code | Draft | 2 | Guard |
-| [US0092](../../../SmartLogScannerApp/sdlc-studio/stories/US0092-scanner-datetime-prominent-leftmost.md) | Scanner Header — Enlarge Date/Time, Anchor Left-Most | Draft | 1 | Guard |
+| [US0088](../../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification | In Progress | 3 | Tony |
+| [US0089](../../../SmartLogScannerApp/sdlc-studio/stories/US0089-unify-scan-type-to-device-level.md) | Unify Scan Type to Device-Level (Deprecates US0069) | Done | 3 | Guard |
+| [US0090](../../../SmartLogScannerApp/sdlc-studio/stories/US0090-scan-payload-camera-identity.md) | Scan Payload — Include Camera Index and Camera Name | Done | 3 | Admin Amy |
+| [US0091](../../../SmartLogScannerApp/sdlc-studio/stories/US0091-scanner-section-name-trim-and-program-code.md) | Scanner Tile — Fix Section Name Trimming, Show Program Code | Done | 2 | Guard |
+| [US0092](../../../SmartLogScannerApp/sdlc-studio/stories/US0092-scanner-datetime-prominent-leftmost.md) | Scanner Header — Enlarge Date/Time, Anchor Left-Most | Done | 1 | Guard |
 
 > Stories US0088-US0092 primary files live in the ScannerApp registry (cross-project shadowing — same pattern as US0066-US0071). Links above point there.
 

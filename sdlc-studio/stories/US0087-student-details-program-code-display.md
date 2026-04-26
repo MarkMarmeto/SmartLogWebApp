@@ -1,6 +1,7 @@
 # US0087: Student Details — Display Program Code with Grade & Section
 
-> **Status:** Draft
+> **Status:** Done
+> **Marked Done:** 2026-04-26
 > **Epic:** [EP0010: Programs & Sections Overhaul](../epics/EP0010-programs-sections-overhaul.md)
 > **Owner:** TBD
 > **Created:** 2026-04-24
