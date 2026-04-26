@@ -36,6 +36,11 @@ public class AuditLog
 
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// When true, this row is exempt from retention purge (RA 10173 legal hold).
+    /// </summary>
+    public bool LegalHold { get; set; } = false;
+
     // Navigation properties
     public ApplicationUser? User { get; set; }
     public ApplicationUser? PerformedByUser { get; set; }

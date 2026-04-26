@@ -5,6 +5,7 @@ using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Middleware;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Retention;
 using SmartLog.Web.Services.Sms;
 
 // Configure Serilog for structured logging
@@ -107,6 +108,16 @@ try
     builder.Services.AddSingleton<INoScanAlertService>(sp => sp.GetRequiredService<NoScanAlertService>());
     builder.Services.AddHostedService(sp => sp.GetRequiredService<NoScanAlertService>());
     builder.Services.AddHttpClient(); // Required for SemaphoreGateway
+
+    // Add retention handlers (EP0017)
+    builder.Services.AddScoped<IEntityRetentionHandler, SmsQueueRetentionHandler>();
+    builder.Services.AddScoped<IEntityRetentionHandler, SmsLogRetentionHandler>();
+    builder.Services.AddScoped<IEntityRetentionHandler, BroadcastRetentionHandler>();
+    builder.Services.AddScoped<IEntityRetentionHandler, ScanRetentionHandler>();
+    builder.Services.AddScoped<IEntityRetentionHandler, AuditLogRetentionHandler>();
+    builder.Services.AddScoped<IEntityRetentionHandler, VisitorScanRetentionHandler>();
+    builder.Services.AddHostedService<RetentionService>();
+    builder.Services.AddScoped<IArchiveService, CsvArchiveService>();
 
     // Add authorization policies (US0007)
     builder.Services.AddAuthorization(options =>

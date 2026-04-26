@@ -71,6 +71,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Action);
+            entity.Property(e => e.LegalHold).HasDefaultValue(false);
 
             entity.HasOne(e => e.User)
                 .WithMany()

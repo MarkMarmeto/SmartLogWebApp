@@ -1,6 +1,6 @@
 # US0099: AuditLog Retention with Legal-Hold Flag
 
-> **Status:** Draft
+> **Status:** Done\n> **Marked Done:** 2026-04-26\n> **Owner:** AI Assistant
 > **Epic:** [EP0017: Data Retention & Archival](../epics/EP0017-data-retention-archival.md)
 > **Owner:** TBD
 > **Created:** 2026-04-24

@@ -1,6 +1,6 @@
 # PL0014: SmsQueue Retention Handler — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0095: SmsQueue Retention Handler](../stories/US0095-smsqueue-retention-handler.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

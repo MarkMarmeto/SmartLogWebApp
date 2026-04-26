@@ -11,6 +11,7 @@ namespace SmartLog.Web.Pages.Admin;
 /// <summary>
 /// Audit log viewer page.
 /// Implements US0050 (Audit Log Viewer) and US0051 (Audit Log Search and Filter).
+/// US0099: LegalHold toggle and bulk-hold action.
 /// </summary>
 [Authorize(Policy = "RequireSuperAdmin")]
 public class AuditLogsModel : PageModel
@@ -27,6 +28,7 @@ public class AuditLogsModel : PageModel
     public List<AuditLogEntry> AuditEntries { get; set; } = new();
     public List<string> Actions { get; set; } = new();
     public List<string> Users { get; set; } = new();
+    public int HeldCount { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public DateTime? StartDate { get; set; }
@@ -99,12 +101,77 @@ public class AuditLogsModel : PageModel
                 PerformedByUserId = a.PerformedByUserId,
                 PerformedByUserName = a.PerformedByUser != null ? a.PerformedByUser.UserName : "System",
                 Details = a.Details,
-                IpAddress = a.IpAddress
+                IpAddress = a.IpAddress,
+                LegalHold = a.LegalHold
             })
             .ToListAsync();
 
+        HeldCount = await _context.AuditLogs.CountAsync(a => a.LegalHold);
+
         // Load filter options
         await LoadFiltersAsync();
+    }
+
+    // US0099: Per-row legal hold toggle
+    public async Task<IActionResult> OnPostToggleLegalHoldAsync(Guid id)
+    {
+        var row = await _context.AuditLogs.FindAsync(id);
+        if (row is null)
+            return NotFound();
+
+        var currentUserId = _userManager.GetUserId(User);
+        var newHoldValue = !row.LegalHold;
+        row.LegalHold = newHoldValue;
+
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Action = newHoldValue ? "AuditLegalHoldSet" : "AuditLegalHoldCleared",
+            UserId = row.UserId,
+            PerformedByUserId = currentUserId,
+            Details = $"AuditLogId: {id}",
+            Timestamp = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+        return RedirectToPage();
+    }
+
+    // US0099: Bulk legal hold on current filtered set
+    public async Task<IActionResult> OnPostBulkLegalHoldAsync()
+    {
+        var defaultStartDate = StartDate ?? DateTime.UtcNow.AddDays(-1);
+        var defaultEndDate = EndDate ?? DateTime.UtcNow;
+
+        var query = _context.AuditLogs
+            .Where(a => a.Timestamp >= defaultStartDate && a.Timestamp <= defaultEndDate);
+
+        if (!string.IsNullOrWhiteSpace(ActionFilter))
+            query = query.Where(a => a.Action == ActionFilter);
+        if (!string.IsNullOrWhiteSpace(UserFilter))
+            query = query.Where(a => a.PerformedByUserId == UserFilter);
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            var search = SearchTerm.ToLower();
+            query = query.Where(a =>
+                a.Action.ToLower().Contains(search) ||
+                (a.Details != null && a.Details.ToLower().Contains(search)));
+        }
+
+        var toHold = await query.Where(a => !a.LegalHold).ToListAsync();
+        foreach (var log in toHold)
+            log.LegalHold = true;
+
+        var currentUserId = _userManager.GetUserId(User);
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Action = "AuditBulkLegalHoldApplied",
+            PerformedByUserId = currentUserId,
+            Details = $"StartDate: {defaultStartDate:yyyy-MM-dd}, EndDate: {defaultEndDate:yyyy-MM-dd}, Action: {ActionFilter}, User: {UserFilter}, RowsAffected: {toHold.Count}",
+            Timestamp = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+        return RedirectToPage();
     }
 
     private async Task LoadFiltersAsync()
@@ -143,6 +210,7 @@ public class AuditLogsModel : PageModel
         public string? PerformedByUserName { get; set; }
         public string? Details { get; set; }
         public string? IpAddress { get; set; }
+        public bool LegalHold { get; set; }
 
         public string TruncatedDetails => Details != null && Details.Length > 100
             ? Details.Substring(0, 100) + "..."

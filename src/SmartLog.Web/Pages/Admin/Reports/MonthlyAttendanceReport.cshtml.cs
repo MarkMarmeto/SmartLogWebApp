@@ -35,6 +35,7 @@ public class MonthlyAttendanceReportModel : PageModel
     public int ReportYear => Year ?? DateTime.Today.Year;
     public int ReportMonth => Month ?? DateTime.Today.Month;
     public string MonthName => new DateTime(ReportYear, ReportMonth, 1).ToString("MMMM yyyy");
+    public DateTime? ScanRetentionHorizon { get; private set; }
     public List<DailyAttendanceSummary> DailySummaries { get; set; } = new();
     public MonthlyTotals Totals { get; set; } = new();
     public List<StudentMonthlyAttendance> StudentAttendance { get; set; } = new();
@@ -78,6 +79,18 @@ public class MonthlyAttendanceReportModel : PageModel
 
         // US0047-AC3: Calculate per-student monthly attendance
         await LoadStudentMonthlyAttendanceAsync(monthStart, monthEnd, schoolDays);
+
+        ScanRetentionHorizon = await LoadScanRetentionHorizonAsync();
+    }
+
+    private async Task<DateTime?> LoadScanRetentionHorizonAsync()
+    {
+        var policy = await _context.RetentionPolicies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.EntityName == "Scan");
+        return policy is { Enabled: true }
+            ? DateTime.UtcNow.AddDays(-policy.RetentionDays)
+            : null;
     }
 
     private async Task<DailyAttendanceSummary> CalculateDailySummaryAsync(DateTime date)

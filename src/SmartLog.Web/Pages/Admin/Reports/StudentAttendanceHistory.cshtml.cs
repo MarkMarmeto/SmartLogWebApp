@@ -31,6 +31,7 @@ public class StudentAttendanceHistoryModel : PageModel
     public DateTime? EndDate { get; set; }
 
     public Student? Student { get; set; }
+    public DateTime? ScanRetentionHorizon { get; private set; }
     public List<DailyAttendanceRecord> AttendanceHistory { get; set; } = new();
     public AttendanceSummary Summary { get; set; } = new();
     public List<Student> RecentStudents { get; set; } = new();
@@ -44,6 +45,8 @@ public class StudentAttendanceHistoryModel : PageModel
             .ThenBy(s => s.FirstName)
             .Take(100)
             .ToListAsync();
+
+        ScanRetentionHorizon = await LoadScanRetentionHorizonAsync();
 
         if (StudentId.HasValue)
         {
@@ -63,6 +66,16 @@ public class StudentAttendanceHistoryModel : PageModel
                 CalculateSummary(startDate, endDate);
             }
         }
+    }
+
+    private async Task<DateTime?> LoadScanRetentionHorizonAsync()
+    {
+        var policy = await _context.RetentionPolicies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.EntityName == "Scan");
+        return policy is { Enabled: true }
+            ? DateTime.UtcNow.AddDays(-policy.RetentionDays)
+            : null;
     }
 
     private async Task LoadAttendanceHistoryAsync(Guid studentId, DateTime startDate, DateTime endDate)

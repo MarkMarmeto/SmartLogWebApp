@@ -31,6 +31,7 @@ public class WeeklyAttendanceSummaryModel : PageModel
 
     public DateTime WeekStart { get; set; }
     public DateTime WeekEnd { get; set; }
+    public DateTime? ScanRetentionHorizon { get; private set; }
     public List<DailyAttendanceSummary> DailySummaries { get; set; } = new();
     public WeeklyTotals Totals { get; set; } = new();
     public List<Data.Entities.GradeLevel> GradeLevels { get; set; } = new();
@@ -72,6 +73,18 @@ public class WeeklyAttendanceSummaryModel : PageModel
                 ? Math.Round(DailySummaries.Average(d => d.AttendanceRate), 1)
                 : 0
         };
+
+        ScanRetentionHorizon = await LoadScanRetentionHorizonAsync();
+    }
+
+    private async Task<DateTime?> LoadScanRetentionHorizonAsync()
+    {
+        var policy = await _context.RetentionPolicies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.EntityName == "Scan");
+        return policy is { Enabled: true }
+            ? DateTime.UtcNow.AddDays(-policy.RetentionDays)
+            : null;
     }
 
     private async Task<DailyAttendanceSummary> CalculateDailySummaryAsync(DateTime date)

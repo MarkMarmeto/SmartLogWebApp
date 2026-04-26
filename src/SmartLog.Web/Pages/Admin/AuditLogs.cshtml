@@ -69,6 +69,22 @@
         </div>
     </div>
 
+    @* US0099: Bulk Legal Hold *@
+    <div class="card mb-3">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                <i class="bi bi-lock me-1"></i>
+                On legal hold: <strong>@Model.HeldCount</strong> row(s)
+            </span>
+            <form method="post" asp-page-handler="BulkLegalHold"
+                  onsubmit="return confirm('Apply legal hold to all rows matching the current filter? This cannot be undone in bulk.')">
+                <button type="submit" class="btn btn-sm btn-warning">
+                    <i class="bi bi-lock-fill me-1"></i>Apply Legal Hold to Filtered Set
+                </button>
+            </form>
+        </div>
+    </div>
+
     @* US0050-AC2: Audit Log Table *@
     <div class="card">
         <div class="card-header">
@@ -93,8 +109,14 @@
                         <tbody>
                             @foreach (var log in Model.AuditEntries)
                             {
-                                <tr>
-                                    <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <tr class="@(log.LegalHold ? "table-warning" : "")">
+                                    <td>
+                                        @log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                                        @if (log.LegalHold)
+                                        {
+                                            <i class="bi bi-lock-fill text-warning ms-1" title="On legal hold"></i>
+                                        }
+                                    </td>
                                     <td>
                                         <span class="badge @GetBadgeClass(log.Action)">
                                             @log.Action
@@ -117,6 +139,15 @@
                                                 onclick="showDetails(this)">
                                             <i class="bi bi-eye"></i>
                                         </button>
+                                        @* US0099: Legal hold toggle *@
+                                        <form method="post" asp-page-handler="ToggleLegalHold"
+                                              asp-route-id="@log.Id" class="d-inline">
+                                            <button type="submit"
+                                                    class="btn btn-sm @(log.LegalHold ? "btn-outline-secondary" : "btn-outline-warning")"
+                                                    title="@(log.LegalHold ? "Release legal hold" : "Apply legal hold")">
+                                                <i class="bi @(log.LegalHold ? "bi-unlock" : "bi-lock")"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
