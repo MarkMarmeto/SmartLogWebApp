@@ -12,11 +12,11 @@
 | Total Stories | 110 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
-| V2.1 Stories (Done) | 17 |
-| V2.1 Stories (Draft) | 9 |
+| V2.1 Stories (Done) | 18 |
+| V2.1 Stories (Draft) | 8 |
 | In Progress | 0 |
-| Done | 101 |
-| Draft | 9 |
+| Done | 102 |
+| Draft | 8 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
 | V2.1 Story Points | ~73 |
@@ -198,7 +198,7 @@
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
-| [US0094](./US0094-retention-policy-entity-and-admin-ui.md) | Retention Policy Entity & Admin UI | Draft | 3 | Admin Amy |
+| [US0094](./US0094-retention-policy-entity-and-admin-ui.md) | Retention Policy Entity & Admin UI | Done | 3 | Admin Amy |
 | [US0095](./US0095-smsqueue-retention-handler.md) | SmsQueue Retention Handler | Draft | 3 | Tony |
 | [US0096](./US0096-smslog-retention-handler.md) | SmsLog Retention Handler | Draft | 3 | Tony |
 | [US0097](./US0097-broadcast-retention-handler.md) | Broadcast Retention Handler | Draft | 2 | Tony |
