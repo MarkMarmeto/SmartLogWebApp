@@ -36,7 +36,7 @@
 | [EP0008](./EP0008-reporting-analytics.md) | Reporting & Analytics | V1-P3 | Done | 7 |
 | [EP0009](./EP0009-sms-strategy-overhaul.md) | SMS Strategy Overhaul | V2-P2 | Done | 11 |
 | [EP0010](./EP0010-programs-sections-overhaul.md) | Programs & Sections Overhaul | V2-P2 | Done | 16 |
-| [EP0011](./EP0011-multi-camera-scanning.md) | Multi-Camera Scanning | V2-P2 | In Progress | 11 |
+| [EP0011](./EP0011-multi-camera-scanning.md) | Multi-Camera Scanning | V2-P2 | Done | 11 |
 | [EP0012](./EP0012-visitor-pass-system.md) | Visitor Pass System | V2-P2 | Done | 5 |
 | [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | Done | 5 |
 | [EP0014](./EP0014-product-licensing.md) | Product Licensing | V3-P3 | Draft | TBD |

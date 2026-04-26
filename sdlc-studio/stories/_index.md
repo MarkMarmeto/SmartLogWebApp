@@ -13,10 +13,9 @@
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
 | V2.1 Stories (Done) | 17 |
-| V2.1 Stories (In Progress) | 1 |
 | V2.1 Stories (Draft) | 9 |
-| In Progress | 1 |
-| Done | 100 |
+| In Progress | 0 |
+| Done | 101 |
 | Draft | 9 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
@@ -166,7 +165,7 @@
 | [US0069](./US0069-per-camera-scan-type.md) | Per-Camera Scan Type Configuration | Done | 3 | Guard |
 | [US0070](./US0070-camera-error-isolation.md) | Camera Error Isolation & Health | Done | 5 | Guard |
 | [US0071](./US0071-multi-camera-setup-page.md) | Multi-Camera Setup Page | Done | 5 | Guard |
-| [US0088](../../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification | In Progress | 3 | Tony |
+| [US0088](../../../SmartLogScannerApp/sdlc-studio/stories/US0088-multi-camera-windows-compatibility.md) | Multi-Camera — Windows Platform Compatibility Verification | Done | 3 | Tony |
 | [US0089](../../../SmartLogScannerApp/sdlc-studio/stories/US0089-unify-scan-type-to-device-level.md) | Unify Scan Type to Device-Level (Deprecates US0069) | Done | 3 | Guard |
 | [US0090](../../../SmartLogScannerApp/sdlc-studio/stories/US0090-scan-payload-camera-identity.md) | Scan Payload — Include Camera Index and Camera Name | Done | 3 | Admin Amy |
 | [US0091](../../../SmartLogScannerApp/sdlc-studio/stories/US0091-scanner-section-name-trim-and-program-code.md) | Scanner Tile — Fix Section Name Trimming, Show Program Code | Done | 2 | Guard |
