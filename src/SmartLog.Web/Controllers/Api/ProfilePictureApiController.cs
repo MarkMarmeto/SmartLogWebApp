@@ -66,9 +66,13 @@ public class ProfilePictureApiController : ControllerBase
             user.UpdatedAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
-            await _auditService.LogAsync("ProfilePictureUpdated", user.Id,
-                $"User {user.UserName} updated their profile picture",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureUpdated",
+                userId: user.Id,
+                performedByUserId: user.Id,
+                details: $"User {user.UserName} updated their profile picture",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { path = filePath, url = _fileUploadService.GetProfilePictureUrl(filePath) });
         }
@@ -110,9 +114,13 @@ public class ProfilePictureApiController : ControllerBase
             student.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            await _auditService.LogAsync("ProfilePictureUpdated", student.Id.ToString(),
-                $"Profile picture updated for student {student.FullName} ({student.StudentId})",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureUpdated",
+                userId: null,
+                performedByUserId: _userManager.GetUserId(User),
+                details: $"Profile picture updated for student {student.FullName} ({student.StudentId})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { path = filePath, url = _fileUploadService.GetProfilePictureUrl(filePath) });
         }
@@ -154,9 +162,13 @@ public class ProfilePictureApiController : ControllerBase
             faculty.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            await _auditService.LogAsync("ProfilePictureUpdated", faculty.Id.ToString(),
-                $"Profile picture updated for faculty {faculty.FullName} ({faculty.EmployeeId})",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureUpdated",
+                userId: null,
+                performedByUserId: _userManager.GetUserId(User),
+                details: $"Profile picture updated for faculty {faculty.FullName} ({faculty.EmployeeId})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { path = filePath, url = _fileUploadService.GetProfilePictureUrl(filePath) });
         }
@@ -187,9 +199,13 @@ public class ProfilePictureApiController : ControllerBase
             user.UpdatedAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
-            await _auditService.LogAsync("ProfilePictureDeleted", user.Id,
-                $"User {user.UserName} deleted their profile picture",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureDeleted",
+                userId: user.Id,
+                performedByUserId: user.Id,
+                details: $"User {user.UserName} deleted their profile picture",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { message = "Profile picture deleted successfully" });
         }
@@ -221,9 +237,13 @@ public class ProfilePictureApiController : ControllerBase
             student.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            await _auditService.LogAsync("ProfilePictureDeleted", student.Id.ToString(),
-                $"Profile picture deleted for student {student.FullName} ({student.StudentId})",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureDeleted",
+                userId: null,
+                performedByUserId: _userManager.GetUserId(User),
+                details: $"Profile picture deleted for student {student.FullName} ({student.StudentId})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { message = "Profile picture deleted successfully" });
         }
@@ -255,9 +275,13 @@ public class ProfilePictureApiController : ControllerBase
             faculty.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            await _auditService.LogAsync("ProfilePictureDeleted", faculty.Id.ToString(),
-                $"Profile picture deleted for faculty {faculty.FullName} ({faculty.EmployeeId})",
-                HttpContext.Connection.RemoteIpAddress?.ToString());
+            await _auditService.LogAsync(
+                action: "ProfilePictureDeleted",
+                userId: null,
+                performedByUserId: _userManager.GetUserId(User),
+                details: $"Profile picture deleted for faculty {faculty.FullName} ({faculty.EmployeeId})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString());
 
             return Ok(new { message = "Profile picture deleted successfully" });
         }
