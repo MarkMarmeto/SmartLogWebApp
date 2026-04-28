@@ -5,6 +5,7 @@ using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Middleware;
 using SmartLog.Web.Services;
+using SmartLog.Web.Services.Branding;
 using SmartLog.Web.Services.Retention;
 using SmartLog.Web.Services.Sms;
 
@@ -84,9 +85,11 @@ try
     builder.Services.AddScoped<IAuditService, AuditService>();
     builder.Services.AddScoped<IQrCodeService, QrCodeService>();
     builder.Services.AddScoped<IDeviceService, DeviceService>();
+    builder.Services.AddScoped<IDeviceHealthService, DeviceHealthService>();
     builder.Services.AddScoped<IAttendanceService, AttendanceService>();
     builder.Services.AddScoped<IReportExportService, ReportExportService>();
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+    builder.Services.AddScoped<IBrandingService, BrandingService>();
     builder.Services.AddScoped<ITimezoneService, TimezoneService>();
     builder.Services.AddScoped<IAcademicYearService, AcademicYearService>();
     builder.Services.AddScoped<IGradeSectionService, GradeSectionService>();

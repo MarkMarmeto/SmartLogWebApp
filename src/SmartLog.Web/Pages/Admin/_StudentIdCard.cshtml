@@ -1,0 +1,268 @@
+@using SmartLog.Web.Models
+@model StudentIdCardViewModel
+
+<style>
+    .id-card {
+        width: 85.6mm;
+        height: 54mm;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        box-shadow: 0 2px 14px rgba(0,0,0,.18);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* ── Header ── */
+    .id-card__header {
+        height: 7mm;
+        min-height: 7mm;
+        background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5mm;
+        padding: 0 3mm;
+        overflow: hidden;
+    }
+    .id-card__logo {
+        height: 5mm;
+        width: auto;
+        object-fit: contain;
+        max-width: 12mm;
+        flex-shrink: 0;
+    }
+    .id-card__logo-placeholder {
+        height: 5mm;
+        width: 5mm;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .id-card__logo-placeholder svg { width: 5mm; height: 5mm; }
+    .id-card__school-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .id-card__school {
+        font-size: 7pt;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        line-height: 1.2;
+    }
+    .id-card__school-address {
+        font-size: 5pt;
+        font-weight: 400;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        opacity: 0.85;
+        line-height: 1.2;
+    }
+
+    /* ── Body (two-column) ── */
+    .id-card__body {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+    }
+
+    /* ── Left: identity panel (CSS grid) ── */
+    .id-card__identity {
+        width: 50mm;
+        display: grid;
+        grid-template-columns: 22mm 1fr;
+        grid-template-rows: auto auto;
+        gap: 1.5mm 2mm;
+        padding: 2mm;
+        box-sizing: border-box;
+        overflow: hidden;
+        align-content: start;
+    }
+    .id-card__photo {
+        grid-column: 1;
+        grid-row: 1;
+        width: 22mm;
+        height: 22mm;
+        border: 0.3mm solid #dce9e9;
+        background: #e8f5f4 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border-radius: 1mm;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .id-card__photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .id-card__photo-initials {
+        font-size: 11pt;
+        font-weight: 700;
+        color: #2C5F5D;
+    }
+    .id-card__name {
+        grid-column: 2;
+        grid-row: 1;
+        font-size: 8pt;
+        font-weight: 700;
+        color: #1a1a1a;
+        line-height: 1.2;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        align-self: start;
+        padding-top: 0.5mm;
+    }
+    .id-card__details {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8mm;
+    }
+    .id-card__detail {
+        font-size: 6.5pt;
+        color: #333;
+        font-family: 'Courier New', monospace;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Right: QR panel ── */
+    .id-card__qr {
+        flex: 1;
+        padding: 2mm 2mm 2mm 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        min-width: 0;
+    }
+    .id-card__qr img {
+        width: 38mm;
+        height: 38mm;
+        object-fit: contain;
+        display: block;
+    }
+
+    /* ── Footer ── */
+    .id-card__footer {
+        height: 3mm;
+        min-height: 3mm;
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1mm;
+        padding: 0 2mm;
+        overflow: hidden;
+    }
+    .id-card__footer-label {
+        font-size: 5pt;
+        font-weight: 700;
+        color: #666;
+        flex-shrink: 0;
+    }
+    .id-card__footer-text {
+        font-size: 5pt;
+        color: #666;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+</style>
+
+<div class="id-card">
+
+    <div class="id-card__header">
+        @if (!string.IsNullOrEmpty(Model.SchoolLogoPath))
+        {
+            <img class="id-card__logo" src="@Model.SchoolLogoPath" alt="" />
+        }
+        else
+        {
+            <div class="id-card__logo-placeholder">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="8" width="16" height="4" rx="1" fill="white"/>
+                    <rect x="8" y="8" width="4" height="16" rx="1" fill="white"/>
+                    <rect x="40" y="8" width="16" height="4" rx="1" fill="white"/>
+                    <rect x="52" y="8" width="4" height="16" rx="1" fill="white"/>
+                    <rect x="8" y="52" width="16" height="4" rx="1" fill="white"/>
+                    <rect x="8" y="40" width="4" height="16" rx="1" fill="white"/>
+                    <polyline points="22,34 29,41 42,26" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
+            </div>
+        }
+        <div class="id-card__school-block">
+            <span class="id-card__school">@Model.SchoolName</span>
+            @if (!string.IsNullOrEmpty(Model.SchoolAddress))
+            {
+                <span class="id-card__school-address">@Model.SchoolAddress</span>
+            }
+        </div>
+    </div>
+
+    <div class="id-card__body">
+
+        <div class="id-card__identity">
+            <div class="id-card__photo">
+                @if (!string.IsNullOrEmpty(Model.Student.ProfilePicturePath))
+                {
+                    <img src="@Model.Student.ProfilePicturePath" alt="" />
+                }
+                else
+                {
+                    <span class="id-card__photo-initials">@(Model.Student.FirstName[0])@(Model.Student.LastName[0])</span>
+                }
+            </div>
+
+            <div class="id-card__name" title="@Model.Student.FullName">@Model.Student.FullName</div>
+
+            <div class="id-card__details">
+                @if (!string.IsNullOrEmpty(Model.Student.LRN))
+                {
+                    <div class="id-card__detail">@Model.Student.LRN</div>
+                }
+                else
+                {
+                    <div class="id-card__detail">—</div>
+                }
+                <div class="id-card__detail">@Model.Student.StudentId</div>
+            </div>
+        </div>
+
+        <div class="id-card__qr">
+            <img src="data:image/png;base64,@Model.QrCode.QrImageBase64" alt="QR Code" />
+        </div>
+
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ReturnAddressText))
+    {
+        <div class="id-card__footer">
+            <span class="id-card__footer-label">If found:</span>
+            <span class="id-card__footer-text">@Model.ReturnAddressText</span>
+        </div>
+    }
+
+</div>

@@ -264,8 +264,6 @@ public class ReportExportService : IReportExportService
         var defaultEndDate = endDate ?? DateTime.UtcNow;
 
         var query = _context.AuditLogs
-            .Include(a => a.User)
-            .Include(a => a.PerformedByUser)
             .Where(a => a.Timestamp >= defaultStartDate && a.Timestamp <= defaultEndDate);
 
         if (!string.IsNullOrWhiteSpace(action))
@@ -298,7 +296,7 @@ public class ReportExportService : IReportExportService
         foreach (var log in logs)
         {
             csv.AppendLine($"{_timezoneService.FormatForDisplay(log.Timestamp)},{CsvEscape(log.Action)}," +
-                          $"{CsvEscape(log.User?.UserName ?? "-")},{CsvEscape(log.PerformedByUser?.UserName ?? "System")}," +
+                          $"{CsvEscape(log.UserName ?? "-")},{CsvEscape(log.PerformedByUserName ?? "System")}," +
                           $"{CsvEscape(log.Details)},{CsvEscape(log.IpAddress ?? "-")}");
         }
 

@@ -41,7 +41,11 @@ public class AuditLog
     /// </summary>
     public bool LegalHold { get; set; } = false;
 
-    // Navigation properties
-    public ApplicationUser? User { get; set; }
-    public ApplicationUser? PerformedByUser { get; set; }
+    // Username snapshots captured at write time — no FK to AspNetUsers.
+    // Rows remain readable even if the referenced user is later renamed or deleted.
+    [StringLength(256)]
+    public string? UserName { get; set; }
+
+    [StringLength(256)]
+    public string? PerformedByUserName { get; set; }
 }

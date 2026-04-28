@@ -70,18 +70,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.PerformedByUserId);
             entity.HasIndex(e => e.Action);
             entity.Property(e => e.LegalHold).HasDefaultValue(false);
-
-            entity.HasOne(e => e.User)
-                .WithMany()
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            entity.HasOne(e => e.PerformedByUser)
-                .WithMany()
-                .HasForeignKey(e => e.PerformedByUserId)
-                .OnDelete(DeleteBehavior.NoAction);
         });
 
         // Configure Student

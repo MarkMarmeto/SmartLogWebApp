@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartLog Admin Server — Hardware Procurement Proposal</title>
+<style>
+  :root {
+    --primary: #1d4ed8;
+    --primary-dark: #1e3a8a;
+    --accent: #ca8a04;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --radius: 8px;
+    --info-bg: #e0f2fe;
+    --info-border: #0ea5e9;
+    --info-text: #0c4a6e;
+    --good-bg: #dcfce7;
+    --good-border: #22c55e;
+    --good-text: #14532d;
+    --warn-bg: #fefce8;
+    --warn-border: #eab308;
+    --warn-text: #713f12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: var(--surface-alt); }
+  a { color: var(--primary); text-decoration: none; }
+
+  header { background: var(--primary-dark); color: #fff; padding: 0 2rem; }
+  .header-inner { max-width: 1100px; margin: 0 auto; padding: 2rem 0; }
+  .header-badge { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: .5rem; }
+  header h1 { font-size: 1.6rem; font-weight: 700; }
+  header .sub { font-size: 14px; opacity: .85; margin-top: 6px; }
+  .header-meta { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 2rem; font-size: 13px; opacity: .9; }
+  .header-meta div span { display: block; opacity: .65; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 10; }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+  nav a { display: block; padding: .75rem 1rem; font-size: 13px; font-weight: 500; color: var(--text-muted); white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+
+  .module { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1.5rem; overflow: hidden; }
+  .module-header { display: flex; align-items: center; gap: 1rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .module-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: var(--surface-alt); }
+  .module-title { font-size: 1rem; font-weight: 700; }
+  .module-body { padding: 1.25rem 1.5rem; }
+  .module-body p + p, .module-body p + ul, .module-body ul + p { margin-top: .8rem; }
+  .module-body ul, .module-body ol { padding-left: 1.4rem; }
+  .module-body li { margin: .25rem 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: .75rem 0; }
+  th { background: var(--surface-alt); color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; text-align: left; padding: .55rem .9rem; border: 1px solid var(--border); }
+  td { padding: .6rem .9rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surface-alt); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.center, th.center { text-align: center; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .summary-grid { grid-template-columns: 1fr; } main { padding: 1.5rem 1rem; } .header-meta { gap: 1rem; } }
+  .summary-card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; }
+  .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); font-weight: 600; }
+  .summary-card .value { font-size: 1.5rem; font-weight: 700; color: var(--primary-dark); margin-top: .3rem; line-height: 1.2; }
+  .summary-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .total-row td { background: var(--primary-dark) !important; color: #fff; font-weight: 700; font-size: 15px; }
+  .subtotal-row td { background: #eff6ff !important; font-weight: 600; }
+
+  .callout { border-left: 4px solid; padding: .8rem 1rem; border-radius: 4px; font-size: 14px; margin-top: .75rem; }
+  .callout.info { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  .callout.good { background: var(--good-bg); border-color: var(--good-border); color: var(--good-text); }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .callout strong { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
+
+  h3 { font-size: .95rem; font-weight: 700; margin: 1.1rem 0 .5rem; color: var(--primary-dark); }
+  h3:first-child { margin-top: 0; }
+
+  .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .role-grid { grid-template-columns: 1fr; } }
+  .role-card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1.1rem; }
+  .role-card .role-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); margin-bottom: .3rem; }
+  .role-card .role-desc { font-size: 13px; color: var(--text-muted); }
+
+  footer { max-width: 1100px; margin: 0 auto; padding: 2rem; font-size: 12px; color: var(--text-muted); text-align: center; }
+
+  @media print {
+    nav { display: none; }
+    body { background: #fff; }
+    .module { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-badge">Procurement Proposal</div>
+    <h1>SmartLog Admin Server — Central Server Hardware Setup</h1>
+    <div class="sub">On-premises application server running the SmartLog Web Application, database, and background services</div>
+    <div class="header-meta">
+      <div><span>Prepared by</span>SmartLog Implementation Team</div>
+      <div><span>Date</span>April 2026</div>
+      <div><span>Version</span>1.0</div>
+      <div><span>Scope</span>One server per school site</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="#summary">Executive Summary</a>
+    <a href="#role">Server Role</a>
+    <a href="#configuration">Proposed Configuration</a>
+    <a href="#justification">Justification</a>
+    <a href="#capacity">Capacity</a>
+    <a href="#cost">Cost Summary</a>
+    <a href="#risk">Risk Mitigation</a>
+    <a href="#timeline">Implementation</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ========================= EXECUTIVE SUMMARY ========================= -->
+<div class="module" id="summary">
+  <div class="module-header">
+    <div class="module-icon">📋</div>
+    <div class="module-title">Executive Summary</div>
+  </div>
+  <div class="module-body">
+    <p>We propose a <strong>dedicated on-premises server bundle</strong> for the SmartLog Web Application — the central hub that all gate scanner stations connect to. The server hosts the admin portal, ingests QR scan submissions from gate devices, manages the SQL Server database, dispatches SMS notifications to parents, and runs daily background jobs for alerts and data archival.</p>
+
+    <p>The bundle is built around a <strong>dedicated mini-PC</strong> (Intel Core i5, 12th Gen) with 16 GB RAM and a 512 GB NVMe SSD — sufficient to run SQL Server and the ASP.NET Core web application simultaneously under sustained load. It is paired with a <strong>1,500 VA UPS</strong> (larger than the gate scanner UPS) to provide a clean database shutdown window during power outages, an <strong>external backup drive</strong> for weekly SQL Server backups, and a <strong>USB-to-serial adapter</strong> for the optional GSM modem SMS path.</p>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">Per school site</div>
+        <div class="value">₱57,800</div>
+        <div class="sub">One-time capital cost (indicative)</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Software licensing</div>
+        <div class="value">₱0</div>
+        <div class="sub">SQL Server Express 2022 + .NET 8 Runtime (free)</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Supported concurrent gates</div>
+        <div class="value">Up to 8</div>
+        <div class="sub">Scanner PCs connecting simultaneously</div>
+      </div>
+    </div>
+
+    <div class="callout good">
+      <strong>Why a dedicated server (not a shared laptop or workstation)</strong>
+      The admin server must run continuously during school hours and handle sustained concurrent requests from multiple gate scanners while simultaneously processing SMS background jobs every 5 seconds. A dedicated always-on server avoids the thermal throttling and availability risks of a laptop used for both server duties and daily administrative tasks.
+    </div>
+  </div>
+</div>
+
+<!-- ========================= SERVER ROLE ========================= -->
+<div class="module" id="role">
+  <div class="module-header">
+    <div class="module-icon">🖥️</div>
+    <div class="module-title">What the Admin Server Does</div>
+  </div>
+  <div class="module-body">
+    <p>The SmartLog Web Application is an ASP.NET Core 8 monolithic application that fulfills several distinct roles simultaneously. All of these run on the same server machine:</p>
+
+    <div class="role-grid">
+      <div class="role-card">
+        <div class="role-title">Admin Portal (Razor Pages)</div>
+        <div class="role-desc">Browser-based management UI for administrators, teachers, and security staff. Handles student records, QR generation, enrollment, attendance reports, SMS templates, and system configuration.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">Scan Ingestion API</div>
+        <div class="role-desc">REST endpoint (<code>POST /api/v1/scans</code>) that receives QR scan submissions from all gate scanner PCs. Validates HMAC signatures, checks duplicates, records attendance, and queues parent SMS — all within a single HTTP request.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">SQL Server Database</div>
+        <div class="role-desc">Stores all persistent data: student records, scan logs, SMS queues, audit logs, calendar events, program and section data, profile pictures, and retention archives. This is the most memory-intensive workload on the server.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">SMS Worker Service</div>
+        <div class="role-desc">Background service that polls the SMS queue every 5 seconds, dispatches messages via GSM modem (serial port) or Semaphore (cloud API), retries failures with exponential backoff, and logs delivery outcomes.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">No-Scan Alert Service</div>
+        <div class="role-desc">Daily background job (runs at 18:10 by default) that identifies students who did not scan in today and queues a parent notification SMS for each. Checks scanner health before sending to avoid false alerts.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-title">Data Retention Service</div>
+        <div class="role-desc">Daily background job that purges old SMS logs, audit records, and scan history per configurable retention policies. Writes CSV archive files to disk before deletion for offline data recovery.</div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <strong>Network position in the deployment</strong>
+      The server sits on the school's dedicated SmartLog LAN switch alongside the gate scanner PCs. It holds a static LAN IP (e.g., <code>192.168.10.1</code>) on its wired Ethernet port, which scanner devices connect to for scan submission. The server's Wi-Fi or second Ethernet port connects to the school router for internet access — required for Semaphore SMS and software updates. These two network paths are kept on separate subnets.
+    </div>
+  </div>
+</div>
+
+<!-- ========================= PROPOSED CONFIGURATION ========================= -->
+<div class="module" id="configuration">
+  <div class="module-header">
+    <div class="module-icon">🧩</div>
+    <div class="module-title">Proposed Configuration (Per School Site)</div>
+  </div>
+  <div class="module-body">
+
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Specification</th>
+          <th class="center">Qty</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Server PC</strong></td>
+          <td>Mini-PC, Intel Core i5-12400 (6C/12T, 18 MB cache), 16 GB DDR4 RAM, 512 GB NVMe SSD, dual Ethernet or Ethernet + Wi-Fi, Windows 11 Pro</td>
+          <td class="center">1</td>
+          <td>Hosts the SmartLog Web Application (ASP.NET Core 8) and SQL Server Express 2022. Runs continuously during school hours. Dual network adapters allow simultaneous LAN (scanner devices) and internet (Semaphore SMS / updates) connectivity.</td>
+        </tr>
+        <tr>
+          <td><strong>UPS</strong></td>
+          <td>1,500 VA / 900 W line-interactive UPS</td>
+          <td class="center">1</td>
+          <td>Protects the SQL Server database from corruption during power outages. A 1,500 VA unit provides 15–25 minutes of runtime on this hardware load — sufficient for the application to flush the SMS queue, complete in-progress transactions, and initiate a clean SQL Server shutdown. Larger than the gate scanner UPS by design.</td>
+        </tr>
+        <tr>
+          <td><strong>External backup drive</strong></td>
+          <td>1 TB USB 3.0 portable HDD or SSD</td>
+          <td class="center">1</td>
+          <td>Weekly SQL Server full backup target. Backups are scripted via Windows Task Scheduler. Drive remains plugged in permanently; off-site copy (USB stick or cloud) is recommended at least monthly. Protects against SSD failure, which is the primary data-loss scenario for a mini-PC server.</td>
+        </tr>
+        <tr>
+          <td><strong>USB-to-serial adapter</strong></td>
+          <td>FTDI FT232R or CH340 USB-to-RS232 adapter (drivers included)</td>
+          <td class="center">1</td>
+          <td>Connects the GSM modem to the server via serial (COM port). Required when using the GSM modem SMS path (SIM-based, ₱1/SMS). Not required if using Semaphore (cloud API) as the sole SMS provider.</td>
+        </tr>
+        <tr>
+          <td><strong>Display monitor</strong></td>
+          <td>21"–24" 1080p IPS monitor, HDMI input</td>
+          <td class="center">1</td>
+          <td>Admin workstation display. Used for server setup, configuration changes, and log monitoring. May be shared with an existing admin workstation using a KVM switch if preferred.</td>
+        </tr>
+        <tr>
+          <td><strong>Keyboard + mouse</strong></td>
+          <td>Wired USB keyboard and mouse combo</td>
+          <td class="center">1</td>
+          <td>Local console access for initial setup, Windows updates, and emergency recovery. May be disconnected after setup if remote desktop access (RDP) is used for day-to-day administration.</td>
+        </tr>
+        <tr>
+          <td><strong>Software stack</strong></td>
+          <td>SQL Server Express 2022 (free), .NET 8 Runtime (free), Windows 11 Pro (bundled with PC)</td>
+          <td class="center">—</td>
+          <td>No additional software licensing cost. SQL Server Express 2022 supports up to 10 GB per database — sufficient for several years of school-scale attendance and SMS data. See Capacity section for projections.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Optional Add-ons (Recommended for Higher Reliability)</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Specification</th>
+          <th class="center">Qty</th>
+          <th>When to include</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>4G LTE USB dongle</strong></td>
+          <td>ZTE MF833V or Huawei E3372H-320 (Globe/Smart SIM)</td>
+          <td class="center">1</td>
+          <td>Internet failover if the school's Wi-Fi or main router goes down. Keeps Semaphore SMS delivery active and allows remote admin access even during school network outages. Recommended for schools with unreliable internet.</td>
+        </tr>
+        <tr>
+          <td><strong>4G GSM modem</strong></td>
+          <td>4G USB modem with SIM (replaces SIM800C 2G modem)</td>
+          <td class="center">1</td>
+          <td>Required if local SMS via modem is desired. The SIM800C (2G) modem is no longer reliable in the Philippines since Smart shut down their 2G network in 2024. A 4G replacement modem is needed for GSM modem SMS to work reliably.</td>
+        </tr>
+        <tr>
+          <td><strong>UPS management cable</strong></td>
+          <td>USB-to-RJ45 UPS management cable + UPS software (e.g., PowerChute)</td>
+          <td class="center">1</td>
+          <td>Enables the UPS to trigger a graceful Windows shutdown automatically when battery reaches a threshold. Without this, the UPS buys time but an operator must manually initiate shutdown. Recommended for unattended server operation.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout info">
+      <strong>Network switch (shared with gate scanner proposal)</strong>
+      The admin server connects to the same 8-port Gigabit switch proposed in the SmartLog Scanner Hardware Proposal. No additional switch is required — the server occupies one port on that shared site switch. If a separate server room is used, a short Cat6 run from the server room to the gate switch location may be needed.
+    </div>
+  </div>
+</div>
+
+<!-- ========================= JUSTIFICATION ========================= -->
+<div class="module" id="justification">
+  <div class="module-header">
+    <div class="module-icon">💡</div>
+    <div class="module-title">Technical Justification</div>
+  </div>
+  <div class="module-body">
+
+    <h3>Why 16 GB RAM (not 8 GB)</h3>
+    <p>The server runs two memory-intensive processes simultaneously:</p>
+    <ul>
+      <li><strong>SQL Server Express:</strong> Microsoft recommends a minimum of 4 GB RAM for SQL Server. In practice, SQL Server will consume 4–8 GB of buffer pool memory to cache frequently accessed data pages (student records, scan history, SMS queue) — this is normal and intentional behavior. Constraining SQL Server to 8 GB total means only ~4 GB remains for the OS and web application.</li>
+      <li><strong>ASP.NET Core web application:</strong> Under normal load (several concurrent admin users + active scanner connections), the web application consumes 500 MB–1 GB. Peaks occur during report exports and end-of-day No-Scan Alert processing.</li>
+    </ul>
+    <p>16 GB RAM ensures SQL Server can cache working data in memory, the web application has headroom for request bursts, and the OS has breathing room — with no risk of memory pressure causing slow query times or request drops.</p>
+
+    <h3>Why 512 GB NVMe SSD (not 256 GB)</h3>
+    <p>The server's storage is consumed by several distinct workloads:</p>
+    <ul>
+      <li><strong>OS + SQL Server + application:</strong> ~40–60 GB for Windows 11, SQL Server binaries, .NET Runtime, and the web application.</li>
+      <li><strong>SQL Server database:</strong> Capped at 10 GB per database under SQL Server Express. For a school with 1,000 students generating ~5 scans/day for 200 school days/year, the scan table grows by ~3–4 million rows/year — well within the 10 GB Express limit even over 5 years.</li>
+      <li><strong>Profile pictures:</strong> Student, faculty, and admin profile pictures stored on disk. At ~100 KB average compressed JPEG per student, 1,000 students = ~100 MB.</li>
+      <li><strong>Retention CSV archives:</strong> Daily SMS and scan archives written before data deletion. At conservative estimates, ~50–100 MB/month of CSV data.</li>
+      <li><strong>SQL Server backup files:</strong> If backups are stored locally before copying to the external drive, full weekly backups may reach 1–5 GB each.</li>
+      <li><strong>Windows updates and logs:</strong> Windows Update cache and Serilog log files.</li>
+    </ul>
+    <p>A 256 GB SSD becomes tight within 2–3 years once all the above are factored in. A 512 GB SSD provides comfortable headroom for the full 5-year deployment lifecycle.</p>
+
+    <h3>Why a 1,500 VA UPS (not 650 VA like the gate scanners)</h3>
+    <p>The admin server is the single most important machine in the deployment. Unlike a gate scanner — which can stop and lose a few scans to its local queue — the admin server losing power mid-transaction risks SQL Server database corruption:</p>
+    <ul>
+      <li>SQL Server uses write-ahead logging (WAL), but an abrupt power loss can corrupt the transaction log, requiring database recovery that may fail on an uninitialized machine.</li>
+      <li>The SMS worker may be mid-send when power is cut; incomplete SMS queue records require manual cleanup.</li>
+      <li>Retention archive writes (CSV files) may be partially written, producing incomplete archive files.</li>
+    </ul>
+    <p>A 1,500 VA / 900 W UPS provides approximately 15–25 minutes of runtime for this hardware load — enough for automatic graceful shutdown via UPS management software, without relying on an operator being present. The 650 VA units used at gate scanners would only provide 5–8 minutes, which is marginal for a database shutdown sequence. The additional cost (~₱2,000 more than a 650 VA unit) is the best-value reliability investment in this proposal.</p>
+
+    <h3>Why a dedicated external backup drive</h3>
+    <p>A mini-PC SSD is a single storage device with no redundancy. While NVMe SSDs are reliable, any storage device can fail. SQL Server databases stored only on the internal SSD represent a single point of failure for all school attendance records, student data, and SMS logs. An external USB drive provides:</p>
+    <ul>
+      <li><strong>Weekly full backups:</strong> scheduled via Windows Task Scheduler using SQL Server's native backup to <code>.bak</code> file.</li>
+      <li><strong>Point-in-time recovery:</strong> if the internal SSD fails, the school can restore from the most recent weekly backup on a replacement machine.</li>
+      <li><strong>Offline retention archives:</strong> CSV files from the retention service can be copied to the external drive for long-term offline storage beyond the server's own disk.</li>
+    </ul>
+
+    <h3>Why SQL Server Express (not Standard)</h3>
+    <p>SQL Server Express 2022 is free with no licensing cost and supports up to 10 GB per user database. For a school with 300–1,000 students running SmartLog, the total database size is projected to remain well below 5 GB for the first 3–5 years. If a school expands significantly (multiple campuses, very large enrollment), migration to SQL Server Standard becomes an option — but at deployment time, Express eliminates software licensing cost entirely. The ASP.NET Core application and .NET 8 Runtime are open-source and also free.</p>
+
+    <h3>Why a mini-PC (not a full tower server or NAS)</h3>
+    <ul>
+      <li><strong>Appropriate scale:</strong> this is a single-school, single-tenant application with a relatively light database workload. Enterprise server hardware (rack-mount, redundant PSUs, hot-swap drives) is overspecified and significantly more expensive.</li>
+      <li><strong>Low power consumption:</strong> a mini-PC with a 12th Gen Intel i5 consumes ~15–25 W at idle, compared to 100–200 W for a tower workstation. For an always-on server, this represents meaningful electricity savings over 5 years.</li>
+      <li><strong>Thermal reliability:</strong> unlike a laptop, a mini-PC maintains rated CPU clock speeds indefinitely without throttling, as its thermal design targets continuous (not burst) operation.</li>
+      <li><strong>Compact footprint:</strong> fits in a server closet, admin office cabinet, or on a desk shelf without requiring dedicated rack space.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ========================= CAPACITY ========================= -->
+<div class="module" id="capacity">
+  <div class="module-header">
+    <div class="module-icon">📊</div>
+    <div class="module-title">Capacity &amp; Data Growth</div>
+  </div>
+  <div class="module-body">
+
+    <h3>Database size projections</h3>
+    <p>All figures assume SQL Server Express 2022 (10 GB per database limit). Data below is conservative — actual figures depend on school size, SMS volume, and retention policy settings.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data category</th>
+          <th>Estimated size</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Student &amp; enrollment records</td>
+          <td>~5–20 MB</td>
+          <td>Even at 1,000 students with full enrollment history, this is negligible.</td>
+        </tr>
+        <tr>
+          <td>Scan records</td>
+          <td>~20–40 MB/year</td>
+          <td>At 2 scans/student/day × 200 school days × 1,000 students = 400,000 rows/year. Each row ~50–100 bytes.</td>
+        </tr>
+        <tr>
+          <td>SMS queue &amp; logs</td>
+          <td>~30–60 MB/year</td>
+          <td>Depends on SMS volume (entry/exit opt-in rate and broadcast frequency). Purged on a configurable retention schedule.</td>
+        </tr>
+        <tr>
+          <td>Audit logs</td>
+          <td>~10–20 MB/year</td>
+          <td>Admin actions, login history, QR regenerations. Also subject to retention purge.</td>
+        </tr>
+        <tr>
+          <td>QR codes (payload + image)</td>
+          <td>~100–200 MB</td>
+          <td>Base64-encoded QR images stored in the database. One row per student; grows slowly (only on re-issuance).</td>
+        </tr>
+        <tr>
+          <td><strong>Total projected (5-year, 1,000 students)</strong></td>
+          <td><strong>~500 MB–1.5 GB</strong></td>
+          <td>Well within the 10 GB Express limit. Larger schools or higher SMS volume may reach 2–4 GB. If the school approaches the limit, retention policies can be tightened to purge older records earlier.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Concurrent connection capacity</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Workload</th>
+          <th>Capacity</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Gate scanner connections</td>
+          <td>Up to 8 concurrent</td>
+          <td>ASP.NET Core handles async HTTP efficiently; 8 gate PCs simultaneously posting scans will not saturate a 6-core i5.</td>
+        </tr>
+        <tr>
+          <td>Concurrent admin portal users</td>
+          <td>10–20 simultaneous</td>
+          <td>More than sufficient for typical school admin staff headcount.</td>
+        </tr>
+        <tr>
+          <td>SMS dispatch rate</td>
+          <td>~1 SMS per 3 seconds (GSM modem) / unlimited (Semaphore)</td>
+          <td>Bottleneck is the GSM modem AT command delay, not the server CPU.</td>
+        </tr>
+        <tr>
+          <td>Peak scan ingestion</td>
+          <td>~200–400 scan POST requests/minute</td>
+          <td>At 8 gates × 50 scans/min each; far below ASP.NET Core's throughput ceiling on this hardware.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <strong>SQL Server Express limit: 10 GB per database</strong>
+      SQL Server Express enforces a hard 10 GB cap per user database. If a school enables high-volume SMS (entry + exit for all students) without configuring retention policies, the SMS logs could grow faster than projected. The SmartLog Web Application's retention settings page (<code>/Admin/Settings/Retention</code>) should be configured at deployment time to keep SMS logs and audit data within a sensible retention window (e.g., 90–180 days for SMS logs). Scan records, being the attendance source of truth, may warrant a longer retention period or annual archival before deletion.
+    </div>
+  </div>
+</div>
+
+<!-- ========================= COST SUMMARY ========================= -->
+<div class="module" id="cost">
+  <div class="module-header">
+    <div class="module-icon">💰</div>
+    <div class="module-title">Cost Summary (Per School Site)</div>
+  </div>
+  <div class="module-body">
+
+    <p>All amounts in Philippine Peso (₱). Prices are <em>indicative estimates</em> and should be validated against current vendor quotations at procurement time. Software licensing costs are ₱0 — all required software (SQL Server Express 2022, .NET 8 Runtime, ASP.NET Core) is free.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="num">Unit Price</th>
+          <th class="center">Qty</th>
+          <th class="num">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mini-PC (Intel Core i5-12400, 16 GB DDR4, 512 GB NVMe, Windows 11 Pro)</td>
+          <td class="num">₱38,000</td>
+          <td class="center">1</td>
+          <td class="num">₱38,000</td>
+        </tr>
+        <tr>
+          <td>1,500 VA / 900 W line-interactive UPS</td>
+          <td class="num">₱6,500</td>
+          <td class="center">1</td>
+          <td class="num">₱6,500</td>
+        </tr>
+        <tr>
+          <td>1 TB USB 3.0 portable backup drive</td>
+          <td class="num">₱3,500</td>
+          <td class="center">1</td>
+          <td class="num">₱3,500</td>
+        </tr>
+        <tr>
+          <td>USB-to-serial adapter (FTDI / CH340)</td>
+          <td class="num">₱600</td>
+          <td class="center">1</td>
+          <td class="num">₱600</td>
+        </tr>
+        <tr>
+          <td>21"–24" 1080p IPS monitor</td>
+          <td class="num">₱7,000</td>
+          <td class="center">1</td>
+          <td class="num">₱7,000</td>
+        </tr>
+        <tr>
+          <td>Wired USB keyboard + mouse combo</td>
+          <td class="num">₱1,200</td>
+          <td class="center">1</td>
+          <td class="num">₱1,200</td>
+        </tr>
+        <tr>
+          <td>SQL Server Express 2022 + .NET 8 Runtime</td>
+          <td class="num">₱0</td>
+          <td class="center">—</td>
+          <td class="num">₱0</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="3">TOTAL PER SCHOOL SITE</td>
+          <td class="num">₱56,800</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Optional Add-ons</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="num">Additional cost</th>
+          <th>When to include</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>4G LTE USB dongle (Globe/Smart SIM, data plan separate)</td>
+          <td class="num">+₱2,500</td>
+          <td>Schools with unreliable main internet; keeps Semaphore SMS active during Wi-Fi outages.</td>
+        </tr>
+        <tr>
+          <td>4G GSM modem replacement (for local SIM SMS path)</td>
+          <td class="num">+₱3,500</td>
+          <td>Required if local modem SMS will be used. Replaces the SIM800C 2G modem which no longer works reliably in PH.</td>
+        </tr>
+        <tr>
+          <td>UPS management USB cable + shutdown software</td>
+          <td class="num">+₱500</td>
+          <td>Enables automatic graceful shutdown when UPS battery is low. Recommended for any unattended server deployment.</td>
+        </tr>
+        <tr>
+          <td>Second external backup drive (offsite rotation)</td>
+          <td class="num">+₱3,500</td>
+          <td>Two-drive rotation allows one drive to be kept offsite at all times. Protects against physical loss (fire, theft).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Combined Deployment Cost (Server + Gates)</h3>
+    <p>Total cost for a complete SmartLog deployment including the admin server, gate scanner bundles, and shared site network infrastructure:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Deployment configuration</th>
+          <th class="num">Admin server</th>
+          <th class="num">Gate bundles</th>
+          <th class="num">Shared LAN</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Server + 1 gate (minimal)</td>
+          <td class="num">₱56,800</td>
+          <td class="num">₱57,500</td>
+          <td class="num">₱2,500</td>
+          <td class="num"><strong>₱116,800</strong></td>
+        </tr>
+        <tr>
+          <td>Server + 2 gates <span style="font-size: 11px; color: var(--text-muted);">— typical school deployment</span></td>
+          <td class="num">₱56,800</td>
+          <td class="num">₱115,000</td>
+          <td class="num">₱2,500</td>
+          <td class="num"><strong>₱174,300</strong></td>
+        </tr>
+        <tr>
+          <td>Server + 3 gates</td>
+          <td class="num">₱56,800</td>
+          <td class="num">₱172,500</td>
+          <td class="num">₱2,500</td>
+          <td class="num"><strong>₱231,800</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size: 13px; color: var(--text-muted); margin-top: .5rem;">Gate bundle cost per gate: ₱57,500 (see SmartLog Scanner Hardware Procurement Proposal for itemized breakdown).</p>
+  </div>
+</div>
+
+<!-- ========================= RISK MITIGATION ========================= -->
+<div class="module" id="risk">
+  <div class="module-header">
+    <div class="module-icon">🛡️</div>
+    <div class="module-title">Risk Mitigation</div>
+  </div>
+  <div class="module-body">
+
+    <table>
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Mitigation built into this proposal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Power outage corrupts SQL Server database</td>
+          <td>1,500 VA UPS provides 15–25 min runtime. Combined with UPS management software, the server initiates a graceful SQL Server shutdown automatically before battery depletes. No manual operator intervention required.</td>
+        </tr>
+        <tr>
+          <td>Internal SSD failure causes data loss</td>
+          <td>Weekly full SQL Server backups to the external USB drive. Restoring a weekly backup to a replacement machine recovers all student records, scan history, and configuration. Maximum data loss is one week of new scan records (recoverable from paper log if needed).</td>
+        </tr>
+        <tr>
+          <td>Database reaches SQL Server Express 10 GB limit</td>
+          <td>Retention policies in the admin UI control data growth. SMS logs and audit records have configurable retention windows. CSV archives of purged data are written to disk before deletion, preserving historical data in a queryable format.</td>
+        </tr>
+        <tr>
+          <td>Internet outage prevents Semaphore SMS delivery</td>
+          <td>SmartLog supports a GSM modem as a local fallback. The SMS worker respects a per-provider routing config and can fall back to the modem automatically. The optional 4G LTE USB dongle provides internet failover independent of the school's main router.</td>
+        </tr>
+        <tr>
+          <td>Server is unavailable during school hours</td>
+          <td>Gate scanner PCs include a local offline queue that stores accepted scans during server downtime. When the server comes back online, the scanner app automatically retransmits queued scans. No scans are lost due to a temporary server outage.</td>
+        </tr>
+        <tr>
+          <td>Unauthorised physical access to the server</td>
+          <td>Server should be placed in a locked cabinet or server room. Windows 11 Pro includes BitLocker full-disk encryption — recommended to enable, protecting student PII on the SSD even if the machine is physically removed from the premises.</td>
+        </tr>
+        <tr>
+          <td>Hardware obsolescence over 5-year lifecycle</td>
+          <td>All components are commodity x86 hardware. The mini-PC runs standard Windows 11 Pro — replacement units, RAM upgrades, and SSD replacements are available from any local PC retailer throughout the deployment lifecycle.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================= IMPLEMENTATION ========================= -->
+<div class="module" id="timeline">
+  <div class="module-header">
+    <div class="module-icon">🚀</div>
+    <div class="module-title">Implementation Notes</div>
+  </div>
+  <div class="module-body">
+
+    <h3>Software installation sequence</h3>
+    <ol>
+      <li>Install Windows 11 Pro and apply updates.</li>
+      <li>Install SQL Server Express 2022 and configure the SQL Server service to start automatically.</li>
+      <li>Install .NET 8 ASP.NET Core Runtime (server hosting bundle).</li>
+      <li>Deploy the SmartLog Web Application to <code>C:\SmartLog\</code> and configure it as a Windows Service via <code>sc create</code> or the included deployment script.</li>
+      <li>Set environment variables: <code>SMARTLOG_DB_CONNECTION</code>, <code>SMARTLOG_HMAC_SECRET_KEY</code>, <code>SMARTLOG_SEED_PASSWORD</code>.</li>
+      <li>Run the application once to trigger EF Core database migrations and seed default roles.</li>
+      <li>Configure Windows Firewall to allow inbound connections on port 5051 (scanner LAN) and block external access on the internet-facing adapter.</li>
+      <li>Set up Windows Task Scheduler for the weekly SQL Server backup script.</li>
+      <li>Configure UPS management software for automatic graceful shutdown at 20% battery remaining.</li>
+    </ol>
+
+    <h3>Network configuration</h3>
+    <ul>
+      <li>Assign static IP <code>192.168.10.1 / 255.255.255.0</code> (no gateway) on the Ethernet port connected to the SmartLog LAN switch.</li>
+      <li>Leave the Wi-Fi adapter on DHCP from the school router for internet access (Semaphore SMS, Windows Update).</li>
+      <li>If a 4G LTE dongle is included, configure it as the secondary internet adapter with a higher metric — it activates automatically only when the primary internet path is unreachable.</li>
+    </ul>
+
+    <h3>Procurement &amp; lead time</h3>
+    <ul>
+      <li>All components are available from local distributors (PC Express, DataBlitz, Lazada/Shopee Mall).</li>
+      <li>Estimated procurement lead time: <strong>1–2 weeks</strong> for stock items.</li>
+      <li>Server setup and software installation: approximately <strong>4–6 hours</strong> including OS installation, SQL Server, application deployment, and network configuration.</li>
+      <li>Full system commissioning (server + all gate PCs connected and tested): approximately <strong>1 day</strong>.</li>
+    </ul>
+
+    <h3>Warranty &amp; lifecycle</h3>
+    <ul>
+      <li>Standard manufacturer warranty: mini-PC 1–3 years (brand-dependent), UPS 2 years.</li>
+      <li>Expected operational lifecycle: <strong>5 years</strong> before hardware refresh.</li>
+      <li>Annual maintenance allowance recommended: ~5% of capital cost (~₱2,800/year) for UPS battery replacement (typically every 2–3 years), occasional peripheral replacement.</li>
+      <li>SQL Server Express 2022 is a current release supported by Microsoft through 2032.</li>
+    </ul>
+
+    <h3>Data privacy considerations (RA 10173)</h3>
+    <p>The admin server stores personally identifiable information (student names, LRN, parent phone numbers, profile pictures, attendance records). Under the Philippine Data Privacy Act:</p>
+    <ul>
+      <li>Enable BitLocker full-disk encryption on the server SSD.</li>
+      <li>Restrict physical access to the server room.</li>
+      <li>Limit admin portal access to authorized staff only (use the role-based access controls built into SmartLog).</li>
+      <li>Encrypt external backup drives containing database backups.</li>
+      <li>Apply retention policies to purge personal data that is no longer needed for operational purposes.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ========================= APPROVAL ========================= -->
+<div class="module">
+  <div class="module-header">
+    <div class="module-icon">✍️</div>
+    <div class="module-title">Approval Request</div>
+  </div>
+  <div class="module-body">
+    <p>We respectfully request approval for the procurement of the admin server hardware described in this proposal, at an indicative cost of <strong>₱56,800 per school site</strong>. This enables deployment of the SmartLog Web Application as a reliable, on-premises server capable of running continuously during school hours while hosting the database, admin portal, and SMS background services.</p>
+
+    <p>For the typical two-gate school deployment (server + two gate scanner bundles + shared LAN switch), the total indicative system investment is <strong>₱174,300</strong>. Pending approval, the implementation team will obtain firm vendor quotations, finalise procurement, and proceed with installation per the schedule outlined above.</p>
+
+    <table style="margin-top: 1.5rem;">
+      <tbody>
+        <tr>
+          <td style="width: 50%; padding: 1.5rem;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; font-weight: 600;">Prepared by</div>
+            <div style="margin-top: 2rem; border-top: 1px solid var(--text); padding-top: 4px; font-size: 13px;">Name &amp; Signature / Date</div>
+          </td>
+          <td style="width: 50%; padding: 1.5rem;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; font-weight: 600;">Approved by</div>
+            <div style="margin-top: 2rem; border-top: 1px solid var(--text); padding-top: 4px; font-size: 13px;">Name &amp; Signature / Date</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  SmartLog Admin Server Hardware Procurement Proposal · Indicative pricing as of April 2026 · Subject to vendor quotation
+</footer>
+
+</body>
+</html>

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartLog.Web.Data;
 
@@ -11,9 +12,11 @@ using SmartLog.Web.Data;
 namespace SmartLog.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260427140915_DecoupleAuditLogFromAspNetUsers")]
+    partial class DecoupleAuditLogFromAspNetUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -587,25 +590,12 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("AppVersion")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int?>("BatteryPercent")
-                        .HasColumnType("int");
-
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
-
-                    b.Property<bool?>("IsCharging")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("LastHeartbeatAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LastSeenAt")
                         .HasColumnType("datetime2");
@@ -619,17 +609,6 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NetworkType")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("OsVersion")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int?>("QueuedScansCount")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("RegisteredAt")
                         .ValueGeneratedOnAdd()

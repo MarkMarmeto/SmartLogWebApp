@@ -1,9 +1,10 @@
 # EP0013: QR Code Permanence & Card Redesign
 
-> **Status:** Done
+> **Status:** In Progress
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16
+> **Re-opened:** 2026-04-27 (V2.1 — landscape card redesign + bulk print + branding settings)
 > **Target Release:** V2 — Phase 2 (Feature Enhancements)
 
 ## Summary
@@ -160,13 +161,17 @@ The current QR card template displays S.Y. (School Year), Grade, and Section —
 
 | ID | Title | Points | Status |
 |----|-------|--------|--------|
-| [US0077](../stories/US0077-cr80-card-template.md) | CR80 Card Template Redesign | 5 | Done |
-| [US0078](../stories/US0078-enrollment-sticker-print.md) | Enrollment Sticker Print Page | 3 | Done |
+| [US0077](../stories/US0077-cr80-card-template.md) | CR80 Card Template Redesign | 5 | Done (superseded by US0112) |
+| [US0078](../stories/US0078-enrollment-sticker-print.md) | Enrollment Sticker Print Page | 3 | Done (removed by US0110) |
 | [US0079](../stories/US0079-qr-invalidation-audit.md) | QR Invalidation & Audit Trail | 3 | Done |
 | [US0080](../stories/US0080-qr-regeneration-confirmation.md) | QR Regeneration with Confirmation Dialog | 3 | Done |
 | [US0081](../stories/US0081-invalidate-without-regeneration.md) | Invalidate QR Without Regeneration | 2 | Done |
+| [US0110](../stories/US0110-remove-enrollment-sticker.md) | Remove Enrollment Sticker Feature | 1 | Done |
+| [US0111](../stories/US0111-school-branding-settings.md) | School Branding Settings (Logo, Name, Return Address) | 3 | Draft |
+| [US0112](../stories/US0112-id-card-landscape-redesign.md) | ID Card Landscape Redesign (supersedes US0077) | 5 | Draft |
+| [US0113](../stories/US0113-bulk-print-id-cards-per-section.md) | Bulk Print ID Cards per Section (supersedes US0022) | 5 | Draft |
 
-**Total:** 16 story points across 5 stories
+**Total:** 30 story points across 9 stories (3 in Draft for V2.1 wave)
 
 ---
 
@@ -189,3 +194,4 @@ The current QR card template displays S.Y. (School Year), Grade, and Section —
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-04-16 | Claude | Initial epic created from V2 feature brainstorm |
+| 2026-04-27 | Claude | Re-opened — landscape single-sided redesign (US0112 supersedes US0077), branding settings (US0111), bulk print per section (US0113 supersedes US0022). Sticker scope already removed by US0110. |

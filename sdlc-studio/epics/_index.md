@@ -1,7 +1,7 @@
 # Epic Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-26
+**Last Updated:** 2026-04-27
 
 ---
 
@@ -13,11 +13,11 @@
 | V1 Phase 1 (Foundation) | 4 |
 | V1 Phase 2 (Core) | 2 |
 | V1 Phase 3 (Enhancement) | 2 |
-| V2 Phase 2 (Feature Enhancements) | 6 |
-| V3 Phase 3 (Commercial Readiness) | 3 |
+| V2 Phase 2 (Feature Enhancements) | 7 |
+| V3 Phase 3 (Commercial Readiness) | 2 |
 | V1 Stories Created | 52 |
-| V2 Stories Created | 51 |
-| V2 Story Points | ~170 |
+| V2 Stories Created | 55 |
+| V2 Story Points | ~180 |
 | Active Bugs | 3 |
 
 ---
@@ -38,10 +38,10 @@
 | [EP0010](./EP0010-programs-sections-overhaul.md) | Programs & Sections Overhaul | V2-P2 | Done | 16 |
 | [EP0011](./EP0011-multi-camera-scanning.md) | Multi-Camera Scanning | V2-P2 | Done | 11 |
 | [EP0012](./EP0012-visitor-pass-system.md) | Visitor Pass System | V2-P2 | Done | 5 |
-| [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | Done | 5 |
+| [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | In Progress | 9 |
 | [EP0014](./EP0014-product-licensing.md) | Product Licensing | V3-P3 | Draft | TBD |
 | [EP0015](./EP0015-application-auto-update.md) | Application Auto-Update | V3-P3 | Draft | TBD |
-| [EP0016](./EP0016-pii-ra10173-compliance.md) | PII & RA 10173 Compliance | V3-P3 | Draft | TBD |
+| [EP0016](./EP0016-pii-ra10173-compliance.md) | PII & RA 10173 Compliance — Consent & Notice (Floor) | V2-P2 | Ready | 4 |
 | [EP0017](./EP0017-data-retention-archival.md) | Data Retention & Archival | V2-P2 | Done | 9 |
 
 ---
@@ -78,11 +78,15 @@ V2 — Phase 2 (Feature Enhancements)
 │  EP0017: Data Retention ←── EP0006, EP0007, EP0009         │
 └────────────────────────────────────────────────────────────┘
 
+V2 — Phase 2 (Feature Enhancements) — continued
+┌────────────────────────────────────────────────────────────┐
+│  EP0016: PII Compliance (Floor) ←── EP0003, EP0017         │
+└────────────────────────────────────────────────────────────┘
+
 V3 — Phase 3 (Commercial Readiness) — DEFERRED
 ┌────────────────────────────────────────────────────────────┐
 │  EP0014: Licensing ←── All V2 Epics                        │
 │  EP0015: Auto-Update ←── EP0014                            │
-│  EP0016: PII Compliance ←── EP0003                         │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,8 +145,9 @@ New features for commercial readiness. Builds on V1 foundation.
 | EP0012 | Visitor Pass System — Reusable anonymous passes, SMARTLOG-V: prefix, no SMS | Amy, Gary | Both |
 | EP0013 | QR Code Permanence & Card Redesign — CR80 card, enrollment stickers, invalidation audit | Amy | WebApp |
 | EP0017 | Data Retention & Archival — Per-entity retention, AuditLog legal-hold, archive-to-file export | Tony, Amy | WebApp |
+| EP0016 | PII & RA 10173 Compliance — Consent & Notice (Floor) — Student consent fields, bilingual privacy notice page; subject-rights deferred to a future Epic | Amy, Tony, Parents | WebApp |
 
-**Stories Created:** 30 (118 story points)
+**Stories Created:** 34 (128 story points)
 
 ---
 
@@ -154,9 +159,10 @@ Licensing, distribution, and legal compliance for commercial launch.
 |------|-------------|----------|---------|
 | EP0014 | Product Licensing — Online activation, JWT, feature gating | Tony | Both + New |
 | EP0015 | Application Auto-Update — GitHub Releases via license server proxy | Tony | Both |
-| EP0016 | PII & RA 10173 Compliance — Consent, data retention, privacy policy | Amy, Tony | WebApp |
 
-**Estimated Stories:** 18-24
+**Estimated Stories:** 12-16
+
+> Note: EP0016 (PII & RA 10173 Compliance) was originally V3-deferred. On 2026-04-27 it was activated for V2.1 with a narrowed "consent + notice" floor. Subject-rights workflows (access, correction, erasure, objection, breach response) are tracked separately for a future Subject-Rights Epic.
 
 ---
 
@@ -197,3 +203,5 @@ Licensing, distribution, and legal compliance for commercial launch.
 | 2026-04-26 | NG-no-program implementation landed — US0103-US0110 all Done (schema migration, NG seed, Section UI toggle, Student.Program null-for-NG, broadcast NG branch, attendance NG filter, student display, enrollment sticker removed). |
 | 2026-04-26 | EP0017 marked Done — all 9 stories (US0094-US0102) implemented. All 6 bugs (BG0001-BG0006) fixed. 0 open bugs, 0 draft stories. Only EP0014-EP0016 (V3 deferred) remain unplanned. |
 | 2026-04-26 | Registry reconciled — US0084-US0087, US0089-US0093 confirmed implemented; EP0009 and EP0010 marked Done. EP0011 remains In Progress (US0088 Windows compat verification pending). |
+| 2026-04-27 | EP0013 re-opened — V2.1 card-redesign wave: US0111 (school branding settings), US0112 (landscape single-sided card, supersedes US0077), US0113 (bulk print per section, supersedes US0022). 13 story points drafted. |
+| 2026-04-27 | EP0016 activated for V2.1 — scope narrowed to "consent + notice" floor (retention removed, covered by EP0017; subject-rights deferred to future Epic). 4 stories US0114-US0117 drafted (10 points). Status Draft → Ready. |

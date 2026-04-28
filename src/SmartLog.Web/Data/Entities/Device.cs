@@ -39,6 +39,24 @@ public class Device
 
     public DateTime? LastSeenAt { get; set; }
 
+    // US0119: Heartbeat snapshot fields (overwrite-only, no history table)
+    [StringLength(50)]
+    public string? AppVersion { get; set; }
+
+    [StringLength(100)]
+    public string? OsVersion { get; set; }
+
+    public int? BatteryPercent { get; set; }
+
+    public bool? IsCharging { get; set; }
+
+    [StringLength(20)]
+    public string? NetworkType { get; set; }
+
+    public DateTime? LastHeartbeatAt { get; set; }
+
+    public int? QueuedScansCount { get; set; }
+
     // Navigation properties
     public virtual ApplicationUser? RegisteredByUser { get; set; }
     public virtual ICollection<Scan> Scans { get; set; } = new List<Scan>();
