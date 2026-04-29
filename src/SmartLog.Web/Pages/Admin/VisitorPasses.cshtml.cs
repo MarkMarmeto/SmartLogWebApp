@@ -20,17 +20,20 @@ public class VisitorPassesModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAuditService _auditService;
+    private readonly ITimezoneService _timezoneService;
 
     public VisitorPassesModel(
         IVisitorPassService visitorPassService,
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        IAuditService auditService)
+        IAuditService auditService,
+        ITimezoneService timezoneService)
     {
         _visitorPassService = visitorPassService;
         _context = context;
         _userManager = userManager;
         _auditService = auditService;
+        _timezoneService = timezoneService;
     }
 
     public List<VisitorPassViewModel> Passes { get; set; } = new();
@@ -161,8 +164,8 @@ public class VisitorPassesModel : PageModel
             CurrentStatus = p.CurrentStatus,
             IsActive = p.IsActive,
             IssuedAt = p.IssuedAt,
-            LastEntry = lastEntries.GetValueOrDefault(p.Id),
-            LastExit = lastExits.GetValueOrDefault(p.Id)
+            LastEntry = lastEntries.TryGetValue(p.Id, out var le) ? _timezoneService.ToPhilippinesTime(le) : null,
+            LastExit = lastExits.TryGetValue(p.Id, out var lx) ? _timezoneService.ToPhilippinesTime(lx) : null
         }).ToList();
     }
 

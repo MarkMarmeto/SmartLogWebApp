@@ -363,6 +363,10 @@ namespace SmartLog.Web.Migrations
                     b.Property<string>("PerformedByUserId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("PerformedByUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
@@ -372,6 +376,10 @@ namespace SmartLog.Web.Migrations
 
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
 
@@ -579,12 +587,25 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("AppVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("BatteryPercent")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<bool?>("IsCharging")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastHeartbeatAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LastSeenAt")
                         .HasColumnType("datetime2");
@@ -598,6 +619,17 @@ namespace SmartLog.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NetworkType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("OsVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("QueuedScansCount")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("RegisteredAt")
                         .ValueGeneratedOnAdd()
@@ -1610,23 +1642,6 @@ namespace SmartLog.Web.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("SmartLog.Web.Data.Entities.AuditLog", b =>
-                {
-                    b.HasOne("SmartLog.Web.Data.Entities.ApplicationUser", "PerformedByUser")
-                        .WithMany()
-                        .HasForeignKey("PerformedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("SmartLog.Web.Data.Entities.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("PerformedByUser");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SmartLog.Web.Data.Entities.CalendarEvent", b =>

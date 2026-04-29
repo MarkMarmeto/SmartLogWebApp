@@ -20,17 +20,20 @@ public class DevicesModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDeviceService _deviceService;
     private readonly IAuditService _auditService;
+    private readonly IDeviceHealthService _healthService;
 
     public DevicesModel(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IDeviceService deviceService,
-        IAuditService auditService)
+        IAuditService auditService,
+        IDeviceHealthService healthService)
     {
         _context = context;
         _userManager = userManager;
         _deviceService = deviceService;
         _auditService = auditService;
+        _healthService = healthService;
     }
 
     public List<Device> Devices { get; set; } = new();
@@ -55,6 +58,10 @@ public class DevicesModel : PageModel
     /// </summary>
     public Guid? RegeneratedDeviceId { get; set; }
 
+    // US0119 AC5: Health status per device, computed once per page render.
+    public Dictionary<Guid, DeviceHealthStatus> HealthByDeviceId { get; set; } = new();
+    public DeviceHealthThresholds Thresholds { get; set; } = new(120, 600);
+
     public async Task OnGetAsync()
     {
         var query = _context.Devices
@@ -71,6 +78,12 @@ public class DevicesModel : PageModel
             .Skip((PageNumber - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync();
+
+        Thresholds = await _healthService.GetThresholdsAsync();
+        var now = DateTime.UtcNow;
+        HealthByDeviceId = Devices.ToDictionary(
+            d => d.Id,
+            d => DeviceHealthService.ComputeStatusInternal(d.LastSeenAt, now, Thresholds));
     }
 
     public async Task<IActionResult> OnPostRevokeAsync(Guid id)

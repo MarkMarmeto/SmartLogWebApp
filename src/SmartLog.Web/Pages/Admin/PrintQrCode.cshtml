@@ -1,7 +1,7 @@
 @page "{id:guid}"
 @model SmartLog.Web.Pages.Admin.PrintQrCodeModel
 @{
-    ViewData["Title"] = "Print QR Code";
+    ViewData["Title"] = "Print ID Card";
     Layout = null;
 }
 
@@ -19,22 +19,14 @@
             padding: 24px;
         }
 
-        /* ── Screen controls ── */
         .controls {
-            max-width: 420px;
-            margin: 0 auto 20px;
+            max-width: 500px;
+            margin: 0 auto 24px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
-        .controls h1 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            flex: 1;
-        }
-
+        .controls h1 { font-size: 15px; font-weight: 600; color: #333; flex: 1; }
         .btn {
             padding: 8px 18px;
             border-radius: 6px;
@@ -47,224 +39,22 @@
             align-items: center;
             gap: 5px;
         }
-
         .btn-primary   { background: #2C5F5D; color: #fff; }
         .btn-secondary { background: #fff; color: #555; border: 1px solid #ccc; }
         .btn:hover     { opacity: .85; }
 
-        /* ── Card wrapper ── */
+        /* Screen: scale the CR80 card so it's legible */
         .card-wrap {
-            /* CR80 standard: 85.6mm × 53.98mm — display at 3× screen scale */
-            max-width: 324px; /* 85.6mm × 3.787px/mm ≈ 324px */
+            /* 85.6mm × 3.779px/mm ≈ 323px */
+            width: 323px;
             margin: 0 auto;
         }
 
-        /* ── ID Card ── */
-        .id-card {
-            background: #fff;
-            overflow: hidden;
-            box-shadow: 0 2px 14px rgba(0,0,0,.18);
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-
-        /* ── Header ── */
-        .card-header {
-            background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%) !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            color: #fff;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logo-mark {
-            width: 32px;
-            height: 32px;
-            background: rgba(255,255,255,.2);
-            border-radius: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .logo-mark svg { width: 20px; height: 20px; }
-
-        .school-info { overflow: hidden; flex: 1; }
-
-        .school-name {
-            font-size: 13px;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .card-label {
-            font-size: 9px;
-            opacity: .8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 1px;
-        }
-
-        .academic-year {
-            font-size: 11px;
-            opacity: .85;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        /* ── Student info row ── */
-        .student-row {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px 16px 12px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .profile-pic {
-            flex-shrink: 0;
-            width: 72px;
-            height: 72px;
-            overflow: hidden;
-            border: 2px solid #dce9e9;
-            background: #e8f5f4;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .profile-pic img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .profile-pic .placeholder {
-            font-size: 24px;
-            color: #2C5F5D;
-            font-weight: 700;
-        }
-
-        .student-details { flex: 1; min-width: 0; }
-
-        .student-name {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a1a1a;
-            line-height: 1.2;
-            margin-bottom: 5px;
-            word-break: break-word;
-        }
-
-        .badge-row {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-        }
-
-        .badge {
-            background: #e8f5f4 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            color: #2C5F5D;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-        }
-
-        .detail-row {
-            display: flex;
-            gap: 6px;
-            align-items: baseline;
-            margin-top: 3px;
-        }
-
-        .detail-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            color: #aaa;
-            letter-spacing: .5px;
-            width: 30px;
-            flex-shrink: 0;
-        }
-
-        .detail-value {
-            font-size: 11px;
-            color: #333;
-            font-family: 'Courier New', monospace;
-            font-weight: 700;
-        }
-
-        /* ── QR section — centered, dominant ── */
-        .qr-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 18px 16px 14px;
-            gap: 10px;
-        }
-
-        .qr-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #aaa;
-            font-weight: 600;
-        }
-
-        .qr-section img {
-            width: 200px;
-            height: 200px;
-            display: block;
-        }
-
-        .qr-note {
-            font-size: 9px;
-            color: #bbb;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        /* ── Footer ── */
-        .card-footer {
-            background: #2C5F5D !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            height: 6px;
-        }
-
-        /* ── Print ── */
         @@media print {
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
+            @@page { size: 85.6mm 54mm; margin: 0; }
             body { background: #fff; padding: 0; margin: 0; }
             .controls { display: none; }
-
-            .card-wrap {
-                /* CR80 physical dimensions for print */
-                width: 85.6mm;
-                max-width: 85.6mm;
-                margin: 0 auto;
-            }
-
-            .id-card {
-                box-shadow: none;
-                border: 1px solid #ccc;
-                height: 53.98mm;
-                overflow: hidden;
-            }
+            .id-card { box-shadow: none !important; }
         }
     </style>
 </head>
@@ -277,65 +67,7 @@
     </div>
 
     <div class="card-wrap">
-        <div class="id-card">
-
-            <!-- Header -->
-            <div class="card-header">
-                <div class="logo-mark">
-                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="8" y="8" width="16" height="4" rx="1" fill="white"/>
-                        <rect x="8" y="8" width="4" height="16" rx="1" fill="white"/>
-                        <rect x="40" y="8" width="16" height="4" rx="1" fill="white"/>
-                        <rect x="52" y="8" width="4" height="16" rx="1" fill="white"/>
-                        <rect x="8" y="52" width="16" height="4" rx="1" fill="white"/>
-                        <rect x="8" y="40" width="4" height="16" rx="1" fill="white"/>
-                        <polyline points="22,34 29,41 42,26" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    </svg>
-                </div>
-                <div class="school-info">
-                    <div class="school-name">@Model.SchoolName</div>
-                    <div class="card-label">Student ID Card</div>
-                </div>
-            </div>
-
-            <!-- Student info -->
-            <div class="student-row">
-                <div class="profile-pic">
-                    @if (!string.IsNullOrEmpty(Model.Student.ProfilePicturePath))
-                    {
-                        <img src="@Model.Student.ProfilePicturePath" alt="@Model.Student.FullName" />
-                    }
-                    else
-                    {
-                        <span class="placeholder">@Model.Student.FirstName[0]@Model.Student.LastName[0]</span>
-                    }
-                </div>
-                <div class="student-details">
-                    <div class="student-name">@Model.Student.FullName</div>
-                    <div class="detail-row">
-                        <span class="detail-label">ID</span>
-                        <span class="detail-value">@Model.Student.StudentId</span>
-                    </div>
-                    @if (!string.IsNullOrEmpty(Model.Student.LRN))
-                    {
-                        <div class="detail-row">
-                            <span class="detail-label">LRN</span>
-                            <span class="detail-value">@Model.Student.LRN</span>
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- QR Code — centered, prominent -->
-            <div class="qr-section">
-                <span class="qr-label">Scan for Attendance</span>
-                <img src="data:image/png;base64,@Model.QrCode.QrImageBase64"
-                     alt="QR Code for @Model.Student.FullName" />
-                <span class="qr-note">Present this card at entry and exit points.<br/>Keep safe — report lost cards to the school office.</span>
-            </div>
-
-            <div class="card-footer"></div>
-        </div>
+        <partial name="_StudentIdCard" model="Model.CardModel" />
     </div>
 
 </body>

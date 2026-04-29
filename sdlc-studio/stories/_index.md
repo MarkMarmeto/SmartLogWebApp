@@ -1,7 +1,7 @@
 # Story Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-26
+**Last Updated:** 2026-04-27
 
 ---
 
@@ -9,18 +9,20 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Stories | 110 |
+| Total Stories | 117 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
-| V2.1 Stories (Done) | 18 |
-| V2.1 Stories (Draft) | 8 |
+| V2.1 Stories (Done) | 26 |
+| V2.1 Stories (Draft) | 7 |
 | In Progress | 0 |
-| Done | 102 |
-| Draft | 8 |
+| Done | 110 |
+| Draft | 7 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
 | V2.1 Story Points | ~73 |
-| **Total Story Points** | **~339** |
+| V2.1 Card-Redesign Wave (Draft) | 13 |
+| V2.1 EP0016 Consent + Notice (Draft) | 10 |
+| **Total Story Points** | **~362** |
 
 ---
 
@@ -183,30 +185,42 @@
 | [US0075](./US0075-visitor-scan-log.md) | Visitor Scan Log | Done | 3 | Admin Amy |
 | [US0076](./US0076-scanner-visitor-display.md) | Scanner Visitor Scan Display | Done | 3 | Guard |
 
-### EP0013: QR Code Permanence & Card Redesign (16 pts)
+### EP0013: QR Code Permanence & Card Redesign (30 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
-| [US0077](./US0077-cr80-card-template.md) | CR80 Card Template Redesign | Done | 5 | Admin Amy |
-| [US0078](./US0078-enrollment-sticker-print.md) | Enrollment Sticker Print Page | Done | 3 | Admin Amy |
+| [US0077](./US0077-cr80-card-template.md) | CR80 Card Template Redesign (superseded by US0112) | Done | 5 | Admin Amy |
+| [US0078](./US0078-enrollment-sticker-print.md) | Enrollment Sticker Print Page (removed by US0110) | Done | 3 | Admin Amy |
 | [US0079](./US0079-qr-invalidation-audit.md) | QR Invalidation & Audit Trail | Done | 3 | Admin Amy |
 | [US0080](./US0080-qr-regeneration-dialog.md) | QR Regeneration with Confirmation Dialog | Done | 3 | Admin Amy |
 | [US0081](./US0081-invalidate-without-regen.md) | Invalidate QR Without Regeneration | Done | 2 | Admin Amy |
 | [US0110](./US0110-remove-enrollment-sticker.md) | Remove Enrollment Sticker Feature | Done | 1 | Admin Amy |
+| [US0111](./US0111-school-branding-settings.md) | School Branding Settings (Logo, Name, Return Address) | Draft | 3 | Admin Amy |
+| [US0112](./US0112-id-card-landscape-redesign.md) | ID Card Landscape Redesign (supersedes US0077) | Draft | 5 | Admin Amy |
+| [US0113](./US0113-bulk-print-id-cards-per-section.md) | Bulk Print ID Cards per Section (supersedes US0022) | Draft | 5 | Admin Amy |
+
+### EP0016: PII & RA 10173 Compliance — Consent & Notice (10 pts)
+
+| ID | Title | Status | Points | Persona |
+|----|-------|--------|--------|---------|
+| [US0114](./US0114-student-consent-fields.md) | Student Consent Fields (entity + migration + EF) | Draft | 3 | Tony |
+| [US0115](./US0115-consent-capture-on-student-form.md) | Consent Capture on Student Create/Edit Form | Draft | 2 | Admin Amy |
+| [US0116](./US0116-consent-visibility-list-and-detail.md) | Consent Visibility on Student List & Detail | Draft | 2 | Admin Amy |
+| [US0117](./US0117-bilingual-privacy-notice-page.md) | Bilingual Privacy Notice Page at `/Privacy` | Draft | 3 | Parent (anon) |
 
 ### EP0017: Data Retention & Archival (24 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
 | [US0094](./US0094-retention-policy-entity-and-admin-ui.md) | Retention Policy Entity & Admin UI | Done | 3 | Admin Amy |
-| [US0095](./US0095-smsqueue-retention-handler.md) | SmsQueue Retention Handler | Draft | 3 | Tony |
-| [US0096](./US0096-smslog-retention-handler.md) | SmsLog Retention Handler | Draft | 3 | Tony |
-| [US0097](./US0097-broadcast-retention-handler.md) | Broadcast Retention Handler | Draft | 2 | Tony |
-| [US0098](./US0098-scan-retention-handler.md) | Scan Retention Handler | Draft | 3 | Tony |
-| [US0099](./US0099-auditlog-retention-with-legal-hold.md) | AuditLog Retention with Legal Hold | Draft | 3 | Tony |
-| [US0100](./US0100-visitorscan-retention-handler.md) | VisitorScan Retention Handler | Draft | 2 | Tony |
-| [US0101](./US0101-retention-scheduled-service-and-dry-run.md) | Scheduled Retention Service + Manual Run + Dry-Run | Draft | 3 | Tony |
-| [US0102](./US0102-retention-archive-to-file-export.md) | Archive-to-File Export Before Purge | Draft | 2 | Tony |
+| [US0095](./US0095-smsqueue-retention-handler.md) | SmsQueue Retention Handler | Done | 3 | Tony |
+| [US0096](./US0096-smslog-retention-handler.md) | SmsLog Retention Handler | Done | 3 | Tony |
+| [US0097](./US0097-broadcast-retention-handler.md) | Broadcast Retention Handler | Done | 2 | Tony |
+| [US0098](./US0098-scan-retention-handler.md) | Scan Retention Handler | Done | 3 | Tony |
+| [US0099](./US0099-auditlog-retention-with-legal-hold.md) | AuditLog Retention with Legal Hold | Done | 3 | Tony |
+| [US0100](./US0100-visitorscan-retention-handler.md) | VisitorScan Retention Handler | Done | 2 | Tony |
+| [US0101](./US0101-retention-scheduled-service-and-dry-run.md) | Scheduled Retention Service + Manual Run + Dry-Run | Done | 3 | Tony |
+| [US0102](./US0102-retention-archive-to-file-export.md) | Archive-to-File Export Before Purge | Done | 2 | Tony |
 
 ---
 

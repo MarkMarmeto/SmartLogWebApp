@@ -251,14 +251,40 @@ public class NoScanAlertService : BackgroundService, INoScanAlertService
 
         if (totalScansToday == 0)
         {
+            // US0119 AC8: Enrich suppression message with heartbeat-derived context.
+            var healthService = scope.ServiceProvider.GetRequiredService<IDeviceHealthService>();
+            var thresholds = await healthService.GetThresholdsAsync();
+            var nowUtc = DateTime.UtcNow;
+            var activeDeviceLastSeen = await context.Devices
+                .Where(d => d.IsActive)
+                .Select(d => d.LastSeenAt)
+                .ToListAsync(stoppingToken);
+
+            var anyOnlineRecently = activeDeviceLastSeen.Any(ls =>
+                ls.HasValue &&
+                DeviceHealthService.ComputeStatusInternal(ls, nowUtc, thresholds) != DeviceHealthStatus.Offline);
+
+            string reason;
+            string detailsSuffix;
+            if (anyOnlineRecently)
+            {
+                reason = "Scanners were online but no scans recorded — likely operational issue, not connectivity";
+                detailsSuffix = "Scanners online but idle (operational issue suspected).";
+            }
+            else
+            {
+                reason = "Zero total accepted scans today — possible scanner issue (no scanner online recently)";
+                detailsSuffix = "No scanner online recently (connectivity issue suspected).";
+            }
+
             _logger.LogWarning(
-                "No-scan alert suppressed: zero total accepted scans today ({Date:yyyy-MM-dd}) — possible scanner issue",
-                today);
+                "No-scan alert suppressed: {Reason} ({Date:yyyy-MM-dd})",
+                reason, today);
 
             context.AuditLogs.Add(new AuditLog
             {
                 Action = "NO_SCAN_ALERT_SUPPRESSED",
-                Details = $"Date: {today:yyyy-MM-dd}. Suppressed: zero total scans today (possible scanner issue).",
+                Details = $"Date: {today:yyyy-MM-dd}. {detailsSuffix}",
                 Timestamp = DateTime.UtcNow
             });
             await context.SaveChangesAsync(stoppingToken);

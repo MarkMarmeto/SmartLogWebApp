@@ -1,7 +1,19 @@
 @page
 @model SmartLog.Web.Pages.Admin.DevicesModel
+@using SmartLog.Web.Services
 @{
     ViewData["Title"] = "Scanner Devices";
+}
+
+@functions {
+    string FormatLastSeenTooltip(DateTime? lastSeenAt)
+    {
+        if (lastSeenAt is null) return "Never seen";
+        var ageSec = (int)(DateTime.UtcNow - lastSeenAt.Value).TotalSeconds;
+        if (ageSec < 60) return $"Last seen {ageSec}s ago";
+        if (ageSec < 3600) return $"Last seen {ageSec / 60}m ago";
+        return $"Last seen {ageSec / 3600}h ago";
+    }
 }
 
 <div class="container mt-4">
@@ -53,6 +65,7 @@
                                 <th>Location</th>
                                 <th>Registered By</th>
                                 <th>Registered At</th>
+                                <th>Health</th>
                                 <th>Last Seen</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -83,6 +96,23 @@
                                     </td>
                                     <td>@device.RegisteredAt.ToString("yyyy-MM-dd HH:mm")</td>
                                     <td>
+                                        @if (!device.IsActive)
+                                        {
+                                            <span class="badge bg-secondary" title="Device revoked">Revoked</span>
+                                        }
+                                        else
+                                        {
+                                            var status = Model.HealthByDeviceId.GetValueOrDefault(device.Id, DeviceHealthStatus.Offline);
+                                            var (cls, label, tip) = status switch
+                                            {
+                                                DeviceHealthStatus.Online => ("bg-success", "Online", FormatLastSeenTooltip(device.LastSeenAt)),
+                                                DeviceHealthStatus.Stale  => ("bg-warning text-dark", "Stale", FormatLastSeenTooltip(device.LastSeenAt)),
+                                                _                         => ("bg-danger", "Offline", FormatLastSeenTooltip(device.LastSeenAt))
+                                            };
+                                            <span class="badge @cls" title="@tip" data-device-health="@device.Id">@label</span>
+                                        }
+                                    </td>
+                                    <td>
                                         @if (device.LastSeenAt.HasValue)
                                         {
                                             @device.LastSeenAt.Value.ToString("yyyy-MM-dd HH:mm")
@@ -104,6 +134,20 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-info"
+                                                    data-bs-toggle="modal" data-bs-target="#healthModal"
+                                                    data-device-id="@device.Id"
+                                                    data-device-name="@device.Name"
+                                                    data-last-seen="@device.LastSeenAt?.ToString("o")"
+                                                    data-last-heartbeat="@device.LastHeartbeatAt?.ToString("o")"
+                                                    data-app-version="@device.AppVersion"
+                                                    data-os-version="@device.OsVersion"
+                                                    data-network-type="@device.NetworkType"
+                                                    data-battery="@device.BatteryPercent"
+                                                    data-charging="@device.IsCharging"
+                                                    data-queued="@device.QueuedScansCount">
+                                                <i class="bi bi-activity"></i> Details
+                                            </button>
                                             @if (device.IsActive)
                                             {
                                                 <form method="post" asp-page-handler="RegenerateKey" asp-route-id="@device.Id" class="d-inline">
@@ -186,7 +230,7 @@
                     <li>Revoking a device will prevent it from submitting new scans</li>
                     <li>Revoked devices can be reactivated at any time</li>
                     <li>Device names must be unique across the system</li>
-                    <li>"Last Seen" is updated each time a device submits a scan</li>
+                    <li>"Last Seen" is updated by every scan submission and by the periodic heartbeat (every ~60s while the scanner is online)</li>
                     <li>Use "Regenerate Key" to rotate a compromised API key without deleting the device</li>
                     <li>After regenerating, update the scanner device with the new key</li>
                 </ul>
@@ -194,3 +238,121 @@
         </div>
     }
 </div>
+
+<!-- US0119 AC6: Device Health Detail Modal -->
+<div class="modal fade" id="healthModal" tabindex="-1" aria-labelledby="healthModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="healthModalLabel"><i class="bi bi-activity me-2"></i>Device Health</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="healthModalBody">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    // US0119 AC5: Auto-refresh health badges every 30 seconds
+    const POLL_MS = 30000;
+    async function refresh() {
+        try {
+            const r = await fetch('/api/v1/devices/health', { credentials: 'same-origin' });
+            if (!r.ok) return;
+            const items = await r.json();
+            for (const d of items) {
+                // Update health badge
+                const el = document.querySelector(`[data-device-health="${d.deviceId}"]`);
+                if (el) {
+                    el.classList.remove('bg-success','bg-warning','bg-danger','text-dark');
+                    el.textContent = d.status;
+                    if (d.status === 'Online') el.classList.add('bg-success');
+                    else if (d.status === 'Stale') el.classList.add('bg-warning','text-dark');
+                    else el.classList.add('bg-danger');
+                    if (d.lastSeenAt) {
+                        const ageSec = Math.floor((Date.now() - new Date(d.lastSeenAt).getTime()) / 1000);
+                        el.title = `Last seen ${formatAge(ageSec)} ago`;
+                    }
+                }
+                // Update Details button data attributes so modal reflects live heartbeat snapshot
+                const btn = document.querySelector(`[data-device-id="${d.deviceId}"]`);
+                if (btn) {
+                    btn.dataset.lastSeen = d.lastSeenAt ?? '';
+                    btn.dataset.lastHeartbeat = d.lastHeartbeatAt ?? '';
+                    btn.dataset.appVersion = d.appVersion ?? '';
+                    btn.dataset.osVersion = d.osVersion ?? '';
+                    btn.dataset.networkType = d.networkType ?? '';
+                    btn.dataset.battery = d.batteryPercent !== null && d.batteryPercent !== undefined ? d.batteryPercent : '';
+                    btn.dataset.charging = d.isCharging !== null && d.isCharging !== undefined ? d.isCharging : '';
+                    btn.dataset.queued = d.queuedScansCount !== null && d.queuedScansCount !== undefined ? d.queuedScansCount : '';
+                }
+            }
+        } catch (_) { /* best-effort */ }
+    }
+    function formatAge(s) {
+        if (s < 60) return s + 's';
+        if (s < 3600) return Math.floor(s / 60) + 'm';
+        return Math.floor(s / 3600) + 'h';
+    }
+    setInterval(refresh, POLL_MS);
+
+    // US0119 AC6: Populate detail modal from data attributes
+    const modal = document.getElementById('healthModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function(e) {
+            const btn = e.relatedTarget;
+            const name = btn.dataset.deviceName;
+            const lastSeen = btn.dataset.lastSeen ? new Date(btn.dataset.lastSeen) : null;
+            const lastHb = btn.dataset.lastHeartbeat ? new Date(btn.dataset.lastHeartbeat) : null;
+            const appVersion = btn.dataset.appVersion || null;
+            const osVersion = btn.dataset.osVersion || null;
+            const network = btn.dataset.networkType || null;
+            const battery = btn.dataset.battery !== '' ? parseInt(btn.dataset.battery) : null;
+            const charging = btn.dataset.charging;
+            const queued = btn.dataset.queued !== '' ? parseInt(btn.dataset.queued) : null;
+
+            document.getElementById('healthModalLabel').textContent = `Device Health — ${name}`;
+
+            if (!lastHb) {
+                document.getElementById('healthModalBody').innerHTML =
+                    '<p class="text-muted mb-0">No heartbeat recorded yet.</p>';
+                return;
+            }
+
+            function fmt(dt) {
+                if (!dt) return '—';
+                const ageSec = Math.floor((Date.now() - dt.getTime()) / 1000);
+                return `${dt.toISOString().replace('T',' ').slice(0,-5)} UTC (${formatAge(ageSec)} ago)`;
+            }
+
+            let batteryHtml = '—';
+            if (battery !== null && !isNaN(battery)) {
+                const chargingLabel = charging === 'True' ? ' <span class="text-success">(charging)</span>' : '';
+                const warnCls = battery < 20 ? 'text-danger' : '';
+                batteryHtml = `<span class="${warnCls}">${battery}%</span>${chargingLabel}`;
+            }
+
+            let queuedHtml = '—';
+            if (queued !== null && !isNaN(queued)) {
+                const warnCls = queued > 50 ? 'badge bg-warning text-dark' : '';
+                queuedHtml = warnCls ? `<span class="${warnCls}">${queued}</span>` : queued.toString();
+            }
+
+            document.getElementById('healthModalBody').innerHTML = `
+                <dl class="row mb-0">
+                    <dt class="col-5">Last Seen</dt><dd class="col-7">${fmt(lastSeen)}</dd>
+                    <dt class="col-5">Last Heartbeat</dt><dd class="col-7">${fmt(lastHb)}</dd>
+                    <dt class="col-5">App Version</dt><dd class="col-7">${appVersion || '—'}</dd>
+                    <dt class="col-5">OS Version</dt><dd class="col-7">${osVersion || '—'}</dd>
+                    <dt class="col-5">Network</dt><dd class="col-7">${network || '—'}</dd>
+                    <dt class="col-5">Battery</dt><dd class="col-7">${batteryHtml}</dd>
+                    <dt class="col-5">Queued Scans</dt><dd class="col-7">${queuedHtml}</dd>
+                </dl>`;
+        });
+    }
+})();
+</script>
+}

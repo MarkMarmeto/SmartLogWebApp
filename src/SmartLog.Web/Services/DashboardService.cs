@@ -220,7 +220,7 @@ public class DashboardService : IDashboardService
             {
                 Timestamp = a.Timestamp,
                 Action = a.Action,
-                UserName = a.PerformedByUser != null ? a.PerformedByUser.UserName! : "System",
+                UserName = a.PerformedByUserName ?? "System",
                 Details = a.Details ?? a.Action,
                 LinkUrl = GetLinkForAction(a.Action)
             })

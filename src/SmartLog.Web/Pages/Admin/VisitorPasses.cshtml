@@ -158,8 +158,8 @@
                                     <td>
                                         @if (pass.LastEntry.HasValue)
                                         {
-                                            <span title="@pass.LastEntry.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
-                                                @pass.LastEntry.Value.ToString("MMM dd, HH:mm")
+                                            <span title="@pass.LastEntry.Value.ToString("yyyy-MM-dd hh:mm:ss tt") PHT">
+                                                @pass.LastEntry.Value.ToString("MMM dd, hh:mm tt")
                                             </span>
                                         }
                                         else
@@ -170,8 +170,8 @@
                                     <td>
                                         @if (pass.LastExit.HasValue)
                                         {
-                                            <span title="@pass.LastExit.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
-                                                @pass.LastExit.Value.ToString("MMM dd, HH:mm")
+                                            <span title="@pass.LastExit.Value.ToString("yyyy-MM-dd hh:mm:ss tt") PHT">
+                                                @pass.LastExit.Value.ToString("MMM dd, hh:mm tt")
                                             </span>
                                         }
                                         else

@@ -59,8 +59,6 @@ public class AuditLogsModel : PageModel
 
         // Build query
         var query = _context.AuditLogs
-            .Include(a => a.User)
-            .Include(a => a.PerformedByUser)
             .Where(a => a.Timestamp >= defaultStartDate && a.Timestamp <= defaultEndDate);
 
         // US0051: Apply filters
@@ -97,9 +95,9 @@ public class AuditLogsModel : PageModel
                 Timestamp = a.Timestamp,
                 Action = a.Action,
                 UserId = a.UserId,
-                UserName = a.User != null ? a.User.UserName : null,
+                UserName = a.UserName,
                 PerformedByUserId = a.PerformedByUserId,
-                PerformedByUserName = a.PerformedByUser != null ? a.PerformedByUser.UserName : "System",
+                PerformedByUserName = a.PerformedByUserName ?? "System",
                 Details = a.Details,
                 IpAddress = a.IpAddress,
                 LegalHold = a.LegalHold
@@ -183,20 +181,18 @@ public class AuditLogsModel : PageModel
             .OrderBy(a => a)
             .ToListAsync();
 
-        // Get users who have performed actions
-        var userIds = await _context.AuditLogs
+        // Get users who have performed actions — pulled directly from snapshot columns,
+        // no JOIN to AspNetUsers required.
+        var performers = await _context.AuditLogs
             .Where(a => a.PerformedByUserId != null)
-            .Select(a => a.PerformedByUserId)
-            .Distinct()
+            .GroupBy(a => new { a.PerformedByUserId, a.PerformedByUserName })
+            .Select(g => new { g.Key.PerformedByUserId, g.Key.PerformedByUserName })
+            .OrderBy(x => x.PerformedByUserName)
             .ToListAsync();
 
-        var users = await _userManager.Users
-            .Where(u => userIds.Contains(u.Id))
-            .OrderBy(u => u.UserName)
-            .Select(u => new { u.Id, u.UserName })
-            .ToListAsync();
-
-        Users = users.Select(u => $"{u.UserName}|{u.Id}").ToList();
+        Users = performers
+            .Select(u => $"{u.PerformedByUserName ?? "(unknown)"}|{u.PerformedByUserId}")
+            .ToList();
     }
 
     public class AuditLogEntry

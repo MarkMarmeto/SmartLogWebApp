@@ -836,11 +836,8 @@ public static class DbInitializer
             }
             else
             {
-                // Always sync system template text and placeholders
+                // Only enforce structural fields — never overwrite template text that an admin may have customized
                 existing.Name = template.Name;
-                existing.TemplateEn = template.TemplateEn;
-                existing.TemplateFil = template.TemplateFil;
-                existing.AvailablePlaceholders = template.AvailablePlaceholders;
                 existing.IsSystem = true;
                 updated++;
             }

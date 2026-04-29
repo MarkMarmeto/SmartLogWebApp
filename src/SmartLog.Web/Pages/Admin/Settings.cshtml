@@ -156,6 +156,77 @@
             </div>
         </form>
     }
+
+    @if (Model.ActiveTab == "System")
+    {
+        <div class="row g-4 mt-2">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-palette me-2"></i>ID Card Branding</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="SaveBranding">
+                            <div class="mb-3">
+                                <label asp-for="BrandingForm.SchoolAddress" class="form-label fw-semibold">School Address <span class="text-muted fw-normal">(optional)</span></label>
+                                <input asp-for="BrandingForm.SchoolAddress" class="form-control" placeholder="e.g. Sample St., Barangay Uno, Quezon City" maxlength="200" />
+                                <div class="form-text">Shown below the school name in the ID card header.</div>
+                            </div>
+                            <div class="mb-4">
+                                <label asp-for="BrandingForm.ReturnAddressText" class="form-label fw-semibold">Return Address <span class="text-muted fw-normal">(optional)</span></label>
+                                <input asp-for="BrandingForm.ReturnAddressText" class="form-control" placeholder="e.g. Marmeto NHS · Sample St., Quezon City · (02) 1234-5678" maxlength="120" />
+                                <div class="form-text">Printed in small text at the bottom of ID cards. Leave blank to omit the footer.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-floppy me-1"></i>Save
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-image me-2"></i>School Logo</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(Model.CurrentLogoPath))
+                        {
+                            <div class="mb-3 d-flex align-items-center gap-3">
+                                <img src="@Model.CurrentLogoPath" alt="School Logo" style="height:60px; object-fit:contain; border:1px solid #dee2e6; padding:6px; border-radius:4px;" />
+                                <div>
+                                    <div class="text-muted small">Current logo</div>
+                                    <code class="small">@Model.CurrentLogoPath</code>
+                                </div>
+                            </div>
+                            <form method="post" asp-page-handler="RemoveLogo" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm mb-3">
+                                    <i class="bi bi-trash me-1"></i>Remove Logo
+                                </button>
+                            </form>
+                            <hr />
+                            <p class="text-muted small mb-2">Upload a replacement logo:</p>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-3">No logo uploaded. A generic placeholder will be used on ID cards.</p>
+                        }
+                        <form method="post" asp-page-handler="UploadLogo" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="logoFile" class="form-label fw-semibold">Upload Logo</label>
+                                <input type="file" id="logoFile" name="logoFile" class="form-control" accept=".png,.jpg,.jpeg,.svg" />
+                                <div class="form-text">PNG, JPG, or SVG · Maximum 2 MB · Recommended height: 40–60 px</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-cloud-upload me-1"></i>Upload
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <!-- Hidden form for Reset (outside the Save form to avoid nesting) -->

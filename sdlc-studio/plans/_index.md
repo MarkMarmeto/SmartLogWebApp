@@ -1,7 +1,7 @@
 # Implementation Plans Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-26
+**Last Updated:** 2026-04-27
 
 ---
 
@@ -9,10 +9,12 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Plans | 32 |
-| Draft | 19 |
+| Total Plans | 33 |
+| Draft | 20 |
 | In Progress | 0 |
 | Complete | 13 |
+
+> Note: PL0033–PL0036 exist on disk but are not yet listed below — index lags behind those plans. PL0037 (this entry) is current.
 
 ---
 
@@ -88,6 +90,12 @@
 | [PL0019](./PL0019-visitorscan-retention-handler.md) | US0100 | VisitorScan Retention Handler | Draft | 2026-04-24 |
 | [PL0020](./PL0020-retention-scheduled-service-and-manual-run.md) | US0101 | Scheduled Retention Service + Manual Run | Draft | 2026-04-24 |
 | [PL0021](./PL0021-retention-archive-to-file-export.md) | US0102 | Archive-to-File Export Before Purge | Draft | 2026-04-24 |
+
+### Bug Fixes (Cross-Cutting)
+
+| ID | Bug | Title | Status | Created |
+|----|-----|-------|--------|---------|
+| [PL0037](./PL0037-profile-picture-audit-log-fix.md) | BG0007 | Profile Picture Audit Log Fix | Draft | 2026-04-27 |
 
 ---
 

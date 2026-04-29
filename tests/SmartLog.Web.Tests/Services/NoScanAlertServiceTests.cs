@@ -37,7 +37,8 @@ public class NoScanAlertServiceTests
         Mock<ICalendarService>? calendarService = null,
         Mock<ISmsTemplateService>? templateService = null,
         Mock<ISmsSettingsService>? smsSettings = null,
-        Mock<IAppSettingsService>? appSettings = null)
+        Mock<IAppSettingsService>? appSettings = null,
+        Mock<IDeviceHealthService>? deviceHealth = null)
     {
         var services = new ServiceCollection();
 
@@ -48,12 +49,14 @@ public class NoScanAlertServiceTests
         var tmpl = templateService ?? DefaultTemplate();
         var smsSvc = smsSettings ?? DefaultSmsSettings(enabled: true);
         var appSvc = appSettings ?? DefaultAppSettings();
+        var health = deviceHealth ?? DefaultDeviceHealth();
 
         // Register interfaces pointing to mock instances
         services.AddSingleton<ICalendarService>(cal.Object);
         services.AddSingleton<ISmsTemplateService>(tmpl.Object);
         services.AddSingleton<ISmsSettingsService>(smsSvc.Object);
         services.AddSingleton<IAppSettingsService>(appSvc.Object);
+        services.AddSingleton<IDeviceHealthService>(health.Object);
 
         return services.BuildServiceProvider();
     }
@@ -97,6 +100,13 @@ public class NoScanAlertServiceTests
             .ReturnsAsync(alertEnabled ? "true" : "false");
         mock.Setup(m => m.GetAsync("Sms:NoScanAlertProvider"))
             .ReturnsAsync(alertProvider);
+        return mock;
+    }
+
+    private static Mock<IDeviceHealthService> DefaultDeviceHealth()
+    {
+        var mock = new Mock<IDeviceHealthService>();
+        mock.Setup(m => m.GetThresholdsAsync()).ReturnsAsync(new DeviceHealthThresholds(120, 600));
         return mock;
     }
 
@@ -283,7 +293,7 @@ public class NoScanAlertServiceTests
         var student = SeedStudent(context, year, firstName: "Maria");
 
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var appSettings = DefaultAppSettings(alertEnabled: true, alertProvider: "GSM_MODEM");
         var sp = BuildServiceProvider(context: context, appSettings: appSettings);
@@ -334,7 +344,7 @@ public class NoScanAlertServiceTests
 
         // Seed a scan for a DIFFERENT student to pass the scanner health guard
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var sp = BuildServiceProvider(context: context);
         var service = CreateService(serviceProvider: sp);
@@ -352,7 +362,7 @@ public class NoScanAlertServiceTests
         var context = TestDbContextFactory.Create();
         var year = SeedCurrentYear(context);
         var student = SeedStudent(context, year);
-        SeedScanForStudent(context, student.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, student.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var sp = BuildServiceProvider(context: context);
         var service = CreateService(serviceProvider: sp);
@@ -372,7 +382,7 @@ public class NoScanAlertServiceTests
 
         // Seed another student with a scan to pass scanner health guard
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var sp = BuildServiceProvider(context: context);
         var service = CreateService(serviceProvider: sp);
@@ -389,7 +399,7 @@ public class NoScanAlertServiceTests
         SeedStudent(context, year, parentPhone: null);
 
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var sp = BuildServiceProvider(context: context);
         var service = CreateService(serviceProvider: sp);
@@ -407,7 +417,7 @@ public class NoScanAlertServiceTests
 
         // Seed scan for another student to pass scanner health guard
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var sp = BuildServiceProvider(context: context);
         var service = CreateService(serviceProvider: sp);
@@ -430,7 +440,7 @@ public class NoScanAlertServiceTests
         SeedStudent(context, year, language: "FIL");
 
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         var templateMock = new Mock<ISmsTemplateService>();
         string? capturedLanguage = null;
@@ -465,7 +475,7 @@ public class NoScanAlertServiceTests
         context.SaveChanges();
 
         var otherStudent = SeedStudent(context, year, firstName: "Pedro");
-        SeedScanForStudent(context, otherStudent.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, otherStudent.Id, DateTime.UtcNow.Date.AddHours(8));
 
         Dictionary<string, string>? capturedPlaceholders = null;
         var templateMock = new Mock<ISmsTemplateService>();
@@ -494,7 +504,7 @@ public class NoScanAlertServiceTests
         var context = TestDbContextFactory.Create();
         var year = SeedCurrentYear(context);
         var student = SeedStudent(context, year);
-        SeedScanForStudent(context, student.Id, DateTime.Today.AddHours(8));
+        SeedScanForStudent(context, student.Id, DateTime.UtcNow.Date.AddHours(8));
         // All students have scans → 0 alerts queued but still logs
 
         var sp = BuildServiceProvider(context: context);
@@ -503,6 +513,64 @@ public class NoScanAlertServiceTests
 
         var auditLogs = context.AuditLogs.ToList();
         Assert.Contains(auditLogs, a => a.Action == "NO_SCAN_ALERT_EXECUTED");
+    }
+
+    // ─── US0119 AC8: No-Scan-Alert Heartbeat Enrichment ───────────────────────
+
+    [Fact]
+    public async Task Alert_ZeroScans_AnyDeviceOnline_AuditDetails_ContainsOperationalSuspect()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var year = SeedCurrentYear(ctx);
+        SeedStudent(ctx, year);
+
+        // Seed a device that has been online recently (within Online window)
+        ctx.Devices.Add(new Device
+        {
+            Name = "Gate 1",
+            Location = "Entrance",
+            ApiKeyHash = "hashed_gate1",
+            IsActive = true,
+            LastSeenAt = DateTime.UtcNow.AddSeconds(-30) // Online (30s < 120s threshold)
+        });
+        ctx.SaveChanges();
+
+        var health = DefaultDeviceHealth();
+        var sp = BuildServiceProvider(context: ctx, deviceHealth: health);
+        var service = CreateService(serviceProvider: sp);
+        await service.InvokeAlertForTestAsync();
+
+        var log = ctx.AuditLogs.FirstOrDefault(a => a.Action == "NO_SCAN_ALERT_SUPPRESSED");
+        Assert.NotNull(log);
+        Assert.Contains("operational issue suspected", log.Details, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Alert_ZeroScans_AllDevicesOffline_AuditDetails_ContainsConnectivitySuspect()
+    {
+        var ctx = TestDbContextFactory.Create();
+        var year = SeedCurrentYear(ctx);
+        SeedStudent(ctx, year);
+
+        // Seed a device that has been offline for a long time (beyond Stale window)
+        ctx.Devices.Add(new Device
+        {
+            Name = "Gate 1",
+            Location = "Entrance",
+            ApiKeyHash = "hashed_gate1",
+            IsActive = true,
+            LastSeenAt = DateTime.UtcNow.AddMinutes(-30) // Offline (30m > 600s threshold)
+        });
+        ctx.SaveChanges();
+
+        var health = DefaultDeviceHealth();
+        var sp = BuildServiceProvider(context: ctx, deviceHealth: health);
+        var service = CreateService(serviceProvider: sp);
+        await service.InvokeAlertForTestAsync();
+
+        var log = ctx.AuditLogs.FirstOrDefault(a => a.Action == "NO_SCAN_ALERT_SUPPRESSED");
+        Assert.NotNull(log);
+        Assert.Contains("connectivity issue suspected", log.Details, StringComparison.OrdinalIgnoreCase);
     }
 
     // ─── DbInitializer: Template Seeding ──────────────────────────────────────
