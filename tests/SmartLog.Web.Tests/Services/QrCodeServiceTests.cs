@@ -33,7 +33,7 @@ public class QrCodeServiceTests
         Assert.StartsWith("SMARTLOG:2026-07-0001:", qr.Payload);
         Assert.True(qr.IsValid);
         Assert.NotEmpty(qr.HmacSignature);
-        Assert.NotEmpty(qr.QrImageBase64);
+        Assert.False(string.IsNullOrEmpty(qr.QrImageBase64));
     }
 
     [Fact]
