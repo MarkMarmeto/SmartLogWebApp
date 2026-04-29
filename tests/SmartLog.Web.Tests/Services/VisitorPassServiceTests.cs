@@ -11,6 +11,7 @@ public class VisitorPassServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly Mock<IAppSettingsService> _appSettings = new();
+    private readonly Mock<ITimezoneService> _timezoneService = new();
     private readonly Mock<ILogger<VisitorPassService>> _logger = new();
     private readonly IConfiguration _configuration;
     private const string TestHmacKey = "test-hmac-secret-key-for-unit-tests";
@@ -29,7 +30,7 @@ public class VisitorPassServiceTests : IDisposable
     }
 
     private VisitorPassService CreateService() =>
-        new(_context, _appSettings.Object, _configuration, _logger.Object);
+        new(_context, _appSettings.Object, _configuration, _timezoneService.Object, _logger.Object);
 
     public void Dispose() => _context.Dispose();
 
