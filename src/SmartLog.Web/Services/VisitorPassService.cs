@@ -16,6 +16,7 @@ public class VisitorPassService : IVisitorPassService
     private readonly ApplicationDbContext _context;
     private readonly IAppSettingsService _appSettingsService;
     private readonly IConfiguration _configuration;
+    private readonly ITimezoneService _timezoneService;
     private readonly ILogger<VisitorPassService> _logger;
 
     private static readonly SemaphoreSlim _generateLock = new(1, 1);
@@ -24,11 +25,13 @@ public class VisitorPassService : IVisitorPassService
         ApplicationDbContext context,
         IAppSettingsService appSettingsService,
         IConfiguration configuration,
+        ITimezoneService timezoneService,
         ILogger<VisitorPassService> logger)
     {
         _context = context;
         _appSettingsService = appSettingsService;
         _configuration = configuration;
+        _timezoneService = timezoneService;
         _logger = logger;
     }
 
@@ -213,9 +216,15 @@ public class VisitorPassService : IVisitorPassService
             .Where(s => s.ScanType == "ENTRY" && s.Status == "ACCEPTED");
 
         if (startDate.HasValue)
-            entryQuery = entryQuery.Where(s => s.ScannedAt >= startDate.Value.Date);
+        {
+            var startUtc = _timezoneService.ToUtc(startDate.Value.Date);
+            entryQuery = entryQuery.Where(s => s.ScannedAt >= startUtc);
+        }
         if (endDate.HasValue)
-            entryQuery = entryQuery.Where(s => s.ScannedAt < endDate.Value.Date.AddDays(1));
+        {
+            var endUtc = _timezoneService.ToUtc(endDate.Value.Date.AddDays(1));
+            entryQuery = entryQuery.Where(s => s.ScannedAt < endUtc);
+        }
         if (!string.IsNullOrWhiteSpace(passCodeFilter))
             entryQuery = entryQuery.Where(s => s.VisitorPass!.Code.Contains(passCodeFilter));
 
@@ -295,10 +304,10 @@ public class VisitorPassService : IVisitorPassService
             });
         }
 
-        // Summary statistics (today)
-        var today = DateTime.UtcNow.Date;
+        // Summary statistics (today in Philippines Time)
+        var todayUtcStart = _timezoneService.ToUtc(_timezoneService.GetCurrentPhilippinesTime().Date);
         var todayEntries = await _context.VisitorScans
-            .Where(s => s.ScanType == "ENTRY" && s.Status == "ACCEPTED" && s.ScannedAt >= today)
+            .Where(s => s.ScanType == "ENTRY" && s.Status == "ACCEPTED" && s.ScannedAt >= todayUtcStart)
             .CountAsync();
 
         var currentlyIn = await _context.VisitorPasses
@@ -306,12 +315,12 @@ public class VisitorPassService : IVisitorPassService
 
         // Average duration of completed visits today
         var todayExitScans = await _context.VisitorScans
-            .Where(s => s.ScanType == "EXIT" && s.Status == "ACCEPTED" && s.ScannedAt >= today)
+            .Where(s => s.ScanType == "EXIT" && s.Status == "ACCEPTED" && s.ScannedAt >= todayUtcStart)
             .Select(s => new { s.VisitorPassId, s.ScannedAt })
             .ToListAsync();
 
         var todayEntryScans = await _context.VisitorScans
-            .Where(s => s.ScanType == "ENTRY" && s.Status == "ACCEPTED" && s.ScannedAt >= today)
+            .Where(s => s.ScanType == "ENTRY" && s.Status == "ACCEPTED" && s.ScannedAt >= todayUtcStart)
             .Select(s => new { s.VisitorPassId, s.ScannedAt })
             .OrderBy(s => s.ScannedAt)
             .ToListAsync();

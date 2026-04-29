@@ -16,12 +16,16 @@ public class VisitorScanLogModel : PageModel
 {
     private readonly IVisitorPassService _visitorPassService;
     private readonly ApplicationDbContext _context;
+    private readonly ITimezoneService _timezoneService;
 
-    public VisitorScanLogModel(IVisitorPassService visitorPassService, ApplicationDbContext context)
+    public VisitorScanLogModel(IVisitorPassService visitorPassService, ApplicationDbContext context, ITimezoneService timezoneService)
     {
         _visitorPassService = visitorPassService;
         _context = context;
+        _timezoneService = timezoneService;
     }
+
+    public DateTime TodayPht { get; private set; }
 
     [BindProperty(SupportsGet = true)]
     public string? DeviceFilter { get; set; }
@@ -53,9 +57,11 @@ public class VisitorScanLogModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // Default to today if no dates set
-        StartDate ??= DateTime.UtcNow.Date;
-        EndDate ??= DateTime.UtcNow.Date;
+        TodayPht = _timezoneService.GetCurrentPhilippinesTime().Date;
+
+        // Default to today in Philippines Time if no dates set
+        StartDate ??= TodayPht;
+        EndDate ??= TodayPht;
 
         if (PageNumber < 1) PageNumber = 1;
 
@@ -90,6 +96,14 @@ public class VisitorScanLogModel : PageModel
         TotalVisits = result.TotalCount;
         TotalPages = (int)Math.Ceiling(TotalVisits / (double)PageSize);
         Summary = result.Summary;
+
+        // Convert UTC timestamps to Philippines Time for display
+        foreach (var visit in Visits)
+        {
+            visit.EntryTime = _timezoneService.ToPhilippinesTime(visit.EntryTime);
+            if (visit.ExitTime.HasValue)
+                visit.ExitTime = _timezoneService.ToPhilippinesTime(visit.ExitTime.Value);
+        }
 
         if (PageNumber > TotalPages && TotalPages > 0)
             PageNumber = TotalPages;

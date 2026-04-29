@@ -84,7 +84,7 @@
                         <i class="bi bi-funnel me-1"></i>Filter
                     </button>
                 </div>
-                @if (Model.SearchTerm != null || Model.StartDate != DateTime.UtcNow.Date || Model.EndDate != DateTime.UtcNow.Date)
+                @if (Model.SearchTerm != null || Model.StartDate != Model.TodayPht || Model.EndDate != Model.TodayPht)
                 {
                     <div class="col-auto">
                         <a asp-page="/Admin/VisitorScanLog" class="btn btn-outline-secondary">Clear</a>
@@ -123,15 +123,15 @@
                                 <tr class="@(isLong ? "table-warning" : "")">
                                     <td><code>@visit.PassCode</code></td>
                                     <td>
-                                        <span title="@visit.EntryTime.ToString("yyyy-MM-dd HH:mm:ss") UTC">
-                                            @visit.EntryTime.ToString("MMM dd, HH:mm")
+                                        <span title="@visit.EntryTime.ToString("yyyy-MM-dd hh:mm:ss tt") PHT">
+                                            @visit.EntryTime.ToString("MMM dd, hh:mm tt")
                                         </span>
                                     </td>
                                     <td>
                                         @if (visit.ExitTime.HasValue)
                                         {
-                                            <span title="@visit.ExitTime.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC">
-                                                @visit.ExitTime.Value.ToString("MMM dd, HH:mm")
+                                            <span title="@visit.ExitTime.Value.ToString("yyyy-MM-dd hh:mm:ss tt") PHT">
+                                                @visit.ExitTime.Value.ToString("MMM dd, hh:mm tt")
                                             </span>
                                         }
                                         else
