@@ -156,6 +156,7 @@
 | [US0107](./US0107-broadcast-targeting-ng-branch.md) | Broadcast Targeting — Add Non-Graded Branch Alongside Programs | Done | 5 | Admin Amy |
 | [US0108](./US0108-attendance-reports-ng-handling.md) | Attendance — Non-Graded Filter Handling | Done | 1 | Admin Amy |
 | [US0109](./US0109-student-details-card-ng-display.md) | Student Details, List & ID Card — Non-Graded Display | Done | 3 | Admin Amy |
+| [US0120](./US0120-bulk-import-program-awareness.md) | Bulk Student Import — Program Awareness | Done | 5 | Admin Amy |
 
 ### EP0011: Multi-Camera Scanning (43 pts)
 

@@ -85,6 +85,7 @@
                                 <th>LRN</th>
                                 <th>Name</th>
                                 <th>Grade/Section</th>
+                                <th>Program</th>
                                 <th>Parent/Guardian</th>
                                 <th>Phone</th>
                                 <th>Status</th>
@@ -99,6 +100,7 @@
                                     <td><code>@(student.LRN ?? "-")</code></td>
                                     <td>@student.FullName</td>
                                     <td>@(student.GradeLevel == "NG" ? "Non-Graded" : $"Grade {student.GradeLevel}") - @student.Section</td>
+                                    <td>@(student.Program ?? "—")</td>
                                     <td>@student.ParentGuardianName</td>
                                     <td>@student.ParentPhone</td>
                                     <td>

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartLog.Web.Data;
 using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Validation;
+using ProgramEntity = SmartLog.Web.Data.Entities.Program;
 
 namespace SmartLog.Web.Services;
 
@@ -58,11 +59,11 @@ public class BulkImportService : IBulkImportService
     {
         var result = new ImportValidationResult();
 
-        // Parse rows from the first sheet
+        List<string> headers;
         List<List<string>> rows;
         try
         {
-            rows = ParseXlsx(xlsxStream, sheetName: "Students");
+            (headers, rows) = ParseXlsxWithHeaders(xlsxStream, sheetName: "Students");
         }
         catch (Exception ex)
         {
@@ -82,40 +83,71 @@ public class BulkImportService : IBulkImportService
             return result;
         }
 
+        // Phase 3: detect legacy (11-col) vs current (12-col) template
+        bool isLegacyTemplate = !headers.Any(h => h.Equals("Program", StringComparison.OrdinalIgnoreCase));
+
+        int idxFirst = 0, idxLast = 1, idxMiddle = 2, idxGrade = 3;
+        int idxProgram, idxSection, idxGuardianName, idxRelationship, idxParentPhone, idxAlt, idxLrn, idxLang;
+        int colCount;
+
+        if (isLegacyTemplate)
+        {
+            idxProgram = -1; idxSection = 4;
+            idxGuardianName = 5; idxRelationship = 6; idxParentPhone = 7;
+            idxAlt = 8; idxLrn = 9; idxLang = 10;
+            colCount = 11;
+        }
+        else
+        {
+            idxProgram = 4; idxSection = 5;
+            idxGuardianName = 6; idxRelationship = 7; idxParentPhone = 8;
+            idxAlt = 9; idxLrn = 10; idxLang = 11;
+            colCount = 12;
+        }
+
         var gradeLevels = await _gradeSectionService.GetAllGradeLevelsAsync(activeOnly: true);
         var sections = await _gradeSectionService.GetAllSectionsAsync(activeOnly: true);
+        var allPrograms = await _gradeSectionService.GetAllProgramsAsync(activeOnly: true);
+        var gradeProgramLinks = await _context.GradeLevelPrograms.AsNoTracking().ToListAsync();
+        var allowedProgramsByGrade = gradeProgramLinks
+            .GroupBy(g => g.GradeLevelId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.ProgramId).ToHashSet());
+
         var existingLrns = await _context.Students.Where(s => s.LRN != null).Select(s => s.LRN!).ToListAsync();
         var lrnSet = new HashSet<string>(existingLrns);
         var fileLrns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        const int ColCount = 11;
         result.TotalRows = rows.Count;
 
         for (int i = 0; i < rows.Count; i++)
         {
             var fields = rows[i];
-            var rowNum = i + 2; // +2: 1-based + header row
+            var rowNum = i + 2;
             var rowErrors = new List<ImportError>();
 
-            while (fields.Count < ColCount)
+            while (fields.Count < colCount)
                 fields.Add("");
 
             var row = new StudentImportRow
             {
                 RowNumber = rowNum,
-                FirstName = fields[0].Trim(),
-                LastName = fields[1].Trim(),
-                MiddleName = string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2].Trim(),
-                GradeLevelCode = fields[3].Trim(),
-                SectionName = fields[4].Trim(),
-                ParentGuardianName = fields[5].Trim(),
-                GuardianRelationship = fields[6].Trim(),
-                ParentPhone = fields[7].Trim(),
-                AlternatePhone = string.IsNullOrWhiteSpace(fields[8]) ? null : fields[8].Trim(),
-                LRN = string.IsNullOrWhiteSpace(fields[9]) ? null : fields[9].Trim(),
-                SmsLanguage = string.IsNullOrWhiteSpace(fields[10]) ? "EN" : fields[10].Trim().ToUpper()
+                FirstName = fields[idxFirst].Trim(),
+                LastName = fields[idxLast].Trim(),
+                MiddleName = string.IsNullOrWhiteSpace(fields[idxMiddle]) ? null : fields[idxMiddle].Trim(),
+                GradeLevelCode = fields[idxGrade].Trim(),
+                ProgramCode = idxProgram >= 0 && !string.IsNullOrWhiteSpace(fields[idxProgram])
+                    ? fields[idxProgram].Trim().ToUpperInvariant()
+                    : null,
+                SectionName = fields[idxSection].Trim(),
+                ParentGuardianName = fields[idxGuardianName].Trim(),
+                GuardianRelationship = fields[idxRelationship].Trim(),
+                ParentPhone = fields[idxParentPhone].Trim(),
+                AlternatePhone = string.IsNullOrWhiteSpace(fields[idxAlt]) ? null : fields[idxAlt].Trim(),
+                LRN = string.IsNullOrWhiteSpace(fields[idxLrn]) ? null : fields[idxLrn].Trim(),
+                SmsLanguage = string.IsNullOrWhiteSpace(fields[idxLang]) ? "EN" : fields[idxLang].Trim().ToUpper()
             };
 
+            // Required field checks
             if (string.IsNullOrWhiteSpace(row.FirstName))
                 rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "FirstName", Message = "First name is required" });
             if (string.IsNullOrWhiteSpace(row.LastName))
@@ -135,19 +167,109 @@ public class BulkImportService : IBulkImportService
             else if (!PhMobileAttribute.IsValidPhMobile(row.ParentPhone))
                 rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "ParentPhone", Message = "Invalid Philippine mobile number (e.g. 09171234567)", OriginalValue = row.ParentPhone });
 
+            // Grade + Program + Section pipeline (Phase 4)
             if (!string.IsNullOrWhiteSpace(row.GradeLevelCode))
             {
                 var gradeLevel = gradeLevels.FirstOrDefault(g =>
                     g.Code.Equals(row.GradeLevelCode, StringComparison.OrdinalIgnoreCase));
+
                 if (gradeLevel == null)
-                    rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "GradeLevel", Message = $"Grade level '{row.GradeLevelCode}' not found or inactive", OriginalValue = row.GradeLevelCode });
-                else if (!string.IsNullOrWhiteSpace(row.SectionName))
                 {
-                    var section = sections.FirstOrDefault(s =>
-                        s.GradeLevelId == gradeLevel.Id &&
-                        s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase));
-                    if (section == null)
-                        rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "Section", Message = $"Section '{row.SectionName}' not found under grade {row.GradeLevelCode}. See 'Available Sections' sheet.", OriginalValue = row.SectionName });
+                    rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "GradeLevel", Message = $"Grade level '{row.GradeLevelCode}' not found or inactive", OriginalValue = row.GradeLevelCode });
+                }
+                else
+                {
+                    bool isNg = gradeLevel.Code.Equals("NG", StringComparison.OrdinalIgnoreCase);
+
+                    // AC4 + AC5: Program required for graded, forbidden for NG
+                    if (isNg && !string.IsNullOrEmpty(row.ProgramCode))
+                    {
+                        rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "Program", Message = "Non-Graded rows must leave Program blank.", OriginalValue = row.ProgramCode });
+                    }
+                    else if (!isNg && string.IsNullOrEmpty(row.ProgramCode) && !isLegacyTemplate)
+                    {
+                        rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "Program", Message = "Program is required for graded grade levels. See 'Available Sections' sheet." });
+                    }
+
+                    // AC6: Program must exist and be allowed for this grade (graded rows only)
+                    ProgramEntity? program = null;
+                    if (!isNg && !string.IsNullOrEmpty(row.ProgramCode))
+                    {
+                        program = allPrograms.FirstOrDefault(p =>
+                            p.Code.Equals(row.ProgramCode, StringComparison.OrdinalIgnoreCase));
+
+                        if (program == null)
+                        {
+                            rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "Program", Message = $"Program '{row.ProgramCode}' not found or inactive.", OriginalValue = row.ProgramCode });
+                        }
+                        else if (!allowedProgramsByGrade.TryGetValue(gradeLevel.Id, out var allowed) || !allowed.Contains(program.Id))
+                        {
+                            rowErrors.Add(new ImportError { RowNumber = rowNum, Field = "Program", Message = $"Program '{program.Code}' is not allowed for grade '{gradeLevel.Code}'.", OriginalValue = row.ProgramCode });
+                            program = null;
+                        }
+                    }
+
+                    // AC7 / AC8 / AC9: Section resolution
+                    if (!string.IsNullOrWhiteSpace(row.SectionName) && rowErrors.All(e => e.Field != "Program"))
+                    {
+                        List<Section> matches;
+
+                        if (isNg)
+                        {
+                            // AC8: NG sections have no program
+                            matches = sections.Where(s =>
+                                s.GradeLevelId == gradeLevel.Id &&
+                                s.ProgramId == null &&
+                                s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+                        }
+                        else if (program != null)
+                        {
+                            // AC7: resolve by (grade, program, name)
+                            matches = sections.Where(s =>
+                                s.GradeLevelId == gradeLevel.Id &&
+                                s.ProgramId == program.Id &&
+                                s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+                        }
+                        else
+                        {
+                            // AC9: legacy mode, no program supplied — match by (grade, name)
+                            matches = sections.Where(s =>
+                                s.GradeLevelId == gradeLevel.Id &&
+                                s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+
+                            if (matches.Count > 1)
+                            {
+                                rowErrors.Add(new ImportError
+                                {
+                                    RowNumber = rowNum,
+                                    Field = "Program",
+                                    Message = $"Section '{row.SectionName}' exists in multiple programs for grade '{gradeLevel.Code}'. Add a 'Program' column to disambiguate.",
+                                    OriginalValue = row.SectionName
+                                });
+                                matches = new List<Section>();
+                            }
+                        }
+
+                        if (rowErrors.All(e => e.Field != "Program") && matches.Count == 0)
+                        {
+                            var programLabel = isNg ? "—" : (program?.Code ?? "(none)");
+                            rowErrors.Add(new ImportError
+                            {
+                                RowNumber = rowNum,
+                                Field = "Section",
+                                Message = $"Section '{row.SectionName}' not found under grade '{gradeLevel.Code}' / program '{programLabel}'.",
+                                OriginalValue = row.SectionName
+                            });
+                        }
+                        else if (matches.Count == 1 && isLegacyTemplate && !isNg && string.IsNullOrEmpty(row.ProgramCode))
+                        {
+                            // Backfill ProgramCode so ImportStudentsAsync resolves the same section
+                            row.ProgramCode = matches[0].Program?.Code;
+                        }
+                    }
                 }
             }
 
@@ -206,9 +328,24 @@ public class BulkImportService : IBulkImportService
             {
                 var gradeLevel = gradeLevels.First(g =>
                     g.Code.Equals(row.GradeLevelCode, StringComparison.OrdinalIgnoreCase));
-                var section = sections.First(s =>
-                    s.GradeLevelId == gradeLevel.Id &&
-                    s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase));
+
+                bool isNg = gradeLevel.Code.Equals("NG", StringComparison.OrdinalIgnoreCase);
+                Section section;
+                if (isNg)
+                {
+                    section = sections.First(s =>
+                        s.GradeLevelId == gradeLevel.Id &&
+                        s.ProgramId == null &&
+                        s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    section = sections.First(s =>
+                        s.GradeLevelId == gradeLevel.Id &&
+                        s.Program != null &&
+                        s.Program.Code.Equals(row.ProgramCode, StringComparison.OrdinalIgnoreCase) &&
+                        s.Name.Equals(row.SectionName, StringComparison.OrdinalIgnoreCase));
+                }
 
                 var studentId = await _idGenerationService.GenerateStudentIdAsync();
 
@@ -428,17 +565,16 @@ public class BulkImportService : IBulkImportService
         return result;
     }
 
-    public byte[] GenerateStudentTemplate()
+    public async Task<byte[]> GenerateStudentTemplateAsync()
     {
         using var wb = new XLWorkbook();
 
         // ── Sheet 1: Students (import data) ─────────────────────────────────
         var ws = wb.Worksheets.Add("Students");
 
-        // Header row
         var headers = new[]
         {
-            "FirstName", "LastName", "MiddleName", "GradeLevel", "Section",
+            "FirstName", "LastName", "MiddleName", "GradeLevel", "Program", "Section",
             "ParentGuardianName", "GuardianRelationship", "ParentPhone",
             "AlternatePhone", "LRN", "SmsLanguage"
         };
@@ -453,12 +589,12 @@ public class BulkImportService : IBulkImportService
             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
-        // Sample rows
         object[][] samples =
         {
-            new object[] { "Juan",  "Dela Cruz", "Santos", "7",  "AGATE",       "Maria Dela Cruz", "Mother",   "09171234567", "",            "123456789012", "EN"  },
-            new object[] { "Ana",   "Reyes",     "",       "K",  "SAMPAGUITA",  "Jose Reyes",      "Father",   "09281234567", "09181234567", "",             "FIL" },
-            new object[] { "Pedro", "Santos",    "Cruz",   "11", "RUBY",        "Luz Santos",      "Guardian", "09391234567", "",            "",             "EN"  },
+            new object[] { "Juan",  "Dela Cruz", "Santos", "7",  "REGULAR", "AGATE",      "Maria Dela Cruz", "Mother",   "09171234567", "",            "123456789012", "EN"  },
+            new object[] { "Ana",   "Reyes",     "",       "K",  "REGULAR", "SAMPAGUITA", "Jose Reyes",      "Father",   "09281234567", "09181234567", "",             "FIL" },
+            new object[] { "Pedro", "Santos",    "Cruz",   "11", "STEM",    "RUBY",       "Luz Santos",      "Guardian", "09391234567", "",            "",             "EN"  },
+            new object[] { "Liza",  "Cruz",      "",       "NG", "",        "LEVEL 1",    "Ana Cruz",        "Mother",   "09451234567", "",            "",             "EN"  },
         };
 
         for (int r = 0; r < samples.Length; r++)
@@ -469,44 +605,37 @@ public class BulkImportService : IBulkImportService
         }
 
         ws.Columns().AdjustToContents();
-        ws.SheetView.FreezeRows(1); // Freeze header
+        ws.SheetView.FreezeRows(1);
 
-        // ── Sheet 2: Available Sections (reference) ──────────────────────────
+        // ── Sheet 2: Available Sections (reference, populated from live data) ─
         var refWs = wb.Worksheets.Add("Available Sections");
-        refWs.Cell(1, 1).Value = "Grade Level Code";
-        refWs.Cell(1, 2).Value = "Grade Level Name";
-        refWs.Cell(1, 3).Value = "Program Code";
-        refWs.Cell(1, 4).Value = "Section Name";
-        refWs.Cell(1, 5).Value = "Use in 'GradeLevel' column";
-        refWs.Cell(1, 6).Value = "Use in 'Section' column";
 
+        string[] refHeaders = { "Grade Level Code", "Grade Level Name", "Program Code", "Program Name", "Section Name" };
+        for (int c = 0; c < refHeaders.Length; c++)
+            refWs.Cell(1, c + 1).Value = refHeaders[c];
         refWs.Row(1).Style.Font.Bold = true;
         refWs.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#17A2B8");
         refWs.Row(1).Style.Font.FontColor = XLColor.White;
 
-        refWs.Cell(2, 1).Value = "(This sheet is auto-populated when you download from the app with existing sections.)";
-        refWs.Cell(2, 1).Style.Font.Italic = true;
-        refWs.Cell(2, 1).Style.Font.FontColor = XLColor.Gray;
-        refWs.Range("A2:F2").Merge();
-
-        refWs.Columns().AdjustToContents();
+        await PopulateAvailableSectionsSheetAsync(refWs);
 
         // ── Sheet 3: Instructions ────────────────────────────────────────────
         var instrWs = wb.Worksheets.Add("Instructions");
         var instrData = new[]
         {
-            ("Column",          "Required", "Description"),
-            ("FirstName",       "Yes",      "Student first name"),
-            ("LastName",        "Yes",      "Student last name"),
-            ("MiddleName",      "No",       "Student middle name (leave blank if none)"),
-            ("GradeLevel",      "Yes",      "Grade level code: K, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, NG"),
-            ("Section",         "Yes",      "Section name exactly as listed in 'Available Sections' sheet (e.g. AGATE, RUBY)"),
-            ("ParentGuardianName","Yes",    "Full name of parent or guardian"),
-            ("GuardianRelationship","Yes",  "One of: Mother, Father, Guardian, Other"),
-            ("ParentPhone",     "Yes",      "Philippine mobile number (e.g. 09171234567)"),
-            ("AlternatePhone",  "No",       "Second phone number (Philippine mobile format)"),
-            ("LRN",             "No",       "Learner Reference Number — exactly 12 digits"),
-            ("SmsLanguage",     "No",       "EN (English) or FIL (Filipino). Defaults to EN if blank"),
+            ("Column",              "Required",     "Description"),
+            ("FirstName",           "Yes",          "Student first name"),
+            ("LastName",            "Yes",          "Student last name"),
+            ("MiddleName",          "No",           "Student middle name (leave blank if none)"),
+            ("GradeLevel",          "Yes",          "Grade level code: K, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, NG. NG = Non-Graded (SPED, ALS)."),
+            ("Program",             "Conditional",  "Program code from the 'Available Sections' sheet (e.g. REGULAR, STEM, ABM). Required for graded grade levels. Must be blank for Non-Graded (NG) rows."),
+            ("Section",             "Yes",          "Section name as listed in 'Available Sections' sheet. Section names may repeat across programs — use the Program column to disambiguate."),
+            ("ParentGuardianName",  "Yes",          "Full name of parent or guardian"),
+            ("GuardianRelationship","Yes",          "One of: Mother, Father, Guardian, Other"),
+            ("ParentPhone",         "Yes",          "Philippine mobile number (e.g. 09171234567)"),
+            ("AlternatePhone",      "No",           "Second phone number (Philippine mobile format)"),
+            ("LRN",                 "No",           "Learner Reference Number — exactly 12 digits"),
+            ("SmsLanguage",         "No",           "EN (English) or FIL (Filipino). Defaults to EN if blank"),
         };
 
         instrWs.Cell(1, 1).Value = "Column";
@@ -523,6 +652,8 @@ public class BulkImportService : IBulkImportService
             instrWs.Cell(r + 1, 3).Value = instrData[r].Item3;
             if (instrData[r].Item2 == "Yes")
                 instrWs.Cell(r + 1, 2).Style.Font.FontColor = XLColor.Red;
+            else if (instrData[r].Item2 == "Conditional")
+                instrWs.Cell(r + 1, 2).Style.Font.FontColor = XLColor.FromHtml("#B8860B");
             if (r % 2 == 0)
                 instrWs.Row(r + 1).Style.Fill.BackgroundColor = XLColor.FromHtml("#F8F9FA");
         }
@@ -534,6 +665,44 @@ public class BulkImportService : IBulkImportService
         return ms.ToArray();
     }
 
+    private async Task PopulateAvailableSectionsSheetAsync(IXLWorksheet ws)
+    {
+        var activeSections = await _context.Sections
+            .Include(s => s.GradeLevel)
+            .Include(s => s.Program)
+            .Where(s => s.IsActive)
+            .ToListAsync();
+
+        var ordered = activeSections
+            .OrderBy(s => s.GradeLevel.SortOrder)
+            .ThenBy(s => s.Program == null ? int.MaxValue : s.Program.SortOrder)
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        int row = 2;
+        foreach (var s in ordered)
+        {
+            ws.Cell(row, 1).Value = s.GradeLevel.Code;
+            ws.Cell(row, 2).Value = s.GradeLevel.Name;
+            ws.Cell(row, 3).Value = s.Program?.Code ?? "";
+            ws.Cell(row, 4).Value = s.Program?.Name ?? "";
+            ws.Cell(row, 5).Value = s.Name;
+            if (row % 2 == 0)
+                ws.Row(row).Style.Fill.BackgroundColor = XLColor.FromHtml("#F8F9FA");
+            row++;
+        }
+
+        if (row == 2)
+        {
+            ws.Cell(2, 1).Value = "(No active sections found. Create sections under Admin → Sections.)";
+            ws.Cell(2, 1).Style.Font.Italic = true;
+            ws.Cell(2, 1).Style.Font.FontColor = XLColor.Gray;
+            ws.Range("A2:E2").Merge();
+        }
+
+        ws.Columns().AdjustToContents();
+    }
+
     public byte[] GenerateFacultyTemplate()
     {
         var sb = new StringBuilder();
@@ -543,8 +712,9 @@ public class BulkImportService : IBulkImportService
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     }
 
-    private static List<List<string>> ParseXlsx(Stream stream, string sheetName = "Students")
+    private static (List<string> headers, List<List<string>> rows) ParseXlsxWithHeaders(Stream stream, string sheetName = "Students")
     {
+        var headers = new List<string>();
         var rows = new List<List<string>>();
         using var wb = new XLWorkbook(stream);
 
@@ -553,18 +723,21 @@ public class BulkImportService : IBulkImportService
             ?? wb.Worksheets.First();
 
         var usedRange = ws.RangeUsed();
-        if (usedRange == null) return rows;
+        if (usedRange == null) return (headers, rows);
 
         var firstRow = usedRange.FirstRow().RowNumber();
         var lastRow = usedRange.LastRow().RowNumber();
         var lastCol = usedRange.LastColumn().ColumnNumber();
+        var widestCol = Math.Max(lastCol, 12);
 
-        // Skip header (row 1), read from row 2
+        for (int c = 1; c <= widestCol; c++)
+            headers.Add((ws.Cell(firstRow, c).GetValue<string>() ?? "").Trim());
+
         for (int r = firstRow + 1; r <= lastRow; r++)
         {
             var fields = new List<string>();
             bool hasData = false;
-            for (int c = 1; c <= Math.Max(lastCol, 11); c++)
+            for (int c = 1; c <= widestCol; c++)
             {
                 var val = ws.Cell(r, c).GetValue<string>() ?? "";
                 fields.Add(val);
@@ -573,7 +746,7 @@ public class BulkImportService : IBulkImportService
             if (hasData) rows.Add(fields);
         }
 
-        return rows;
+        return (headers, rows);
     }
 
     private static List<List<string>> ParseCsv(Stream stream)
