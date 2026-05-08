@@ -1,4 +1,5 @@
 @inject SmartLog.Web.Services.IAcademicYearService AcademicYearService
+@inject SmartLog.Web.Services.ITimezoneService TimezoneService
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -694,6 +695,7 @@
     }
 
     <script>
+        window.smartlogTimezone = '@TimezoneService.IanaTimeZoneId';
         // Sidebar toggle functionality
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -785,20 +787,16 @@
         (function() {
             function updateClock() {
                 const now = new Date();
-                const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                const day = days[now.getDay()];
-                const month = months[now.getMonth()];
-                const date = String(now.getDate()).padStart(2, '0');
-                const year = now.getFullYear();
-                const hours24 = now.getHours();
-                const ampm = hours24 >= 12 ? 'PM' : 'AM';
-                const hours12 = hours24 % 12 || 12;
-                const hh = String(hours12).padStart(2, '0');
-                const mm = String(now.getMinutes()).padStart(2, '0');
-                const ss = String(now.getSeconds()).padStart(2, '0');
+                const tz = window.smartlogTimezone || 'Asia/Manila';
+                const parts = Object.fromEntries(
+                    new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz,
+                        weekday: 'short', month: 'short', day: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                    }).formatToParts(now).map(p => [p.type, p.value])
+                );
                 const el = document.getElementById('live-clock-text');
-                if (el) el.textContent = `${day}, ${month} ${date} ${year}  ${hh}:${mm}:${ss} ${ampm}`;
+                if (el) el.textContent = `${parts.weekday}, ${parts.month} ${parts.day} ${parts.year}  ${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod}`;
             }
             updateClock();
             setInterval(updateClock, 1000);

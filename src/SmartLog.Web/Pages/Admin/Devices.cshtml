@@ -325,7 +325,9 @@
             function fmt(dt) {
                 if (!dt) return '—';
                 const ageSec = Math.floor((Date.now() - dt.getTime()) / 1000);
-                return `${dt.toISOString().replace('T',' ').slice(0,-5)} UTC (${formatAge(ageSec)} ago)`;
+                const tz = window.smartlogTimezone || 'Asia/Manila';
+                const localStr = dt.toLocaleString('sv-SE', { timeZone: tz }).slice(0, 16);
+                return `${localStr} (${formatAge(ageSec)} ago)`;
             }
 
             let batteryHtml = '—';
