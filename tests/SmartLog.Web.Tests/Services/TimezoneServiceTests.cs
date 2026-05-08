@@ -11,7 +11,9 @@ public class TimezoneServiceTests
     public TimezoneServiceTests()
     {
         var logger = new Mock<ILogger<TimezoneService>>();
-        _service = new TimezoneService(logger.Object);
+        var appSettings = new Mock<IAppSettingsService>();
+        appSettings.Setup(s => s.GetAsync("System.SchoolTimezone")).ReturnsAsync((string?)null);
+        _service = new TimezoneService(appSettings.Object, logger.Object);
     }
 
     [Fact]

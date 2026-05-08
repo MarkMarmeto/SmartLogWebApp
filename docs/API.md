@@ -114,11 +114,51 @@ Accepted           → Green success screen, show student info, auto-dismiss aft
 
 ### GET /api/v1/health
 
-Check server health. Used by scanner apps on startup and periodic polling.
+Unified health endpoint (US0121). Used by scanner apps for liveness polling, setup-wizard validation, and clock synchronization. Response detail level adapts to the `X-API-Key` header.
 
-**Auth:** None
+**Auth:** Optional `X-API-Key` header.
 
-**Response:** `200 OK` with body `Healthy`
+| Caller state | Status | Behavior |
+|--------------|--------|----------|
+| No / empty `X-API-Key` | `200` | Minimal liveness payload. **No DB query** — safe for high-frequency fleet polling. |
+| Valid `X-API-Key` | `200` (or `503` if DB down) | Full payload with database latency + scanner counts. Updates `Device.LastSeenAt`. |
+| Present-but-invalid `X-API-Key` | `401` | `{ error: "InvalidApiKey", message: "..." }`. Repeated attempts from same IP rate-limited to one log per 5 min. |
+
+**Unauthenticated response:**
+```json
+{
+  "status": "healthy",
+  "serverTime": "2026-05-08T03:14:15.926Z",
+  "version": "1.0.0"
+}
+```
+
+**Authenticated response:**
+```json
+{
+  "status": "healthy",
+  "serverTime": "2026-05-08T03:14:15.926Z",
+  "version": "1.0.0",
+  "database": { "status": "healthy", "latencyMs": 5 },
+  "scanners":  { "active": 3, "scansToday": 1250 }
+}
+```
+
+`serverTime` is ISO-8601 UTC with millisecond precision and trailing `Z` — scanners use it for clock-offset bracketing without a separate round-trip.
+
+**Headers (all responses):** `Cache-Control: no-cache, no-store`
+
+---
+
+### GET /api/v1/health/details *(deprecated)*
+
+Shim that delegates to `GET /api/v1/health`. Retained for pre-US0132 scanner builds; will be removed after the scanner client rollout completes. New callers should use `/api/v1/health` with `X-API-Key`.
+
+---
+
+### GET /api/v1/health/time *(deprecated)*
+
+Shim returning `{ "utc": "..." }`. Replaced by the `serverTime` field in `/api/v1/health`. Will be removed after US0132 rollout.
 
 ---
 
