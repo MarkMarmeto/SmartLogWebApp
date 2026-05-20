@@ -1,121 +1,136 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SmartLog.Web.Data;
+using SmartLog.Web.Data.Entities;
 using SmartLog.Web.Services;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace SmartLog.Web.Controllers.Api;
 
 /// <summary>
-/// Health check endpoint for scanner devices.
-/// Implements US0033 (Health Check Endpoint).
+/// Unified health endpoint for scanner devices and ops tooling.
+/// Implements US0033 (original /health) and US0121 (auth-aware unification).
+///
+/// Three response states:
+///   - No / empty X-API-Key  -> 200 OK, minimal liveness payload, no DB hit.
+///   - Valid X-API-Key       -> 200 OK (or 503), full payload, updates Device.LastSeenAt.
+///   - Present-but-invalid   -> 401 InvalidApiKey.
 /// </summary>
 [ApiController]
 [Route("api/v1/health")]
 [Produces("application/json")]
 public class HealthController : ControllerBase
 {
+    private const string Version = "1.0.0";
+    private const string InvalidKeyLogPrefix = "health:invalid-key:";
+    private static readonly TimeSpan InvalidKeyLogWindow = TimeSpan.FromMinutes(5);
+
     private readonly ApplicationDbContext _context;
     private readonly IDeviceService _deviceService;
+    private readonly IMemoryCache _memoryCache;
     private readonly ILogger<HealthController> _logger;
 
-    public HealthController(ApplicationDbContext context, IDeviceService deviceService, ILogger<HealthController> logger)
+    public HealthController(
+        ApplicationDbContext context,
+        IDeviceService deviceService,
+        IMemoryCache memoryCache,
+        ILogger<HealthController> logger)
     {
         _context = context;
         _deviceService = deviceService;
+        _memoryCache = memoryCache;
         _logger = logger;
     }
 
     /// <summary>
-    /// Returns the server's current UTC time. Used by scanner devices for clock synchronization.
-    /// No authentication required — this is a lightweight, read-only endpoint.
-    /// </summary>
-    [HttpGet("time")]
-    public IActionResult GetServerTime()
-    {
-        return Ok(new { utc = DateTime.UtcNow.ToString("o") });
-    }
-
-    /// <summary>
-    /// Basic health check endpoint (unauthenticated).
-    /// Returns 200 OK if the service is healthy.
+    /// Unified health endpoint. Response detail level adapts to the X-API-Key header
+    /// (see class summary).
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Get()
     {
+        Response.Headers.CacheControl = "no-cache, no-store";
+
+        var response = new HealthResponse
+        {
+            Status = "healthy",
+            ServerTime = FormatServerTime(DateTime.UtcNow),
+            Version = Version
+        };
+
+        // Unauthenticated path — no DB query. Critical for fleet-scale polling.
+        if (!Request.Headers.TryGetValue("X-API-Key", out var headerVal)
+            || string.IsNullOrWhiteSpace(headerVal))
+        {
+            return Ok(response);
+        }
+
+        // Authenticated path — validate the key.
+        Device? device;
         try
         {
-            // Check database connectivity
-            await _context.Database.CanConnectAsync();
-
-            return Ok(new HealthResponse
-            {
-                Status = "healthy",
-                Timestamp = DateTime.UtcNow,
-                Version = "1.0.0"
-            });
+            var keyHash = _deviceService.HashApiKey(headerVal!);
+            device = await _context.Devices.FirstOrDefaultAsync(d => d.ApiKeyHash == keyHash);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Health check failed");
+            // DB is down before we can even validate the key. The caller provided a key,
+            // so we owe them an authenticated-style 503 (with serverTime/version) — not
+            // an unauth 200 that would mask the outage.
+            _logger.LogError(ex, "Health auth: DB unreachable while validating API key");
+            return UnhealthyDatabase(response);
+        }
 
-            return StatusCode(503, new HealthResponse
+        if (device is null)
+        {
+            LogInvalidKeyOnce();
+            return Unauthorized(new ErrorResponse
             {
-                Status = "unhealthy",
-                Timestamp = DateTime.UtcNow,
-                Version = "1.0.0",
-                Error = "Database connectivity issue"
+                Error = "InvalidApiKey",
+                Message = "Invalid or missing API key"
             });
         }
+
+        return await PopulateAuthenticatedAsync(response, device);
     }
 
     /// <summary>
-    /// Detailed health check endpoint (authenticated via X-API-Key).
-    /// Used by scanner setup wizard to validate API key and server connectivity.
+    /// Deprecated. Use GET /api/v1/health with X-API-Key.
+    /// Retained as a shim so pre-US0132 scanner builds continue to work; will be
+    /// removed after the scanner client rollout completes.
     /// </summary>
     [HttpGet("details")]
-    public async Task<IActionResult> GetDetails()
+    [Obsolete("Use GET /api/v1/health with X-API-Key. Removed after US0132 rollout.")]
+    public Task<IActionResult> GetDetails() => Get();
+
+    /// <summary>
+    /// Deprecated. Use GET /api/v1/health — `serverTime` is now in every response.
+    /// Retained as a shim so pre-US0132 scanner builds continue to work; will be
+    /// removed after the scanner client rollout completes.
+    /// </summary>
+    [HttpGet("time")]
+    [Obsolete("Use GET /api/v1/health. Removed after US0132 rollout.")]
+    public IActionResult GetServerTime()
     {
-        // Authenticate via X-API-Key header
-        if (!Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeader) ||
-            string.IsNullOrWhiteSpace(apiKeyHeader))
-        {
-            return Unauthorized(new ErrorResponse
-            {
-                Error = "InvalidApiKey",
-                Message = "Invalid or missing API key"
-            });
-        }
+        Response.Headers.CacheControl = "no-cache, no-store";
+        return Ok(new { utc = FormatServerTime(DateTime.UtcNow) });
+    }
 
-        var apiKey = apiKeyHeader.ToString();
-        var keyHash = _deviceService.HashApiKey(apiKey);
-        var device = await _context.Devices.FirstOrDefaultAsync(d => d.ApiKeyHash == keyHash);
-
-        if (device == null)
-        {
-            _logger.LogWarning("Invalid API key attempt on health/details from {IpAddress}",
-                HttpContext.Connection.RemoteIpAddress);
-            return Unauthorized(new ErrorResponse
-            {
-                Error = "InvalidApiKey",
-                Message = "Invalid or missing API key"
-            });
-        }
-
-        // Update device last seen
+    private async Task<IActionResult> PopulateAuthenticatedAsync(HealthResponse response, Device device)
+    {
+        // Preserve prior /health/details side-effect.
         device.LastSeenAt = DateTime.UtcNow;
 
         try
         {
-            // Measure database connectivity latency
-            var stopwatch = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             await _context.Database.CanConnectAsync();
-            stopwatch.Stop();
+            sw.Stop();
 
-            // Count active scanners
             var activeScanners = await _context.Devices.CountAsync(d => d.IsActive);
-
-            // Count scans today (UTC)
             var todayUtc = DateTime.UtcNow.Date;
             var tomorrowUtc = todayUtc.AddDays(1);
             var scansToday = await _context.Scans
@@ -123,72 +138,77 @@ public class HealthController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            return Ok(new HealthDetailsResponse
-            {
-                Status = "healthy",
-                Timestamp = DateTime.UtcNow,
-                Version = "1.0.0",
-                Database = new DatabaseHealth
-                {
-                    Status = "healthy",
-                    LatencyMs = stopwatch.ElapsedMilliseconds
-                },
-                ActiveScanners = activeScanners,
-                ScansToday = scansToday
-            });
+            response.Database = new DatabaseHealth { Status = "healthy", LatencyMs = sw.ElapsedMilliseconds };
+            response.Scanners = new ScannerStats { Active = activeScanners, ScansToday = scansToday };
+            return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Detailed health check failed");
+            _logger.LogError(ex, "Authenticated health check failed");
 
-            try { await _context.SaveChangesAsync(); } catch { /* best effort to save LastSeenAt */ }
+            // Best-effort to persist LastSeenAt even when downstream queries failed.
+            try { await _context.SaveChangesAsync(); } catch { /* swallow */ }
 
-            return StatusCode(503, new HealthDetailsResponse
-            {
-                Status = "unhealthy",
-                Timestamp = DateTime.UtcNow,
-                Version = "1.0.0",
-                Database = new DatabaseHealth
-                {
-                    Status = "unhealthy",
-                    LatencyMs = -1
-                },
-                Error = "Database connectivity issue"
-            });
+            return UnhealthyDatabase(response);
         }
     }
+
+    private IActionResult UnhealthyDatabase(HealthResponse response)
+    {
+        response.Status = "unhealthy";
+        response.Error = "Database connectivity issue";
+        response.Database = new DatabaseHealth { Status = "unhealthy", LatencyMs = -1 };
+        return StatusCode(503, response);
+    }
+
+    private void LogInvalidKeyOnce()
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var cacheKey = InvalidKeyLogPrefix + ip;
+        if (_memoryCache.TryGetValue(cacheKey, out _))
+        {
+            return;
+        }
+
+        _memoryCache.Set(cacheKey, true, InvalidKeyLogWindow);
+        _logger.LogWarning("Invalid API key attempt on /api/v1/health from {IpAddress}", ip);
+    }
+
+    private static string FormatServerTime(DateTime utc) =>
+        utc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture);
 }
 
 /// <summary>
-/// Basic health check response model.
+/// Unified health-check response. Auth-only fields use JsonIgnoreCondition.WhenWritingNull
+/// so the unauthenticated payload omits them entirely.
 /// </summary>
 public class HealthResponse
 {
     public string Status { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
+
+    /// <summary>ISO-8601 UTC, millisecond precision, trailing Z (e.g. "2026-05-08T03:14:15.926Z").</summary>
+    public string ServerTime { get; set; } = string.Empty;
+
     public string Version { get; set; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DatabaseHealth? Database { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ScannerStats? Scanners { get; set; }
 }
 
-/// <summary>
-/// Detailed health check response model (authenticated endpoint).
-/// </summary>
-public class HealthDetailsResponse
-{
-    public string Status { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public string Version { get; set; } = string.Empty;
-    public DatabaseHealth Database { get; set; } = new();
-    public int ActiveScanners { get; set; }
-    public int ScansToday { get; set; }
-    public string? Error { get; set; }
-}
-
-/// <summary>
-/// Database health status.
-/// </summary>
 public class DatabaseHealth
 {
     public string Status { get; set; } = string.Empty;
     public long LatencyMs { get; set; }
+}
+
+public class ScannerStats
+{
+    public int Active { get; set; }
+    public int ScansToday { get; set; }
 }

@@ -257,7 +257,8 @@ SmartLogScannerApp is the **external scanner client** (separate application) tha
 | Endpoint | Purpose | Auth |
 |----------|---------|------|
 | `POST /api/v1/scans` | Submit QR scan | `X-API-Key` header |
-| `GET /api/v1/health` | Check server connectivity | None |
+| `POST /api/v1/devices/heartbeat` | Scanner vitals push | `X-API-Key` header |
+| `GET /api/v1/health` | Liveness / setup-validation / clock sync | Optional `X-API-Key` (auth-aware response) |
 
 ### Scanner Device Setup
 
@@ -286,9 +287,16 @@ Scanner origins configured in `appsettings.json` under `Cors:AllowedOrigins` or 
 
 ## API Reference
 
-### Scanner APIs (Device Auth)
-- `POST /api/v1/scans` — Submit QR scan
-- `GET /api/v1/health` — Health check (no auth)
+### Scanner APIs
+- `POST /api/v1/scans` — Submit QR scan (X-API-Key required)
+- `POST /api/v1/devices/heartbeat` — Scanner vitals push (X-API-Key required)
+- `GET  /api/v1/health` — **Auth-aware** (US0121):
+  - No `X-API-Key` → 200 with minimal liveness (`status`, `serverTime`, `version`); no DB hit
+  - Valid `X-API-Key` → 200 with full payload (`database`, `scanners`); updates `Device.LastSeenAt`
+  - Present-but-invalid `X-API-Key` → 401 `InvalidApiKey`
+  - DB unreachable on auth path → 503 with `serverTime`/`version` still populated
+- `GET  /api/v1/health/details` *(deprecated — shim delegating to /health; will be removed after scanner US0132 rollout)*
+- `GET  /api/v1/health/time` *(deprecated — `serverTime` now in /health response; will be removed after scanner US0132 rollout)*
 
 ### Dashboard APIs (Cookie Auth)
 - `GET /api/v1/dashboard/summary`

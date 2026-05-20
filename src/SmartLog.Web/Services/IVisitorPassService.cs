@@ -15,6 +15,11 @@ public interface IVisitorPassService
     Task<List<VisitorPass>> GeneratePassesAsync();
 
     /// <summary>
+    /// Get a visitor pass by its primary key.
+    /// </summary>
+    Task<VisitorPass?> GetByIdAsync(Guid id);
+
+    /// <summary>
     /// Get a visitor pass by its code (e.g., "VISITOR-005").
     /// </summary>
     Task<VisitorPass?> GetByCodeAsync(string code);

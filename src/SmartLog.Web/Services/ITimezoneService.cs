@@ -1,12 +1,17 @@
 namespace SmartLog.Web.Services;
 
 /// <summary>
-/// Service for timezone conversions and Philippine Time (UTC+8) handling.
+/// Service for timezone conversions and school time handling.
 /// </summary>
 public interface ITimezoneService
 {
     /// <summary>
-    /// Converts UTC DateTime to Philippines Time (UTC+8).
+    /// IANA timezone ID configured in System.SchoolTimezone (e.g. "Asia/Manila").
+    /// </summary>
+    string IanaTimeZoneId { get; }
+
+    /// <summary>
+    /// Converts UTC DateTime to school local time.
     /// </summary>
     DateTime ToPhilippinesTime(DateTime utcDateTime);
 

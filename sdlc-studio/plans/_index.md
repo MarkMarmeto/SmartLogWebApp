@@ -76,6 +76,7 @@
 | [PL0029](./PL0029-student-program-null-for-ng.md) | US0106 | Student.Program Denormalisation — Null for Non-Graded Enrollments | Complete | 2026-04-26 |
 | [PL0030](./PL0030-attendance-ng-filter-handling.md) | US0108 | Attendance — Non-Graded Filter Handling | Complete | 2026-04-26 |
 | [PL0031](./PL0031-broadcast-targeting-ng-branch.md) | US0107 | Broadcast Targeting — Add Non-Graded Branch Alongside Programs | Complete | 2026-04-26 |
+| [PL0040](./PL0040-bulk-import-program-awareness.md) | US0120 | Bulk Student Import — Program Awareness | Complete | 2026-05-04 |
 
 ### EP0017: Data Retention & Archival
 

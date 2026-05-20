@@ -11,9 +11,6 @@
             <a asp-page="/Admin/VisitorScanLog" class="btn btn-outline-info">
                 <i class="bi bi-clock-history me-1"></i>Scan Log
             </a>
-            <a asp-page="/Admin/PrintVisitorPasses" class="btn btn-outline-secondary">
-                <i class="bi bi-printer me-1"></i>Print Cards
-            </a>
             <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#settingsPanel">
                 <i class="bi bi-gear me-1"></i>Settings
             </button>
@@ -180,6 +177,12 @@
                                         }
                                     </td>
                                     <td>
+                                        <a asp-page="/Admin/PrintVisitorPass" asp-route-id="@pass.Id"
+                                           target="_blank"
+                                           class="btn btn-sm btn-outline-secondary me-1"
+                                           title="Print this visitor pass">
+                                            <i class="bi bi-printer"></i> Print
+                                        </a>
                                         @if (pass.IsActive)
                                         {
                                             <form method="post" asp-page-handler="Deactivate" class="d-inline">

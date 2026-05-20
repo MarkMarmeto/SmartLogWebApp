@@ -6,7 +6,7 @@ public interface IBulkImportService
     Task<ImportResult> ImportStudentsAsync(List<StudentImportRow> validRows, string importedByUserId);
     Task<ImportValidationResult> ValidateFacultyCsvAsync(Stream csvStream);
     Task<ImportResult> ImportFacultyAsync(List<FacultyImportRow> validRows, string importedByUserId);
-    byte[] GenerateStudentTemplate();
+    Task<byte[]> GenerateStudentTemplateAsync();
     byte[] GenerateFacultyTemplate();
 }
 
@@ -17,6 +17,7 @@ public class StudentImportRow
     public string LastName { get; set; } = string.Empty;
     public string? MiddleName { get; set; }
     public string GradeLevelCode { get; set; } = string.Empty;
+    public string? ProgramCode { get; set; }
     public string SectionName { get; set; } = string.Empty;
     public string ParentGuardianName { get; set; } = string.Empty;
     public string GuardianRelationship { get; set; } = string.Empty;

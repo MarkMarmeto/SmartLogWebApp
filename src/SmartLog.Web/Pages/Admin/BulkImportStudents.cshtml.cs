@@ -33,9 +33,9 @@ public class BulkImportStudentsModel : PageModel
     {
     }
 
-    public IActionResult OnGetDownloadTemplate()
+    public async Task<IActionResult> OnGetDownloadTemplateAsync()
     {
-        var bytes = _importService.GenerateStudentTemplate();
+        var bytes = await _importService.GenerateStudentTemplateAsync();
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "student_import_template.xlsx");
     }
 
