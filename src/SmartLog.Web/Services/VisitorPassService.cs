@@ -98,6 +98,12 @@ public class VisitorPassService : IVisitorPassService
     }
 
     /// <inheritdoc />
+    public async Task<VisitorPass?> GetByIdAsync(Guid id)
+    {
+        return await _context.VisitorPasses.FirstOrDefaultAsync(p => p.Id == id);
+    }
+
+    /// <inheritdoc />
     public async Task<VisitorPass?> GetByCodeAsync(string code)
     {
         return await _context.VisitorPasses.FirstOrDefaultAsync(p => p.Code == code);

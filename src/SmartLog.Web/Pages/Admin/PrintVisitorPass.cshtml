@@ -1,0 +1,129 @@
+@page "{id:guid}"
+@model SmartLog.Web.Pages.Admin.PrintVisitorPassModel
+@{
+    ViewData["Title"] = "Print Visitor Pass";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Visitor Pass — @Model.Pass.Code</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 24px;
+        }
+
+        .controls {
+            max-width: 500px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .controls h1 { font-size: 15px; font-weight: 600; color: #333; flex: 1; }
+        .btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary   { background: #2C5F5D; color: #fff; }
+        .btn-secondary { background: #fff; color: #555; border: 1px solid #ccc; }
+        .btn:hover     { opacity: .85; }
+
+        /* On-screen preview: scale CR100 portrait so it's legible. */
+        .card-wrap { width: 252px; /* 66.8mm × 3.779 px/mm ≈ 252px */ margin: 0 auto; }
+
+        /* Base (print-true) sizing in mm + pt. Used as-is when printing.
+           IMPORTANT: keep all base .visitor-card descendant rules ABOVE the
+           @@media screen block so the screen overrides win on source order. */
+        .visitor-card {
+            width: 66.8mm;
+            height: 98.6mm;
+            border: 1pt solid #000;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 6mm;
+        }
+
+        .visitor-card .qr-img {
+            width: 50mm;
+            height: 50mm;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .visitor-card .qr-placeholder {
+            width: 50mm;
+            height: 50mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 9pt;
+            color: #888;
+            border: 1px dashed #bbb;
+        }
+
+        .visitor-card .code-label {
+            margin-top: 4mm;
+            font-weight: 700;
+            font-size: 14pt;
+            letter-spacing: 0.04em;
+            text-align: center;
+            color: #000;
+        }
+
+        /* On-screen: convert mm box to pixel preview at ~3.779 px/mm so the
+           preview visually matches the printed card. MUST come after the base
+           rules above — same selector specificity, so source order decides. */
+        @@media screen {
+            .visitor-card {
+                width: 252px;        /* 66.8mm × 3.779 px/mm ≈ 252.4px */
+                height: 372px;       /* 98.6mm × 3.779 px/mm ≈ 372.6px */
+                padding-top: 23px;   /* 6mm × 3.779 px/mm ≈ 22.7px */
+            }
+            .visitor-card .qr-img,
+            .visitor-card .qr-placeholder { width: 189px; height: 189px; }   /* 50mm @@ ~3.78 */
+            .visitor-card .code-label { margin-top: 15px; font-size: 14pt; }
+        }
+
+        /* Nesting @@page inside @@media print is valid CSS Paged Media and is
+           well-supported in Chrome 90+, Firefox 100+, Edge. Do not "fix" by
+           moving @@page to the top level — the size only applies for print here. */
+        @@media print {
+            body { background: #fff; padding: 0; margin: 0; }
+            .controls { display: none; }
+            .card-wrap { width: auto; }
+            .visitor-card { width: 66.8mm; height: 98.6mm; padding-top: 6mm; }
+            @@page { size: 66.8mm 98.6mm; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h1>Print Visitor Pass — @Model.Pass.Code</h1>
+        <a href="/Admin/VisitorPasses" class="btn btn-secondary">Back</a>
+        <button class="btn btn-primary" onclick="window.print()">Print</button>
+    </div>
+
+    <div class="card-wrap">
+        <div class="visitor-card">
+            @if (!string.IsNullOrEmpty(Model.Pass.QrImageBase64))
+            {
+                <img class="qr-img" alt="QR code for @Model.Pass.Code"
+                     src="data:image/png;base64,@Model.Pass.QrImageBase64" />
+            }
+            else
+            {
+                <div class="qr-placeholder">
+                    QR not available —<br />contact support
+                </div>
+            }
+            <div class="code-label">@Model.Pass.Code</div>
+        </div>
+    </div>
+</body>
+</html>
