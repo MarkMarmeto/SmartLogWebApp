@@ -45,14 +45,19 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 6mm;
+            overflow: hidden;             /* belt-and-braces against rounding overflow */
+        }
+
+        .visitor-card .qr-img,
+        .visitor-card .qr-placeholder {
+            /* margin shorthand: top right bottom left — 4mm top gap below the accent band */
+            margin: 4mm auto 0;
         }
 
         .visitor-card .qr-img {
             width: 50mm;
             height: 50mm;
             display: block;
-            margin: 0 auto;
         }
 
         .visitor-card .qr-placeholder {
@@ -76,6 +81,59 @@
             color: #000;
         }
 
+        /* ── Branded header (mirrors student ID's id-card__header) ── */
+        .visitor-card__header {
+            height: 10mm;
+            min-height: 10mm;
+            width: 100%;
+            background: linear-gradient(135deg, #2C5F5D 0%, #3d8a87 100%) !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2mm;
+            padding: 0 3mm;
+            overflow: hidden;
+        }
+        .visitor-card__logo { height: 6mm; width: auto; object-fit: contain; max-width: 14mm; flex-shrink: 0; }
+        .visitor-card__logo-placeholder { height: 6mm; width: 6mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .visitor-card__logo-placeholder svg { width: 6mm; height: 6mm; }
+        .visitor-card__school-block { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
+        .visitor-card__school { font-size: 8pt; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; line-height: 1.2; }
+        .visitor-card__school-address { font-size: 5pt; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; opacity: 0.85; line-height: 1.2; }
+
+        /* ── Orange "VISITOR PASS" accent band ── */
+        .visitor-card__accent {
+            height: 6mm;
+            min-height: 6mm;
+            width: 100%;
+            background: #E07B39 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9pt;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        /* ── Footer ── */
+        .visitor-card__footer {
+            margin-top: auto;             /* push to the bottom of the flex column */
+            height: 5mm;
+            min-height: 5mm;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5pt;
+            color: #888;
+        }
+
         /* On-screen: convert mm box to pixel preview at ~3.779 px/mm so the
            preview visually matches the printed card. MUST come after the base
            rules above — same selector specificity, so source order decides. */
@@ -83,11 +141,13 @@
             .visitor-card {
                 width: 252px;        /* 66.8mm × 3.779 px/mm ≈ 252.4px */
                 height: 372px;       /* 98.6mm × 3.779 px/mm ≈ 372.6px */
-                padding-top: 23px;   /* 6mm × 3.779 px/mm ≈ 22.7px */
             }
+            .visitor-card__header { height: 38px; }                  /* 10mm */
+            .visitor-card__accent { height: 23px; font-size: 9pt; }   /* 6mm */
             .visitor-card .qr-img,
-            .visitor-card .qr-placeholder { width: 189px; height: 189px; }   /* 50mm @@ ~3.78 */
+            .visitor-card .qr-placeholder { width: 189px; height: 189px; margin: 15px auto 0; }
             .visitor-card .code-label { margin-top: 15px; font-size: 14pt; }
+            .visitor-card__footer { height: 19px; }                  /* 5mm */
         }
 
         /* Nesting @@page inside @@media print is valid CSS Paged Media and is
@@ -97,7 +157,10 @@
             body { background: #fff; padding: 0; margin: 0; }
             .controls { display: none; }
             .card-wrap { width: auto; }
-            .visitor-card { width: 66.8mm; height: 98.6mm; padding-top: 6mm; }
+            .visitor-card { width: 66.8mm; height: 98.6mm; }
+            .visitor-card__header { height: 10mm; }
+            .visitor-card__accent { height: 6mm; }
+            .visitor-card__footer { height: 5mm; }
             @@page { size: 66.8mm 98.6mm; margin: 0; }
         }
     </style>
@@ -111,6 +174,37 @@
 
     <div class="card-wrap">
         <div class="visitor-card">
+
+            <div class="visitor-card__header">
+                @if (!string.IsNullOrEmpty(Model.SchoolLogoPath))
+                {
+                    <img class="visitor-card__logo" src="@Model.SchoolLogoPath" alt="" />
+                }
+                else
+                {
+                    <div class="visitor-card__logo-placeholder">
+                        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="8" y="8" width="16" height="4" rx="1" fill="white"/>
+                            <rect x="8" y="8" width="4" height="16" rx="1" fill="white"/>
+                            <rect x="40" y="8" width="16" height="4" rx="1" fill="white"/>
+                            <rect x="52" y="8" width="4" height="16" rx="1" fill="white"/>
+                            <rect x="8" y="52" width="16" height="4" rx="1" fill="white"/>
+                            <rect x="8" y="40" width="4" height="16" rx="1" fill="white"/>
+                            <polyline points="22,34 29,41 42,26" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        </svg>
+                    </div>
+                }
+                <div class="visitor-card__school-block">
+                    <span class="visitor-card__school">@Model.SchoolName</span>
+                    @if (!string.IsNullOrEmpty(Model.SchoolAddress))
+                    {
+                        <span class="visitor-card__school-address">@Model.SchoolAddress</span>
+                    }
+                </div>
+            </div>
+
+            <div class="visitor-card__accent">VISITOR PASS</div>
+
             @if (!string.IsNullOrEmpty(Model.Pass.QrImageBase64))
             {
                 <img class="qr-img" alt="QR code for @Model.Pass.Code"
@@ -123,6 +217,9 @@
                 </div>
             }
             <div class="code-label">@Model.Pass.Code</div>
+
+            <div class="visitor-card__footer">Return to Reception</div>
+
         </div>
     </div>
 </body>

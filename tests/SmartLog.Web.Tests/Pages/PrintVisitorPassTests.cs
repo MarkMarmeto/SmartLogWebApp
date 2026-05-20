@@ -30,7 +30,11 @@ public class PrintVisitorPassTests
         var service = new Mock<IVisitorPassService>();
         service.Setup(s => s.GetByIdAsync(passId)).ReturnsAsync(pass);
 
-        var model = new PrintVisitorPassModel(service.Object);
+        // No setups on IAppSettingsService — Moq returns Task with default(string?) = null,
+        // so the page model falls back to "SmartLog School" / null branding.
+        var appSettings = new Mock<IAppSettingsService>();
+
+        var model = new PrintVisitorPassModel(service.Object, appSettings.Object);
 
         var result = await model.OnGetAsync(passId);
 
@@ -44,8 +48,9 @@ public class PrintVisitorPassTests
     {
         var service = new Mock<IVisitorPassService>();
         service.Setup(s => s.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((VisitorPass?)null);
+        var appSettings = new Mock<IAppSettingsService>();
 
-        var model = new PrintVisitorPassModel(service.Object);
+        var model = new PrintVisitorPassModel(service.Object, appSettings.Object);
 
         var result = await model.OnGetAsync(Guid.NewGuid());
 
