@@ -1,6 +1,6 @@
 # PL0015: SmsLog Retention Handler — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0096: SmsLog Retention Handler](../stories/US0096-smslog-retention-handler.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

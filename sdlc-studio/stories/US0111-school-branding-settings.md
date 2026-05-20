@@ -1,6 +1,6 @@
 # US0111: School Branding Settings (Logo, Name, Return Address)
 
-> **Status:** Review
+> **Status:** Done
 > **Plan:** [PL0034: School Branding Settings](../plans/PL0034-school-branding-settings.md)
 > **Epic:** [EP0013: QR Code Permanence & Card Redesign](../epics/EP0013-qr-permanence-card-redesign.md)
 > **Owner:** TBD

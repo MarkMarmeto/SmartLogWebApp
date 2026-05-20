@@ -1,6 +1,6 @@
 # US0116: Consent Visibility on Student List & Detail
 
-> **Status:** Draft
+> **Status:** Done
 > **Epic:** [EP0016: PII & RA 10173 Compliance — Consent & Notice (Floor)](../epics/EP0016-pii-ra10173-compliance.md)
 > **Owner:** TBD
 > **Created:** 2026-04-27

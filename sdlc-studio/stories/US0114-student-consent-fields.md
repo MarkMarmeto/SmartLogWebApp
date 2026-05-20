@@ -1,6 +1,6 @@
 # US0114: Student Consent Fields — Entity, EF Config, Migration
 
-> **Status:** Draft
+> **Status:** Done
 > **Epic:** [EP0016: PII & RA 10173 Compliance — Consent & Notice (Floor)](../epics/EP0016-pii-ra10173-compliance.md)
 > **Owner:** TBD
 > **Created:** 2026-04-27

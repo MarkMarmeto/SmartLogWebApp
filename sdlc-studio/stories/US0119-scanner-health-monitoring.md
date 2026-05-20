@@ -1,6 +1,6 @@
 # US0119: Scanner Health Monitoring
 
-> **Status:** Draft
+> **Status:** Done
 > **Epic:** [EP0005: Scanner Integration](../epics/EP0005-scanner-integration.md)
 > **Owner:** TBD
 > **Created:** 2026-04-28

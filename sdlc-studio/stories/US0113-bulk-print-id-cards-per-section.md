@@ -1,6 +1,6 @@
 # US0113: Bulk Print ID Cards per Section
 
-> **Status:** Review
+> **Status:** Done
 > **Plan:** [PL0036: Bulk Print ID Cards per Section](../plans/PL0036-bulk-print-id-cards-per-section.md)
 > **Epic:** [EP0013: QR Code Permanence & Card Redesign](../epics/EP0013-qr-permanence-card-redesign.md)
 > **Owner:** TBD

@@ -1,6 +1,6 @@
 # PL0016: Broadcast Retention Handler — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0097: Broadcast Retention Handler](../stories/US0097-broadcast-retention-handler.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

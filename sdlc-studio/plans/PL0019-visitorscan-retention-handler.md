@@ -1,6 +1,6 @@
 # PL0019: VisitorScan Retention Handler — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0100: VisitorScan Retention Handler](../stories/US0100-visitorscan-retention-handler.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

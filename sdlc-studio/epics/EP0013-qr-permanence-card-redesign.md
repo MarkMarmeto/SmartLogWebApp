@@ -1,6 +1,6 @@
 # EP0013: QR Code Permanence & Card Redesign
 
-> **Status:** In Progress
+> **Status:** Done
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16

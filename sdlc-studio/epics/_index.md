@@ -1,7 +1,7 @@
 # Epic Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-27
+**Last Updated:** 2026-05-20
 
 ---
 
@@ -16,9 +16,9 @@
 | V2 Phase 2 (Feature Enhancements) | 7 |
 | V3 Phase 3 (Commercial Readiness) | 2 |
 | V1 Stories Created | 52 |
-| V2 Stories Created | 55 |
-| V2 Story Points | ~180 |
-| Active Bugs | 3 |
+| V2 Stories Created | 71 |
+| V2 Story Points | ~210 |
+| Active Bugs | 0 |
 
 ---
 
@@ -38,10 +38,10 @@
 | [EP0010](./EP0010-programs-sections-overhaul.md) | Programs & Sections Overhaul | V2-P2 | Done | 16 |
 | [EP0011](./EP0011-multi-camera-scanning.md) | Multi-Camera Scanning | V2-P2 | Done | 11 |
 | [EP0012](./EP0012-visitor-pass-system.md) | Visitor Pass System | V2-P2 | Done | 5 |
-| [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | In Progress | 9 |
+| [EP0013](./EP0013-qr-permanence-card-redesign.md) | QR Code Permanence & Card Redesign | V2-P2 | Done | 9 |
 | [EP0014](./EP0014-product-licensing.md) | Product Licensing | V3-P3 | Draft | TBD |
 | [EP0015](./EP0015-application-auto-update.md) | Application Auto-Update | V3-P3 | Draft | TBD |
-| [EP0016](./EP0016-pii-ra10173-compliance.md) | PII & RA 10173 Compliance — Consent & Notice (Floor) | V2-P2 | Ready | 4 |
+| [EP0016](./EP0016-pii-ra10173-compliance.md) | PII & RA 10173 Compliance — Consent & Notice (Floor) | V2-P2 | Done | 4 |
 | [EP0017](./EP0017-data-retention-archival.md) | Data Retention & Archival | V2-P2 | Done | 9 |
 
 ---
@@ -205,3 +205,4 @@ Licensing, distribution, and legal compliance for commercial launch.
 | 2026-04-26 | Registry reconciled — US0084-US0087, US0089-US0093 confirmed implemented; EP0009 and EP0010 marked Done. EP0011 remains In Progress (US0088 Windows compat verification pending). |
 | 2026-04-27 | EP0013 re-opened — V2.1 card-redesign wave: US0111 (school branding settings), US0112 (landscape single-sided card, supersedes US0077), US0113 (bulk print per section, supersedes US0022). 13 story points drafted. |
 | 2026-04-27 | EP0016 activated for V2.1 — scope narrowed to "consent + notice" floor (retention removed, covered by EP0017; subject-rights deferred to future Epic). 4 stories US0114-US0117 drafted (10 points). Status Draft → Ready. |
+| 2026-05-20 | Registry reconciled post-V2.1 wave merge. EP0013 marked Done (US0110-113 shipped in commit fccb9b5). EP0016 marked Done (US0114-117 shipped in commit fccb9b5). EP0005 augmented with US0121 (unified /health endpoint). EP0012 augmented with US0122-123 (single-pass print + branded header on CR100). EP0003 augmented with US0120 (bulk-import program awareness). All active bugs (BG0001-BG0007) closed. V2 story count grew to 71 (~210 points). Only EP0014 and EP0015 (V3 deferred) remain Draft. |

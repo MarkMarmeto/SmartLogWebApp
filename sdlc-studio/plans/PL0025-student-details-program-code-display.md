@@ -1,6 +1,6 @@
 # PL0025: Student Details — Display Program Code with Grade & Section
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0087: Student Details — Display Program Code with Grade & Section](../stories/US0087-student-details-program-code-display.md)
 > **Epic:** EP0010: Programs & Sections Overhaul
 > **Created:** 2026-04-25

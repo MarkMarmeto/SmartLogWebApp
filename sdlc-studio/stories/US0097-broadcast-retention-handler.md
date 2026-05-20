@@ -1,6 +1,6 @@
 # US0097: Broadcast Retention Handler
 
-> **Status:** Draft
+> **Status:** Done
 > **Epic:** [EP0017: Data Retention & Archival](../epics/EP0017-data-retention-archival.md)
 > **Owner:** TBD
 > **Created:** 2026-04-24

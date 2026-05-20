@@ -1,6 +1,6 @@
 # PL0018: AuditLog Retention with Legal-Hold Flag — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0099: AuditLog Retention with Legal-Hold Flag](../stories/US0099-auditlog-retention-with-legal-hold.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

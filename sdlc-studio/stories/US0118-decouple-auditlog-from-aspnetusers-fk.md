@@ -1,6 +1,6 @@
 # US0118: Decouple AuditLog from AspNetUsers FK
 
-> **Status:** Draft
+> **Status:** Done
 > **Epic:** [EP0001: Authentication & Authorization](../epics/EP0001-authentication-authorization.md) (also touches [EP0016: PII / RA 10173 Compliance](../epics/EP0016-pii-ra10173-compliance.md))
 > **Owner:** TBD
 > **Created:** 2026-04-27

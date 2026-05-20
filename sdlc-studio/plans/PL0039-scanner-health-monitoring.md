@@ -1,6 +1,6 @@
 # PL0039: Scanner Health Monitoring
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0119: Scanner Health Monitoring](../stories/US0119-scanner-health-monitoring.md)
 > **Epic:** [EP0005: Scanner Integration](../epics/EP0005-scanner-integration.md)
 > **Created:** 2026-04-28

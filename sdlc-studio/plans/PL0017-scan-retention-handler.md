@@ -1,6 +1,6 @@
 # PL0017: Scan Retention Handler — Implementation Plan
 
-> **Status:** Draft
+> **Status:** Done
 > **Story:** [US0098: Scan Retention Handler](../stories/US0098-scan-retention-handler.md)
 > **Epic:** EP0017: Data Retention & Archival
 > **Created:** 2026-04-24

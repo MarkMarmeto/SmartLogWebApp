@@ -1,7 +1,7 @@
 # Story Registry
 
 **Project:** SmartLog School Information Management System
-**Last Updated:** 2026-04-27
+**Last Updated:** 2026-05-20
 
 ---
 
@@ -9,26 +9,27 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Stories | 117 |
+| Total Stories | 118 |
 | V1 Stories (Done) | 51 |
 | V2 Stories (Done) | 32 |
-| V2.1 Stories (Done) | 26 |
-| V2.1 Stories (Draft) | 7 |
+| V2.1 Stories (Done) | 31 |
+| V2.2 Stories (Done) | 4 |
 | In Progress | 0 |
-| Done | 110 |
-| Draft | 7 |
+| Done | 118 |
+| Draft | 0 |
 | V1 Story Points | 144 |
 | V2 Story Points | 122 |
-| V2.1 Story Points | ~73 |
-| V2.1 Card-Redesign Wave (Draft) | 13 |
-| V2.1 EP0016 Consent + Notice (Draft) | 10 |
-| **Total Story Points** | **~362** |
+| V2.1 Story Points | ~85 |
+| V2.2 Story Points (US0120-123) | ~7 |
+| **Total Story Points** | **~358** |
+
+> V2.2 wave = post-merge story additions: US0120 (bulk-import program awareness), US0121 (unified /health endpoint), US0122 (single-pass visitor pass print on CR100), US0123 (branded header + orange accent band). All shipped on 2026-05-20.
 
 ---
 
 ## Stories by Epic
 
-### EP0001: Authentication & Authorization (24 pts)
+### EP0001: Authentication & Authorization (27 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -40,6 +41,7 @@
 | [US0006](./US0006-role-based-menu.md) | Role-Based Menu Filtering | Done | 2 | Admin Amy |
 | [US0007](./US0007-authorization-enforcement.md) | Authorization Policy Enforcement | Done | 3 | Admin Amy |
 | [US0008](./US0008-auth-audit-logging.md) | Authentication Audit Logging | Done | 3 | Admin Amy |
+| [US0118](./US0118-decouple-auditlog-from-aspnetusers-fk.md) | Decouple AuditLog from AspNetUsers FK | Done | 3 | Tech-Savvy Tony |
 
 ### EP0002: User Management (14 pts)
 
@@ -75,7 +77,7 @@
 | [US0026](./US0026-faculty-list.md) | Faculty List with Search and Filter | Done | 3 | Admin Amy |
 | [US0027](./US0027-link-faculty-user.md) | Link/Unlink Faculty to User Account | Done | 3 | Admin Amy |
 
-### EP0005: Scanner Integration (14 pts)
+### EP0005: Scanner Integration (19 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -84,7 +86,9 @@
 | [US0030](./US0030-scan-ingestion-api.md) | Scan Ingestion API | Done | 5 | Scanner Device |
 | [US0031](./US0031-qr-validation.md) | QR Code Validation | Done | 3 | Scanner Device |
 | [US0032](./US0032-duplicate-detection.md) | Duplicate Scan Detection | Done | 2 | Scanner Device |
-| [US0033](./US0033-health-check.md) | Health Check Endpoint | Done | 1 | Scanner Device |
+| [US0033](./US0033-health-check.md) | Health Check Endpoint (superseded by US0121) | Done | 1 | Scanner Device |
+| [US0119](./US0119-scanner-health-monitoring.md) | Scanner Health Monitoring (POST /devices/heartbeat) | Done | 5 | Tech-Savvy Tony |
+| [US0121](./US0121-unify-health-endpoint.md) | Unify /health, /health/details, /health/time into one auth-aware endpoint | Done | 2 | Scanner Device |
 
 ### EP0006: Attendance Tracking (14 pts)
 
@@ -176,7 +180,7 @@
 
 > Stories US0088-US0092 primary files live in the ScannerApp registry (cross-project shadowing — same pattern as US0066-US0071). Links above point there.
 
-### EP0012: Visitor Pass System (21 pts)
+### EP0012: Visitor Pass System (24 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
@@ -185,6 +189,8 @@
 | [US0074](./US0074-visitor-pass-admin-ui.md) | Visitor Pass Admin Management | Done | 5 | Admin Amy |
 | [US0075](./US0075-visitor-scan-log.md) | Visitor Scan Log | Done | 3 | Admin Amy |
 | [US0076](./US0076-scanner-visitor-display.md) | Scanner Visitor Scan Display | Done | 3 | Guard |
+| [US0122](./US0122-visitor-pass-single-print-cr100.md) | Single-Pass Print on CR100 (Portrait) | Done | 2 | Admin Amy |
+| [US0123](./US0123-visitor-pass-branded-header.md) | Branded Header + Orange Accent Band | Done | 1 | Admin Amy |
 
 ### EP0013: QR Code Permanence & Card Redesign (30 pts)
 
@@ -196,18 +202,18 @@
 | [US0080](./US0080-qr-regeneration-dialog.md) | QR Regeneration with Confirmation Dialog | Done | 3 | Admin Amy |
 | [US0081](./US0081-invalidate-without-regen.md) | Invalidate QR Without Regeneration | Done | 2 | Admin Amy |
 | [US0110](./US0110-remove-enrollment-sticker.md) | Remove Enrollment Sticker Feature | Done | 1 | Admin Amy |
-| [US0111](./US0111-school-branding-settings.md) | School Branding Settings (Logo, Name, Return Address) | Draft | 3 | Admin Amy |
-| [US0112](./US0112-id-card-landscape-redesign.md) | ID Card Landscape Redesign (supersedes US0077) | Draft | 5 | Admin Amy |
-| [US0113](./US0113-bulk-print-id-cards-per-section.md) | Bulk Print ID Cards per Section (supersedes US0022) | Draft | 5 | Admin Amy |
+| [US0111](./US0111-school-branding-settings.md) | School Branding Settings (Logo, Name, Return Address) | Done | 3 | Admin Amy |
+| [US0112](./US0112-id-card-landscape-redesign.md) | ID Card Landscape Redesign (supersedes US0077) | Done | 5 | Admin Amy |
+| [US0113](./US0113-bulk-print-id-cards-per-section.md) | Bulk Print ID Cards per Section (supersedes US0022) | Done | 5 | Admin Amy |
 
 ### EP0016: PII & RA 10173 Compliance — Consent & Notice (10 pts)
 
 | ID | Title | Status | Points | Persona |
 |----|-------|--------|--------|---------|
-| [US0114](./US0114-student-consent-fields.md) | Student Consent Fields (entity + migration + EF) | Draft | 3 | Tony |
-| [US0115](./US0115-consent-capture-on-student-form.md) | Consent Capture on Student Create/Edit Form | Draft | 2 | Admin Amy |
-| [US0116](./US0116-consent-visibility-list-and-detail.md) | Consent Visibility on Student List & Detail | Draft | 2 | Admin Amy |
-| [US0117](./US0117-bilingual-privacy-notice-page.md) | Bilingual Privacy Notice Page at `/Privacy` | Draft | 3 | Parent (anon) |
+| [US0114](./US0114-student-consent-fields.md) | Student Consent Fields (entity + migration + EF) | Done | 3 | Tony |
+| [US0115](./US0115-consent-capture-on-student-form.md) | Consent Capture on Student Create/Edit Form | Done | 2 | Admin Amy |
+| [US0116](./US0116-consent-visibility-list-and-detail.md) | Consent Visibility on Student List & Detail | Done | 2 | Admin Amy |
+| [US0117](./US0117-bilingual-privacy-notice-page.md) | Bilingual Privacy Notice Page at `/Privacy` | Done | 3 | Parent (anon) |
 
 ### EP0017: Data Retention & Archival (24 pts)
 

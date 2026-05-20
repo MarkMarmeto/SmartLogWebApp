@@ -1,6 +1,6 @@
 # EP0016: PII & RA 10173 Compliance — Consent & Notice (Floor)
 
-> **Status:** Ready
+> **Status:** Done
 > **Owner:** TBD
 > **Reviewer:** TBD
 > **Created:** 2026-04-16

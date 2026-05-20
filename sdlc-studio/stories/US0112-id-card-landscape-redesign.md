@@ -1,6 +1,6 @@
 # US0112: ID Card Landscape Redesign (CR80, Single-Sided)
 
-> **Status:** Review
+> **Status:** Done
 > **Plan:** [PL0035: ID Card Landscape Redesign](../plans/PL0035-id-card-landscape-redesign.md)
 > **Epic:** [EP0013: QR Code Permanence & Card Redesign](../epics/EP0013-qr-permanence-card-redesign.md)
 > **Owner:** TBD
